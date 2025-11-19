@@ -1,0 +1,387 @@
+import { existsSync, readdirSync, statSync } from 'fs';
+import { join, resolve, extname } from 'path';
+import { Document, DocumentType } from './Document';
+
+/**
+ * Site configuration interface
+ */
+export interface SiteConfig {
+  /** Site title */
+  title?: string;
+  
+  /** Site description */
+  description?: string;
+  
+  /** Base URL */
+  url?: string;
+  
+  /** Base path */
+  baseurl?: string;
+  
+  /** Source directory */
+  source?: string;
+  
+  /** Destination directory */
+  destination?: string;
+  
+  /** Collections configuration */
+  collections?: Record<string, any>;
+  
+  /** Exclude patterns */
+  exclude?: string[];
+  
+  /** Include patterns */
+  include?: string[];
+  
+  /** Additional configuration */
+  [key: string]: any;
+}
+
+/**
+ * Site class represents a Jekyll site and manages all documents
+ */
+export class Site {
+  /** Site configuration */
+  public readonly config: SiteConfig;
+
+  /** Source directory path */
+  public readonly source: string;
+
+  /** Destination directory path */
+  public readonly destination: string;
+
+  /** All pages in the site */
+  public readonly pages: Document[] = [];
+
+  /** All posts in the site */
+  public readonly posts: Document[] = [];
+
+  /** Collections mapped by collection name */
+  public readonly collections: Map<string, Document[]> = new Map();
+
+  /** All layouts in the site */
+  public readonly layouts: Map<string, Document> = new Map();
+
+  /** All includes in the site */
+  public readonly includes: Map<string, Document> = new Map();
+
+  /** Static files (non-Jekyll files) */
+  public readonly staticFiles: string[] = [];
+
+  /**
+   * Create a new Site
+   * @param source Source directory path
+   * @param config Site configuration
+   */
+  constructor(source: string, config: SiteConfig = {}) {
+    this.source = resolve(source);
+    
+    // Merge default excludes with user-provided excludes
+    const defaultExcludes = [
+      '_site',
+      '.sass-cache',
+      '.jekyll-cache',
+      '.jekyll-metadata',
+      'node_modules',
+      'vendor',
+    ];
+    const mergedExcludes = [
+      ...defaultExcludes,
+      ...(config.exclude || []),
+    ];
+
+    this.config = {
+      ...config,
+      source: this.source,
+      destination: config.destination || join(this.source, '_site'),
+      exclude: mergedExcludes,
+      include: config.include || [],
+    };
+    this.destination = resolve(this.config.destination as string);
+  }
+
+  /**
+   * Read and process all files in the site
+   */
+  public async read(): Promise<void> {
+    // Read layouts first (they're needed for other documents)
+    this.readLayouts();
+
+    // Read includes
+    this.readIncludes();
+
+    // Read posts
+    this.readPosts();
+
+    // Read collections
+    this.readCollections();
+
+    // Read pages (do this last to avoid picking up collection docs as pages)
+    this.readPages();
+  }
+
+  /**
+   * Read all layouts from _layouts directory
+   */
+  private readLayouts(): void {
+    const layoutsDir = join(this.source, '_layouts');
+    if (!existsSync(layoutsDir)) {
+      return;
+    }
+
+    const files = this.walkDirectory(layoutsDir);
+    for (const file of files) {
+      const doc = new Document(file, this.source, DocumentType.LAYOUT);
+      this.layouts.set(doc.basename, doc);
+    }
+  }
+
+  /**
+   * Read all includes from _includes directory
+   */
+  private readIncludes(): void {
+    const includesDir = join(this.source, '_includes');
+    if (!existsSync(includesDir)) {
+      return;
+    }
+
+    const files = this.walkDirectory(includesDir);
+    for (const file of files) {
+      const doc = new Document(file, this.source, DocumentType.INCLUDE);
+      const relativePath = file.substring(includesDir.length + 1);
+      this.includes.set(relativePath, doc);
+    }
+  }
+
+  /**
+   * Read all posts from _posts directory
+   */
+  private readPosts(): void {
+    const postsDir = join(this.source, '_posts');
+    if (!existsSync(postsDir)) {
+      return;
+    }
+
+    const files = this.walkDirectory(postsDir);
+    for (const file of files) {
+      if (this.isMarkdownOrHtml(file)) {
+        const doc = new Document(file, this.source, DocumentType.POST);
+        this.posts.push(doc);
+      }
+    }
+
+    // Sort posts by date (newest first)
+    this.posts.sort((a, b) => {
+      const dateA = a.date?.getTime() || 0;
+      const dateB = b.date?.getTime() || 0;
+      return dateB - dateA;
+    });
+  }
+
+  /**
+   * Read all collections defined in config
+   */
+  private readCollections(): void {
+    if (!this.config.collections) {
+      return;
+    }
+
+    for (const collectionName of Object.keys(this.config.collections)) {
+      const collectionDir = join(this.source, `_${collectionName}`);
+      if (!existsSync(collectionDir)) {
+        continue;
+      }
+
+      const files = this.walkDirectory(collectionDir);
+      const documents: Document[] = [];
+
+      for (const file of files) {
+        if (this.isMarkdownOrHtml(file)) {
+          const doc = new Document(
+            file,
+            this.source,
+            DocumentType.COLLECTION,
+            collectionName
+          );
+          documents.push(doc);
+        }
+      }
+
+      this.collections.set(collectionName, documents);
+    }
+  }
+
+  /**
+   * Read all pages from the source directory
+   * Pages are any markdown or HTML files not in special directories
+   */
+  private readPages(): void {
+    const files = this.walkDirectory(this.source, true);
+    
+    for (const file of files) {
+      if (this.isMarkdownOrHtml(file) && !this.isSpecialDirectory(file)) {
+        const doc = new Document(file, this.source, DocumentType.PAGE);
+        this.pages.push(doc);
+      }
+    }
+  }
+
+  /**
+   * Walk a directory recursively and return all file paths
+   * @param dir Directory to walk
+   * @param shallow If true, don't recurse into subdirectories that start with underscore
+   */
+  private walkDirectory(dir: string, shallow = false): string[] {
+    const files: string[] = [];
+
+    if (!existsSync(dir)) {
+      return files;
+    }
+
+    const entries = readdirSync(dir);
+
+    for (const entry of entries) {
+      const fullPath = join(dir, entry);
+      const stats = statSync(fullPath);
+
+      if (stats.isDirectory()) {
+        // Skip excluded directories
+        if (this.shouldExclude(fullPath)) {
+          continue;
+        }
+
+        // For shallow walks, skip underscore directories except at root
+        if (shallow && entry.startsWith('_')) {
+          continue;
+        }
+
+        files.push(...this.walkDirectory(fullPath, shallow));
+      } else if (stats.isFile()) {
+        // Skip excluded files
+        if (this.shouldExclude(fullPath)) {
+          continue;
+        }
+
+        files.push(fullPath);
+      }
+    }
+
+    return files;
+  }
+
+  /**
+   * Check if a file path should be excluded based on config
+   */
+  private shouldExclude(path: string): boolean {
+    const relativePath = path.substring(this.source.length + 1);
+    const excludePatterns = this.config.exclude || [];
+
+    for (const pattern of excludePatterns) {
+      // Simple pattern matching - exact match or starts with
+      if (relativePath === pattern || relativePath.startsWith(pattern + '/')) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Check if a file is in a special Jekyll directory
+   */
+  private isSpecialDirectory(path: string): boolean {
+    const relativePath = path.substring(this.source.length + 1);
+    const parts = relativePath.split('/');
+
+    // Check if any part of the path is a special directory
+    for (const part of parts) {
+      if (
+        part.startsWith('_') &&
+        !part.startsWith('_posts') // _posts files are handled separately
+      ) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Check if a file is markdown or HTML
+   */
+  private isMarkdownOrHtml(path: string): boolean {
+    const ext = extname(path).toLowerCase();
+    return ['.md', '.markdown', '.html', '.htm'].includes(ext);
+  }
+
+  /**
+   * Get all documents in the site
+   */
+  public getAllDocuments(): Document[] {
+    const allDocs: Document[] = [
+      ...this.pages,
+      ...this.posts,
+      ...Array.from(this.layouts.values()),
+      ...Array.from(this.includes.values()),
+    ];
+
+    // Add collection documents
+    for (const docs of this.collections.values()) {
+      allDocs.push(...docs);
+    }
+
+    return allDocs;
+  }
+
+  /**
+   * Get a layout by name
+   */
+  public getLayout(name: string): Document | undefined {
+    return this.layouts.get(name);
+  }
+
+  /**
+   * Get an include by path
+   */
+  public getInclude(path: string): Document | undefined {
+    return this.includes.get(path);
+  }
+
+  /**
+   * Get documents from a collection
+   */
+  public getCollection(name: string): Document[] {
+    return this.collections.get(name) || [];
+  }
+
+  /**
+   * Convert the site to a JSON representation
+   */
+  public toJSON(): Record<string, any> {
+    return {
+      config: this.config,
+      source: this.source,
+      destination: this.destination,
+      pages: this.pages.map((p) => p.toJSON()),
+      posts: this.posts.map((p) => p.toJSON()),
+      collections: Object.fromEntries(
+        Array.from(this.collections.entries()).map(([name, docs]) => [
+          name,
+          docs.map((d) => d.toJSON()),
+        ])
+      ),
+      layouts: Object.fromEntries(
+        Array.from(this.layouts.entries()).map(([name, doc]) => [
+          name,
+          doc.toJSON(),
+        ])
+      ),
+      includes: Object.fromEntries(
+        Array.from(this.includes.entries()).map(([name, doc]) => [
+          name,
+          doc.toJSON(),
+        ])
+      ),
+    };
+  }
+}

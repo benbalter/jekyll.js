@@ -1,0 +1,69 @@
+#!/usr/bin/env node
+
+import { Command } from 'commander';
+import chalk from 'chalk';
+import { buildCommand } from './commands/build';
+import { serveCommand } from './commands/serve';
+import { newCommand } from './commands/new';
+
+const program = new Command();
+
+program
+  .name('jekyll-ts')
+  .description('A TypeScript reimplementation of Jekyll static site generator')
+  .version('0.1.0');
+
+// Build command
+program
+  .command('build')
+  .description('Build your site')
+  .option('-s, --source <path>', 'Source directory', '.')
+  .option('-d, --destination <path>', 'Destination directory', './_site')
+  .option('--config <file>', 'Custom configuration file', '_config.yml')
+  .option('--drafts', 'Process and render draft posts')
+  .option('--future', 'Publish posts with a future date')
+  .option('-w, --watch', 'Watch for changes and rebuild')
+  .option('--verbose', 'Print verbose output')
+  .action(buildCommand);
+
+// Serve command
+program
+  .command('serve')
+  .description('Serve your site locally')
+  .option('-s, --source <path>', 'Source directory', '.')
+  .option('-d, --destination <path>', 'Destination directory', './_site')
+  .option('--config <file>', 'Custom configuration file', '_config.yml')
+  .option('-P, --port <port>', 'Port to listen on', '4000')
+  .option('-H, --host <host>', 'Host to bind to', 'localhost')
+  .option('--livereload', 'Use LiveReload to automatically refresh browsers', true)
+  .option('--no-livereload', 'Disable LiveReload')
+  .option('--drafts', 'Process and render draft posts')
+  .option('--future', 'Publish posts with a future date')
+  .option('--verbose', 'Print verbose output')
+  .action(serveCommand);
+
+// New command
+program
+  .command('new')
+  .description('Create a new Jekyll site')
+  .argument('<path>', 'Path where to create the site')
+  .option('--blank', 'Create a blank site without default theme')
+  .option('--force', 'Force creation even if path already exists')
+  .action(newCommand);
+
+// Error handling
+program.exitOverride();
+
+try {
+  program.parse(process.argv);
+} catch (error) {
+  if (error instanceof Error) {
+    console.error(chalk.red('Error:'), error.message);
+    process.exit(1);
+  }
+}
+
+// Show help if no command provided
+if (!process.argv.slice(2).length) {
+  program.outputHelp();
+}

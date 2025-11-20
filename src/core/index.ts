@@ -5,3 +5,4 @@
 
 export { Site, SiteConfig, createSiteFromConfig } from './Site';
 export { Document, DocumentType, FrontMatter } from './Document';
+export { Renderer, RendererOptions } from './Renderer';

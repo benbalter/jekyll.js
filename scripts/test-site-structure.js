@@ -6,7 +6,6 @@
  */
 
 const { Site } = require('../dist/core/Site');
-const { DocumentType } = require('../dist/core/Document');
 
 async function main() {
   const testSitePath = '/tmp/manual-test-site';

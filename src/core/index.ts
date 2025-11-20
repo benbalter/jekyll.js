@@ -5,3 +5,6 @@
 
 export { Site, SiteConfig } from './Site';
 export { Document, DocumentType, FrontMatter } from './Document';
+export { Builder, BuildOptions } from './Builder';
+export { Renderer } from './Renderer';
+export { UrlGenerator } from './UrlGenerator';

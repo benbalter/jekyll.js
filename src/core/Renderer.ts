@@ -3,7 +3,7 @@ import { Site } from './Site';
 import { Document } from './Document';
 import { logger } from '../utils/logger';
 import slugifyLib from 'slugify';
-import { format, parseISO, formatISO, formatRFC7231 } from 'date-fns';
+import { format, parseISO, formatISO, formatRFC7231, isValid } from 'date-fns';
 import MarkdownIt from 'markdown-it';
 
 /**
@@ -82,10 +82,23 @@ export class Renderer {
   /**
    * Helper method to parse date input consistently
    * @param date Date input (string or Date object)
-   * @returns Parsed Date object
+   * @returns Parsed Date object, or throws error for invalid input
    */
   private parseDate(date: any): Date {
-    return typeof date === 'string' ? parseISO(date) : new Date(date);
+    // Handle null, undefined, or empty string
+    if (date == null || date === '') {
+      throw new Error('Invalid date input: date is null, undefined, or empty');
+    }
+
+    // Parse string dates using parseISO, otherwise create Date object
+    const parsed = typeof date === 'string' ? parseISO(date) : new Date(date);
+    
+    // Validate the resulting date
+    if (!isValid(parsed)) {
+      throw new Error(`Invalid date input: unable to parse "${date}"`);
+    }
+    
+    return parsed;
   }
 
   /**
@@ -95,28 +108,48 @@ export class Renderer {
     // Date formatting filters - using date-fns library
     this.liquid.registerFilter('date_to_xmlschema', (date: any) => {
       if (!date) return '';
-      const d = this.parseDate(date);
-      // Use formatISO which always outputs in UTC with Z suffix
-      return formatISO(d, { format: 'extended' });
+      try {
+        const d = this.parseDate(date);
+        // Use formatISO which always outputs in UTC with Z suffix
+        return formatISO(d, { format: 'extended' });
+      } catch (error) {
+        logger.warn(`date_to_xmlschema filter: ${error instanceof Error ? error.message : 'Invalid date'}`);
+        return '';
+      }
     });
 
     this.liquid.registerFilter('date_to_rfc822', (date: any) => {
       if (!date) return '';
-      const d = this.parseDate(date);
-      // Use formatRFC7231 which always outputs in GMT
-      return formatRFC7231(d);
+      try {
+        const d = this.parseDate(date);
+        // Use formatRFC7231 which always outputs in GMT
+        return formatRFC7231(d);
+      } catch (error) {
+        logger.warn(`date_to_rfc822 filter: ${error instanceof Error ? error.message : 'Invalid date'}`);
+        return '';
+      }
     });
 
     this.liquid.registerFilter('date_to_string', (date: any) => {
       if (!date) return '';
-      const d = this.parseDate(date);
-      return format(d, 'dd MMM yyyy');
+      try {
+        const d = this.parseDate(date);
+        return format(d, 'dd MMM yyyy');
+      } catch (error) {
+        logger.warn(`date_to_string filter: ${error instanceof Error ? error.message : 'Invalid date'}`);
+        return '';
+      }
     });
 
     this.liquid.registerFilter('date_to_long_string', (date: any) => {
       if (!date) return '';
-      const d = this.parseDate(date);
-      return format(d, 'dd MMMM yyyy');
+      try {
+        const d = this.parseDate(date);
+        return format(d, 'dd MMMM yyyy');
+      } catch (error) {
+        logger.warn(`date_to_long_string filter: ${error instanceof Error ? error.message : 'Invalid date'}`);
+        return '';
+      }
     });
 
     // URL filters

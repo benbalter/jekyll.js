@@ -46,7 +46,8 @@ export class UrlGenerator {
    * @returns Relative path in destination directory
    */
   generateOutputPath(document: Document): string {
-    const url = this.generateUrl(document);
+    // Use existing URL if set, otherwise generate it
+    const url = document.url || this.generateUrl(document);
     
     // Remove leading slash
     const urlPath = url.startsWith('/') ? url.substring(1) : url;

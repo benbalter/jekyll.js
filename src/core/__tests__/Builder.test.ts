@@ -239,6 +239,7 @@ describe('Builder', () => {
       const stats = builder.getStats();
       expect(stats.pages).toBe(2);
       expect(stats.posts).toBe(2);
+      expect(stats.collections).toBe(0);
     });
   });
 });

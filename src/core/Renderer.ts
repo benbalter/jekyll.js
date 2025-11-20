@@ -73,14 +73,12 @@ export class Renderer {
     });
 
     this.liquid.registerFilter('markdownify', (str: string) => {
-      // Simple markdown-like processing
-      // In a full implementation, use a proper markdown processor
+      // Note: This is a simplified implementation for basic markdown-like formatting.
+      // For production use, a proper markdown processor like 'marked' should be used.
+      // This handles only the most basic inline formatting.
       return str
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\*(.*?)\*/g, '<em>$1</em>')
-        .replace(/\n\n/g, '</p><p>')
-        .replace(/^\s*/, '<p>')
-        .replace(/\s*$/, '</p>');
+        .replace(/\*(.*?)\*/g, '<em>$1</em>');
     });
 
     // Array filters

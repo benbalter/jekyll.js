@@ -124,16 +124,14 @@ export class Builder {
    * Check if a document should be rendered based on options
    */
   private shouldRenderDocument(document: Document): boolean {
-    // Check published status
-    if (!document.published) {
-      // If it's a draft and we're not including drafts, skip
-      if (document.data.draft && !this.options.drafts) {
-        return false;
-      }
-      // If published is explicitly false, skip
-      if (document.data.published === false) {
-        return false;
-      }
+    // Check if it's a draft and we're not including drafts
+    if (document.data.draft && !this.options.drafts) {
+      return false;
+    }
+
+    // Check if published is explicitly false (not draft-related)
+    if (document.data.published === false) {
+      return false;
     }
 
     // Check future dates for posts
@@ -304,12 +302,7 @@ export class Builder {
     pages: number;
     posts: number;
     collections: number;
-    staticFiles: number;
   } {
-    const staticFileCount = 0;
-    // This is a simplified count; in a real implementation,
-    // we'd track this during the build process
-
     return {
       pages: this.site.pages.filter(p => this.shouldRenderDocument(p)).length,
       posts: this.site.posts.filter(p => this.shouldRenderDocument(p)).length,
@@ -317,7 +310,6 @@ export class Builder {
         (sum, docs) => sum + docs.filter(d => this.shouldRenderDocument(d)).length,
         0
       ),
-      staticFiles: staticFileCount,
     };
   }
 }

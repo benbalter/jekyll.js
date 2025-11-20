@@ -3,6 +3,8 @@ import { Site } from './Site';
 import { Document } from './Document';
 import { logger } from '../utils/logger';
 import { processMarkdown } from './markdown';
+import slugifyLib from 'slugify';
+import { format, parseISO, formatISO, formatRFC7231, isValid } from 'date-fns';
 
 /**
  * Renderer configuration options
@@ -22,6 +24,17 @@ export interface RendererOptions {
   
   /** Enable strict mode for filters */
   strictFilters?: boolean;
+}
+
+/**
+ * Options for slugify filter
+ */
+interface SlugifyOptions {
+  lower?: boolean;
+  strict?: boolean;
+  trim?: boolean;
+  replacement?: string;
+  remove?: RegExp;
 }
 
 /**
@@ -59,40 +72,76 @@ export class Renderer {
   }
 
   /**
+   * Helper method to parse date input consistently
+   * @param date Date input (string or Date object)
+   * @returns Parsed Date object, or throws error for invalid input
+   */
+  private parseDate(date: any): Date {
+    // Handle null, undefined, or empty string
+    if (date == null || date === '') {
+      throw new Error('Invalid date input: date is null, undefined, or empty');
+    }
+
+    // Parse string dates using parseISO, otherwise create Date object
+    const parsed = typeof date === 'string' ? parseISO(date) : new Date(date);
+    
+    // Validate the resulting date
+    if (!isValid(parsed)) {
+      throw new Error(`Invalid date input: unable to parse "${date}"`);
+    }
+    
+    return parsed;
+  }
+
+  /**
    * Register Jekyll-compatible Liquid filters
    */
   private registerFilters(): void {
-    // Date formatting filter
+    // Date formatting filters - using date-fns library
     this.liquid.registerFilter('date_to_xmlschema', (date: any) => {
       if (!date) return '';
-      const d = new Date(date);
-      return d.toISOString();
+      try {
+        const d = this.parseDate(date);
+        // Use formatISO which always outputs in UTC with Z suffix
+        return formatISO(d, { format: 'extended' });
+      } catch (error) {
+        logger.warn(`date_to_xmlschema filter: ${error instanceof Error ? error.message : 'Invalid date'}`);
+        return '';
+      }
     });
 
     this.liquid.registerFilter('date_to_rfc822', (date: any) => {
       if (!date) return '';
-      const d = new Date(date);
-      return d.toUTCString();
+      try {
+        const d = this.parseDate(date);
+        // Use formatRFC7231 which always outputs in GMT
+        return formatRFC7231(d);
+      } catch (error) {
+        logger.warn(`date_to_rfc822 filter: ${error instanceof Error ? error.message : 'Invalid date'}`);
+        return '';
+      }
     });
 
     this.liquid.registerFilter('date_to_string', (date: any) => {
       if (!date) return '';
-      const d = new Date(date);
-      const day = d.getDate().toString().padStart(2, '0');
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const month = months[d.getMonth()];
-      const year = d.getFullYear();
-      return `${day} ${month} ${year}`;
+      try {
+        const d = this.parseDate(date);
+        return format(d, 'dd MMM yyyy');
+      } catch (error) {
+        logger.warn(`date_to_string filter: ${error instanceof Error ? error.message : 'Invalid date'}`);
+        return '';
+      }
     });
 
     this.liquid.registerFilter('date_to_long_string', (date: any) => {
       if (!date) return '';
-      const d = new Date(date);
-      const day = d.getDate().toString().padStart(2, '0');
-      const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-      const month = months[d.getMonth()];
-      const year = d.getFullYear();
-      return `${day} ${month} ${year}`;
+      try {
+        const d = this.parseDate(date);
+        return format(d, 'dd MMMM yyyy');
+      } catch (error) {
+        logger.warn(`date_to_long_string filter: ${error instanceof Error ? error.message : 'Invalid date'}`);
+        return '';
+      }
     });
 
     // URL filters
@@ -226,20 +275,32 @@ export class Renderer {
 
     this.liquid.registerFilter('slugify', (input: string, mode: string = 'default') => {
       if (!input) return '';
-      let slug = String(input).toLowerCase().trim();
+      
+      // Use slugify library with Jekyll-compatible modes
+      const options: SlugifyOptions = {
+        lower: true,
+        strict: false,
+        trim: true,
+      };
       
       if (mode === 'raw') {
-        slug = slug.replace(/\s+/g, '-');
+        // Raw mode: only replace spaces, keep everything else
+        options.strict = false;
+        options.replacement = '-';
       } else if (mode === 'pretty') {
-        slug = slug.replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+        // Pretty mode: allow word chars, spaces, and hyphens
+        options.strict = false;
+        options.remove = /[^\w\s-]/g;
       } else if (mode === 'ascii') {
-        slug = slug.replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-');
+        // ASCII mode: only ASCII alphanumeric characters
+        options.strict = true;
       } else {
-        // default mode
-        slug = slug.replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+        // Default mode: similar to pretty
+        options.strict = false;
+        options.remove = /[^\w\s-]/g;
       }
       
-      return slug.replace(/-+/g, '-').replace(/^-|-$/g, '');
+      return slugifyLib(String(input), options);
     });
 
     // JSON filter
@@ -333,6 +394,7 @@ export class Renderer {
    */
   async renderDocument(document: Document): Promise<string> {
     // Create context with document data and site data
+    const siteData = this.site.toJSON();
     const context = {
       page: {
         ...document.data,
@@ -344,7 +406,15 @@ export class Renderer {
         categories: document.categories,
         tags: document.tags,
       },
-      site: this.site.toJSON(),
+      site: {
+        ...siteData.config,  // Flatten config into site for Jekyll compatibility
+        config: siteData.config,  // Also keep config for backward compatibility
+        pages: siteData.pages,
+        posts: siteData.posts,
+        collections: siteData.collections,
+        source: siteData.source,
+        destination: siteData.destination,
+      },
     };
 
     // First render the document content (processes Liquid tags)

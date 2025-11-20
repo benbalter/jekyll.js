@@ -1,6 +1,7 @@
 import chalk from 'chalk';
-import { resolve, join } from 'path';
+import { resolve, join, dirname } from 'path';
 import { loadConfig, validateConfig, printValidation } from '../../config';
+import { Site, Builder } from '../../core';
 
 interface BuildOptions {
   source: string;
@@ -58,8 +59,27 @@ export async function buildCommand(options: BuildOptions): Promise<void> {
 
     console.log(chalk.green('\nBuilding site...'));
     
-    // TODO: Implement actual build logic
-    // For now, just show a success message
+    // Determine source directory
+    const sourcePath = config.source 
+      ? resolve(config.source)
+      : dirname(resolve(configPath));
+    
+    // Update config with final paths
+    config.source = sourcePath;
+    config.destination = destPath;
+    
+    // Create site and builder
+    const site = new Site(sourcePath, config);
+    const builder = new Builder(site, {
+      showDrafts: options.drafts,
+      showFuture: options.future,
+      clean: true,
+      verbose: options.verbose,
+    });
+    
+    // Build the site
+    await builder.build();
+    
     console.log(chalk.green('✓'), 'Site built successfully!');
     console.log('  Output:', destPath);
     

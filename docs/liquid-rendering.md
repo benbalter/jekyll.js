@@ -42,6 +42,8 @@ The Renderer includes the following Jekyll-compatible filters:
 
 ### Date Filters
 
+All date filters use the `date-fns` library for reliable date formatting:
+
 - `date_to_xmlschema` - Format as ISO 8601 (e.g., `2024-01-15T12:00:00.000Z`)
 - `date_to_rfc822` - Format as RFC 822 (e.g., `Mon, 15 Jan 2024 12:00:00 GMT`)
 - `date_to_string` - Short format (e.g., `15 Jan 2024`)
@@ -82,10 +84,10 @@ Example:
 - `xml_escape` - Escape XML special characters
 - `cgi_escape` - URL encode
 - `uri_escape` - URI encode
-- `slugify` - Convert to URL-friendly slug
+- `slugify` - Convert to URL-friendly slug (using `slugify` library)
 - `smartify` - Convert to smart quotes and dashes
 - `number_of_words` - Count words
-- `markdownify` - Convert markdown to HTML (placeholder)
+- `markdownify` - Convert markdown to HTML (using `markdown-it` library)
 - `jsonify` - Convert to JSON
 - `inspect` - Debug output (formatted JSON)
 
@@ -262,13 +264,12 @@ The Renderer aims for compatibility with Jekyll 4.x Liquid templates. Most commo
 - All date filters
 - URL filters (relative_url, absolute_url)
 - Basic array filters (where, group_by)
-- String manipulation filters
+- String manipulation filters (including `markdownify` using `markdown-it`)
 - Include tag
 - Layout rendering
 
 ### Simplified/Partial Support
 - `where_exp` and `group_by_exp` (basic implementation without full expression parsing)
-- `markdownify` (placeholder, needs markdown processor integration)
 - `link` and `post_url` tags (basic implementation)
 
 ### Planned

@@ -97,6 +97,25 @@ describe('Renderer', () => {
       expect(result).toMatch(/15 Jan 2024/);
     });
 
+    it('should handle invalid dates gracefully in date filters', async () => {
+      const renderer = new Renderer(site);
+      
+      // Test invalid string date
+      const template1 = '{{ date | date_to_xmlschema }}';
+      const result1 = await renderer.render(template1, { date: 'not-a-date' });
+      expect(result1).toBe('');
+      
+      // Test invalid object
+      const template2 = '{{ date | date_to_string }}';
+      const result2 = await renderer.render(template2, { date: { invalid: 'object' } });
+      expect(result2).toBe('');
+      
+      // Test null (already handled by !date check)
+      const template3 = '{{ date | date_to_rfc822 }}';
+      const result3 = await renderer.render(template3, { date: null });
+      expect(result3).toBe('');
+    });
+
     it('should support relative_url filter', async () => {
       const renderer = new Renderer(site);
       const template = '{{ "/assets/style.css" | relative_url }}';
@@ -175,6 +194,14 @@ describe('Renderer', () => {
       const template = '{{ text | slugify }}';
       const result = await renderer.render(template, { text: 'Hello World!' });
       expect(result).toBe('hello-world');
+    });
+
+    it('should support markdownify filter', async () => {
+      const renderer = new Renderer(site);
+      const template = '{{ text | markdownify }}';
+      const result = await renderer.render(template, { text: '# Hello\n\nThis is **bold**' });
+      expect(result).toContain('<h1>Hello</h1>');
+      expect(result).toContain('<strong>bold</strong>');
     });
 
     it('should support jsonify filter', async () => {

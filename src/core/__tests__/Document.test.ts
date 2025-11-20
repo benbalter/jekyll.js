@@ -195,6 +195,22 @@ This is a test page.`;
       const doc = new Document(filePath, testDir, DocumentType.POST);
       expect(doc.categories).toEqual([]);
     });
+
+    it('should return empty array for empty string categories', () => {
+      const filePath = join(testDir, 'test.md');
+      writeFileSync(filePath, '---\ncategories: ""\n---\nContent');
+
+      const doc = new Document(filePath, testDir, DocumentType.POST);
+      expect(doc.categories).toEqual([]);
+    });
+
+    it('should return empty array for whitespace-only categories', () => {
+      const filePath = join(testDir, 'test.md');
+      writeFileSync(filePath, '---\ncategories: "   "\n---\nContent');
+
+      const doc = new Document(filePath, testDir, DocumentType.POST);
+      expect(doc.categories).toEqual([]);
+    });
   });
 
   describe('tags property', () => {
@@ -225,6 +241,22 @@ This is a test page.`;
     it('should return empty array if no tags', () => {
       const filePath = join(testDir, 'test.md');
       writeFileSync(filePath, 'Content');
+
+      const doc = new Document(filePath, testDir, DocumentType.POST);
+      expect(doc.tags).toEqual([]);
+    });
+
+    it('should return empty array for empty string tags', () => {
+      const filePath = join(testDir, 'test.md');
+      writeFileSync(filePath, '---\ntags: ""\n---\nContent');
+
+      const doc = new Document(filePath, testDir, DocumentType.POST);
+      expect(doc.tags).toEqual([]);
+    });
+
+    it('should return empty array for whitespace-only tags', () => {
+      const filePath = join(testDir, 'test.md');
+      writeFileSync(filePath, '---\ntags: "   "\n---\nContent');
 
       const doc = new Document(filePath, testDir, DocumentType.POST);
       expect(doc.tags).toEqual([]);

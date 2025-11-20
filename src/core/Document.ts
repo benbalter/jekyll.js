@@ -161,7 +161,7 @@ export class Document {
       return [this.data.category];
     }
     if (typeof this.data.categories === 'string') {
-      return this.data.categories.split(/\s+/);
+      return this.data.categories.trim() ? this.data.categories.split(/\s+/) : [];
     }
     return [];
   }
@@ -177,7 +177,7 @@ export class Document {
       return [this.data.tag];
     }
     if (typeof this.data.tags === 'string') {
-      return this.data.tags.split(/\s+/);
+      return this.data.tags.trim() ? this.data.tags.split(/\s+/) : [];
     }
     return [];
   }

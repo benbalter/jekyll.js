@@ -39,6 +39,9 @@ tmp/
 temp/
 *.tmp
 
+# Jekyll build output
+_site/
+
 # Environment
 .env
 .env.local

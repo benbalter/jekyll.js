@@ -69,33 +69,42 @@ export class Renderer {
   }
 
   /**
+   * Helper method to parse date input consistently
+   * @param date Date input (string or Date object)
+   * @returns Parsed Date object
+   */
+  private parseDate(date: any): Date {
+    return typeof date === 'string' ? parseISO(date) : new Date(date);
+  }
+
+  /**
    * Register Jekyll-compatible Liquid filters
    */
   private registerFilters(): void {
     // Date formatting filters - using date-fns library
     this.liquid.registerFilter('date_to_xmlschema', (date: any) => {
       if (!date) return '';
-      const d = typeof date === 'string' ? parseISO(date) : new Date(date);
+      const d = this.parseDate(date);
       // Use formatISO which always outputs in UTC with Z suffix
       return formatISO(d, { format: 'extended' });
     });
 
     this.liquid.registerFilter('date_to_rfc822', (date: any) => {
       if (!date) return '';
-      const d = typeof date === 'string' ? parseISO(date) : new Date(date);
+      const d = this.parseDate(date);
       // Use formatRFC7231 which always outputs in GMT
       return formatRFC7231(d);
     });
 
     this.liquid.registerFilter('date_to_string', (date: any) => {
       if (!date) return '';
-      const d = typeof date === 'string' ? parseISO(date) : new Date(date);
+      const d = this.parseDate(date);
       return format(d, 'dd MMM yyyy');
     });
 
     this.liquid.registerFilter('date_to_long_string', (date: any) => {
       if (!date) return '';
-      const d = typeof date === 'string' ? parseISO(date) : new Date(date);
+      const d = this.parseDate(date);
       return format(d, 'dd MMMM yyyy');
     });
 
@@ -228,7 +237,16 @@ export class Renderer {
       if (!input) return '';
       
       // Use slugify library with Jekyll-compatible modes
-      const options: Parameters<typeof slugifyLib>[1] = {
+      // Define options with explicit type for better maintainability
+      interface SlugifyOptions {
+        lower?: boolean;
+        strict?: boolean;
+        trim?: boolean;
+        replacement?: string;
+        remove?: RegExp;
+      }
+      
+      const options: SlugifyOptions = {
         lower: true,
         strict: false,
         trim: true,

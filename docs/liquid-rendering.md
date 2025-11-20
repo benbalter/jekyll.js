@@ -54,7 +54,7 @@ Example:
 
 ### URL Filters
 
-- `relative_url` - Prepend baseurl (e.g., `/blog/about` → `/blog/about`)
+- `relative_url` - Prepend baseurl (e.g., `/about` → `/blog/about`)
 - `absolute_url` - Prepend full site URL (e.g., `/about` → `https://example.com/blog/about`)
 
 Example:

@@ -344,5 +344,42 @@ Content`
       const result = await renderer.render('Hello {{ name }}!', {});
       expect(result).toBe('Hello !');
     });
+
+    it('should detect and prevent circular layout references', async () => {
+      // Create circular layouts: layout-a -> layout-b -> layout-a
+      writeFileSync(
+        join(testDir, '_layouts', 'layout-a.html'),
+        `---
+layout: layout-b
+---
+Layout A: {{ content }}`
+      );
+
+      writeFileSync(
+        join(testDir, '_layouts', 'layout-b.html'),
+        `---
+layout: layout-a
+---
+Layout B: {{ content }}`
+      );
+
+      const docPath = join(testDir, 'test.md');
+      writeFileSync(
+        docPath,
+        `---
+title: Test Page
+layout: layout-a
+---
+Content`
+      );
+
+      site = new Site(testDir);
+      await site.read();
+
+      const doc = new Document(docPath, testDir, DocumentType.PAGE);
+      const renderer = new Renderer(site);
+
+      await expect(renderer.renderDocument(doc)).rejects.toThrow('Circular layout reference detected');
+    });
   });
 });

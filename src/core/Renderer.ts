@@ -1,6 +1,7 @@
 import { Liquid } from 'liquidjs';
 import { Site } from './Site';
 import { Document } from './Document';
+import { logger } from '../utils/logger';
 
 /**
  * Renderer configuration options
@@ -77,7 +78,8 @@ export class Renderer {
       if (!date) return '';
       const d = new Date(date);
       const day = d.getDate().toString().padStart(2, '0');
-      const month = d.toLocaleDateString('en-US', { month: 'short' });
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const month = months[d.getMonth()];
       const year = d.getFullYear();
       return `${day} ${month} ${year}`;
     });
@@ -86,7 +88,8 @@ export class Renderer {
       if (!date) return '';
       const d = new Date(date);
       const day = d.getDate().toString().padStart(2, '0');
-      const month = d.toLocaleDateString('en-US', { month: 'long' });
+      const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      const month = months[d.getMonth()];
       const year = d.getFullYear();
       return `${day} ${month} ${year}`;
     });
@@ -127,7 +130,7 @@ export class Renderer {
       // TODO: Implement full expression evaluation
       // For now, this is a placeholder that returns the full array
       // A complete implementation would parse and evaluate the expression
-      console.warn('where_exp filter has limited support - returning all items');
+      logger.warn('where_exp filter has limited support - returning all items');
       return array;
     });
 
@@ -154,7 +157,7 @@ export class Renderer {
       if (!Array.isArray(array)) return [];
       // TODO: Implement full expression evaluation for grouping
       // For now, this is a placeholder that returns empty array
-      console.warn('group_by_exp filter is not yet implemented - returning empty array');
+      logger.warn('group_by_exp filter is not yet implemented - returning empty array');
       return [];
     });
 
@@ -164,8 +167,8 @@ export class Renderer {
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&apos;');
+        .replace(/"/g, '&quot;');
+      // Note: &apos; escaping removed for Jekyll compatibility
     });
 
     this.liquid.registerFilter('cgi_escape', (input: string) => {
@@ -181,7 +184,9 @@ export class Renderer {
     // Number filters
     this.liquid.registerFilter('number_of_words', (input: string) => {
       if (!input) return 0;
-      return String(input).trim().split(/\s+/).length;
+      const trimmed = String(input).trim();
+      if (trimmed === '') return 0;
+      return trimmed.split(/\s+/).length;
     });
 
     // Array manipulation
@@ -200,7 +205,7 @@ export class Renderer {
     this.liquid.registerFilter('markdownify', (input: string) => {
       // TODO: Integrate a markdown processor (e.g., marked, markdown-it)
       // For now, this is a placeholder that returns the input unchanged
-      console.warn('markdownify filter is not yet implemented - returning raw input');
+      logger.warn('markdownify filter is not yet implemented - returning raw input');
       return input;
     });
 
@@ -209,10 +214,10 @@ export class Renderer {
       return String(input)
         .replace(/\.\.\./g, '…')
         .replace(/--/g, '—')
-        .replace(/``/g, '"')
-        .replace(/''/g, '"')
-        .replace(/`/g, '\u2018')
-        .replace(/'/g, '\u2019');
+        .replace(/''/g, '"')    // double single quotes first
+        .replace(/``/g, '"')    // double backticks next
+        .replace(/'/g, '\u2019') // then remaining single quotes
+        .replace(/`/g, '\u2018'); // then remaining backticks
     });
 
     this.liquid.registerFilter('slugify', (input: string, mode: string = 'default') => {
@@ -260,14 +265,23 @@ export class Renderer {
       },
       render: async function* (_ctx: any): any {
         const content = yield this.liquid.renderer.renderTemplates(this.templates, _ctx);
-        return `<div class="highlight"><pre class="highlight"><code class="language-${this.language}">${content}</code></pre></div>`;
+        // Escape HTML special characters in content to prevent XSS
+        const escapeHtml = (str: string) => String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+        const escapedContent = escapeHtml(content);
+        return `<div class="highlight"><pre class="highlight"><code class="language-${this.language}">${escapedContent}</code></pre></div>`;
       },
     });
 
     // link tag for linking to posts
     this.liquid.registerTag('link', {
       parse(token: any) {
-        this.path = token.args.trim();
+        // Sanitize path to prevent XSS
+        this.path = String(token.args.trim()).replace(/[<>"']/g, '');
       },
       render: function (_ctx: any) {
         // Simplified - would need to resolve post paths
@@ -278,7 +292,8 @@ export class Renderer {
     // post_url tag
     this.liquid.registerTag('post_url', {
       parse(token: any) {
-        this.postName = token.args.trim();
+        // Sanitize postName to prevent XSS
+        this.postName = String(token.args.trim()).replace(/[<>"']/g, '');
       },
       render: function (_ctx: any) {
         // Simplified - would need to resolve post URLs from site
@@ -339,6 +354,10 @@ export class Renderer {
       const layout = this.site.getLayout(document.layout);
       if (layout) {
         content = await this.renderWithLayout(content, layout, context);
+      } else {
+        logger.warn(
+          `Layout '${document.layout}' not found for document '${document.relativePath}'. The document will be rendered without a layout.`
+        );
       }
     }
 
@@ -350,13 +369,21 @@ export class Renderer {
    * @param content Content to wrap in layout
    * @param layout Layout document
    * @param context Render context
+   * @param visited Set of visited layout names to prevent circular references
    * @returns Rendered output
    */
   private async renderWithLayout(
     content: string,
     layout: Document,
-    context: Record<string, any>
+    context: Record<string, any>,
+    visited: Set<string> = new Set()
   ): Promise<string> {
+    // Check for circular layout references
+    if (visited.has(layout.basename)) {
+      throw new Error(`Circular layout reference detected: ${layout.basename}`);
+    }
+    visited.add(layout.basename);
+
     // Add content to context
     context.content = content;
 
@@ -367,7 +394,7 @@ export class Renderer {
     if (layout.layout) {
       const parentLayout = this.site.getLayout(layout.layout);
       if (parentLayout) {
-        rendered = await this.renderWithLayout(rendered, parentLayout, context);
+        rendered = await this.renderWithLayout(rendered, parentLayout, context, visited);
       }
     }
 

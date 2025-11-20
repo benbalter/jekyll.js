@@ -293,12 +293,10 @@ export class Site {
     const relativePath = path.substring(this.source.length + 1);
     const parts = relativePath.split('/');
 
-    // Check if any part of the path is a special directory
+    // Check if any part of the path is a special directory (underscore-prefixed).
+    // Note: _posts is already handled by directory walking logic and does not reach here.
     for (const part of parts) {
-      if (
-        part.startsWith('_') &&
-        !part.startsWith('_posts') // _posts files are handled separately
-      ) {
+      if (part.startsWith('_')) {
         return true;
       }
     }

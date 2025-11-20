@@ -5,7 +5,7 @@
  */
 
 import { readFileSync, existsSync } from 'fs';
-import { resolve, dirname, join } from 'path';
+import { resolve, dirname, join, relative, isAbsolute } from 'path';
 import yaml from 'js-yaml';
 import chalk from 'chalk';
 
@@ -295,18 +295,26 @@ export function mergeWithDefaults(
   // Remove duplicates from exclude list
   const uniqueExclude = Array.from(new Set(mergedExclude));
   
+  // Resolve source path - if absolute, use as-is; if relative, resolve from sourcePath (config dir)
+  const resolvedSource = userConfig.source
+    ? isAbsolute(userConfig.source)
+      ? resolve(userConfig.source)
+      : resolve(sourcePath, userConfig.source)
+    : defaults.source!;
+  
+  // Resolve destination path - if absolute, use as-is; if relative, resolve from sourcePath (config dir)
+  const resolvedDestination = userConfig.destination
+    ? isAbsolute(userConfig.destination)
+      ? resolve(userConfig.destination)
+      : resolve(sourcePath, userConfig.destination)
+    : defaults.destination!;
+  
   return {
     ...defaults,
     ...userConfig,
     exclude: uniqueExclude,
-    // Ensure source is resolved
-    source: userConfig.source
-      ? resolve(sourcePath, userConfig.source)
-      : defaults.source,
-    // Ensure destination is resolved
-    destination: userConfig.destination
-      ? resolve(sourcePath, userConfig.destination)
-      : defaults.destination,
+    source: resolvedSource,
+    destination: resolvedDestination,
   };
 }
 
@@ -403,11 +411,16 @@ export function validateConfig(config: JekyllConfig): ConfigValidation {
   if (config.source && config.destination) {
     const source = resolve(config.source);
     const dest = resolve(config.destination);
-    if (dest.startsWith(source + '/')) {
-      const relativeDest = dest.substring(source.length + 1);
-      if (!config.exclude?.some(pattern => 
-        relativeDest === pattern || relativeDest.startsWith(pattern + '/')
-      )) {
+    const relativeDest = relative(source, dest);
+    
+    // Check if destination is inside source (relative path doesn't start with ..)
+    if (relativeDest && !relativeDest.startsWith('..') && relativeDest !== '.') {
+      const isExcluded = config.exclude?.some(pattern => {
+        // Check if the relative path matches or starts with the pattern
+        return relativeDest === pattern || relativeDest.startsWith(pattern + '/');
+      });
+      
+      if (!isExcluded) {
         warnings.push(
           `Destination directory is inside source directory. Consider excluding it in config.`
         );

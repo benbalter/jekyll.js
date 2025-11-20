@@ -2,6 +2,7 @@ import { Liquid } from 'liquidjs';
 import { Site } from './Site';
 import { Document } from './Document';
 import { logger } from '../utils/logger';
+import { processMarkdown } from './markdown';
 
 /**
  * Renderer configuration options
@@ -202,11 +203,14 @@ export class Renderer {
     });
 
     // String filters
-    this.liquid.registerFilter('markdownify', (input: string) => {
-      // TODO: Integrate a markdown processor (e.g., marked, markdown-it)
-      // For now, this is a placeholder that returns the input unchanged
-      logger.warn('markdownify filter is not yet implemented - returning raw input');
-      return input;
+    this.liquid.registerFilter('markdownify', async (input: string) => {
+      if (!input) return '';
+      try {
+        return await processMarkdown(String(input));
+      } catch (error) {
+        logger.warn(`markdownify filter failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        return input;
+      }
     });
 
     this.liquid.registerFilter('smartify', (input: string) => {
@@ -343,8 +347,14 @@ export class Renderer {
       site: this.site.toJSON(),
     };
 
-    // First render the document content
+    // First render the document content (processes Liquid tags)
     let content = await this.render(document.content, context);
+    
+    // If document is markdown, convert to HTML
+    const isMarkdown = ['.md', '.markdown'].includes(document.extname.toLowerCase());
+    if (isMarkdown) {
+      content = await processMarkdown(content);
+    }
     
     // Update context with rendered content
     context.page.content = content;

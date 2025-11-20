@@ -27,6 +27,17 @@ export interface RendererOptions {
 }
 
 /**
+ * Options for slugify filter
+ */
+interface SlugifyOptions {
+  lower?: boolean;
+  strict?: boolean;
+  trim?: boolean;
+  replacement?: string;
+  remove?: RegExp;
+}
+
+/**
  * Renderer class wraps liquidjs and provides Jekyll-compatible rendering
  */
 export class Renderer {
@@ -237,15 +248,6 @@ export class Renderer {
       if (!input) return '';
       
       // Use slugify library with Jekyll-compatible modes
-      // Define options with explicit type for better maintainability
-      interface SlugifyOptions {
-        lower?: boolean;
-        strict?: boolean;
-        trim?: boolean;
-        replacement?: string;
-        remove?: RegExp;
-      }
-      
       const options: SlugifyOptions = {
         lower: true,
         strict: false,

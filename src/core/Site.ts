@@ -1,40 +1,30 @@
 import { existsSync, readdirSync, statSync } from 'fs';
-import { join, resolve, extname } from 'path';
+import { join, resolve, extname, dirname } from 'path';
 import { Document, DocumentType } from './Document';
+import { JekyllConfig, loadConfig } from '../config';
 
 /**
  * Site configuration interface
+ * @deprecated Since v0.1.0. Use JekyllConfig from '../config' instead. 
+ * SiteConfig is now just an alias to JekyllConfig with no functional differences.
+ * This alias will be removed in v1.0.0. 
+ * Migration: import { JekyllConfig } from '../config' or from the main index
  */
-export interface SiteConfig {
-  /** Site title */
-  title?: string;
-  
-  /** Site description */
-  description?: string;
-  
-  /** Base URL */
-  url?: string;
-  
-  /** Base path */
-  baseurl?: string;
-  
-  /** Source directory */
-  source?: string;
-  
-  /** Destination directory */
-  destination?: string;
-  
-  /** Collections configuration */
-  collections?: Record<string, any>;
-  
-  /** Exclude patterns */
-  exclude?: string[];
-  
-  /** Include patterns */
-  include?: string[];
-  
-  /** Additional configuration */
-  [key: string]: any;
+export type SiteConfig = JekyllConfig;
+
+/**
+ * Factory function to create a Site from a configuration file
+ * @param configPath Path to _config.yml (defaults to _config.yml in current directory)
+ * @param verbose Whether to print verbose output
+ * @returns A new Site instance
+ */
+export function createSiteFromConfig(
+  configPath: string = '_config.yml',
+  verbose: boolean = false
+): Site {
+  const config = loadConfig(configPath, verbose);
+  const source = config.source || dirname(resolve(configPath));
+  return new Site(source, config);
 }
 
 /**

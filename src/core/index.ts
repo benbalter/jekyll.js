@@ -3,5 +3,5 @@
  * This module contains the main build engine and site processing logic
  */
 
-export { Site, SiteConfig } from './Site';
+export { Site, SiteConfig, createSiteFromConfig } from './Site';
 export { Document, DocumentType, FrontMatter } from './Document';

@@ -33,10 +33,9 @@ export async function serveCommand(options: ServeOptions): Promise<void> {
     }
     
     // Override config with CLI options
-    const sourcePath = resolve(options.source);
     const destPath = options.destination 
       ? resolve(options.destination)
-      : config.destination || join(sourcePath, '_site');
+      : config.destination || join(config.source || '.', '_site');
     
     // Parse port from CLI or use config
     const port = options.port ? parseInt(options.port, 10) : (config.port || 4000);

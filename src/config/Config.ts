@@ -1,3 +1,9 @@
+/**
+ * Configuration module for Jekyll.js
+ * 
+ * Dependencies: js-yaml, chalk (defined in package.json)
+ */
+
 import { readFileSync, existsSync } from 'fs';
 import { resolve, dirname, join } from 'path';
 import yaml from 'js-yaml';
@@ -397,10 +403,15 @@ export function validateConfig(config: JekyllConfig): ConfigValidation {
   if (config.source && config.destination) {
     const source = resolve(config.source);
     const dest = resolve(config.destination);
-    if (dest.startsWith(source) && !config.exclude?.includes(dest.substring(source.length + 1))) {
-      warnings.push(
-        `Destination directory is inside source directory. Consider excluding it in config.`
-      );
+    if (dest.startsWith(source + '/')) {
+      const relativeDest = dest.substring(source.length + 1);
+      if (!config.exclude?.some(pattern => 
+        relativeDest === pattern || relativeDest.startsWith(pattern + '/')
+      )) {
+        warnings.push(
+          `Destination directory is inside source directory. Consider excluding it in config.`
+        );
+      }
     }
   }
   

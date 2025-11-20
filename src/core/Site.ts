@@ -5,7 +5,8 @@ import { JekyllConfig, loadConfig } from '../config';
 
 /**
  * Site configuration interface
- * @deprecated Use JekyllConfig from '../config' instead
+ * @deprecated Since v0.1.0. Use JekyllConfig from '../config' instead. 
+ * This alias will be removed in v1.0.0. Migration: import { JekyllConfig } from '../config'
  */
 export type SiteConfig = JekyllConfig;
 

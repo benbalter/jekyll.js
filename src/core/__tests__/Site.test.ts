@@ -1,4 +1,4 @@
-import { Site, SiteConfig } from '../Site';
+import { Site, SiteConfig, createSiteFromConfig } from '../Site';
 import { DocumentType } from '../Document';
 import { mkdirSync, writeFileSync, rmSync } from 'fs';
 import { join } from 'path';
@@ -44,6 +44,35 @@ describe('Site', () => {
       expect(site.destination).toBe(join(testSiteDir, 'dist'));
       expect(site.config.exclude).toContain('custom-exclude');
       expect(site.config.exclude).toContain('_site'); // Default excludes are still there
+    });
+  });
+
+  describe('createSiteFromConfig', () => {
+    it('should create a site from a configuration file', () => {
+      const configPath = join(testSiteDir, '_config.yml');
+      const configContent = `
+title: Test Site from Config
+description: A test site
+collections:
+  recipes:
+    output: true
+`;
+      writeFileSync(configPath, configContent);
+
+      const site = createSiteFromConfig(configPath);
+
+      expect(site.config.title).toBe('Test Site from Config');
+      expect(site.config.description).toBe('A test site');
+      expect(site.config.collections?.recipes).toBeDefined();
+    });
+
+    it('should use defaults when config file does not exist', () => {
+      const configPath = join(testSiteDir, 'nonexistent.yml');
+
+      const site = createSiteFromConfig(configPath);
+
+      expect(site.source).toBeDefined();
+      expect(site.config.markdown).toBe('kramdown');
     });
   });
 

@@ -3,7 +3,7 @@ import { Site } from './Site';
 import { Document } from './Document';
 import { logger } from '../utils/logger';
 import slugifyLib from 'slugify';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, formatISO, formatRFC7231 } from 'date-fns';
 import MarkdownIt from 'markdown-it';
 
 /**
@@ -76,13 +76,15 @@ export class Renderer {
     this.liquid.registerFilter('date_to_xmlschema', (date: any) => {
       if (!date) return '';
       const d = typeof date === 'string' ? parseISO(date) : new Date(date);
-      return format(d, "yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
+      // Use formatISO which always outputs in UTC with Z suffix
+      return formatISO(d, { format: 'extended' });
     });
 
     this.liquid.registerFilter('date_to_rfc822', (date: any) => {
       if (!date) return '';
       const d = typeof date === 'string' ? parseISO(date) : new Date(date);
-      return format(d, "EEE, dd MMM yyyy HH:mm:ss 'GMT'");
+      // Use formatRFC7231 which always outputs in GMT
+      return formatRFC7231(d);
     });
 
     this.liquid.registerFilter('date_to_string', (date: any) => {

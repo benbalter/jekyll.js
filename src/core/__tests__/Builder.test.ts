@@ -9,16 +9,20 @@ describe('Builder', () => {
 
   beforeEach(() => {
     // Clean up and create fresh test site directory
-    if (rmSync) {
+    try {
       rmSync(testSiteDir, { recursive: true, force: true });
+    } catch (error) {
+      // Directory may not exist, which is fine
     }
     mkdirSync(testSiteDir, { recursive: true });
   });
 
   afterEach(() => {
     // Clean up test directory
-    if (rmSync) {
+    try {
       rmSync(testSiteDir, { recursive: true, force: true });
+    } catch (error) {
+      // Directory may not exist, which is fine
     }
   });
 
@@ -254,7 +258,11 @@ This is a draft.`
       expect(existsSync(join(destDir, '2024/01/15/draft-post.html'))).toBe(false);
 
       // Clean and rebuild with showDrafts
-      rmSync(destDir, { recursive: true, force: true });
+      try {
+        rmSync(destDir, { recursive: true, force: true });
+      } catch (error) {
+        // Ignore errors
+      }
 
       const site2 = new Site(testSiteDir);
       const builder2 = new Builder(site2, { showDrafts: true });
@@ -290,7 +298,11 @@ This is from the future.`
       expect(existsSync(join(destDir, `${year}/${month}/${day}/future-post.html`))).toBe(false);
 
       // Clean and rebuild with showFuture
-      rmSync(destDir, { recursive: true, force: true });
+      try {
+        rmSync(destDir, { recursive: true, force: true });
+      } catch (error) {
+        // Ignore errors
+      }
 
       const site2 = new Site(testSiteDir);
       const builder2 = new Builder(site2, { showFuture: true });

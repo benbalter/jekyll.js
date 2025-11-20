@@ -389,12 +389,10 @@ export class Builder {
         // Recurse into directory
         this.findStaticFiles(fullPath, files);
       } else if (stats.isFile()) {
-        // Skip markdown/HTML files (they're rendered, not copied)
+        // Skip markdown/HTML files - they're processed as Jekyll documents, not static files
+        // All .md, .markdown, .html, and .htm files should be rendered through the document pipeline
         const ext = extname(fullPath).toLowerCase();
         if (['.md', '.markdown', '.html', '.htm'].includes(ext)) {
-          // Skip if it has front matter (it's a Jekyll document)
-          // For simplicity, we'll just skip all md/html files
-          // They should have been processed as documents
           continue;
         }
 
@@ -422,10 +420,11 @@ export class Builder {
   }
 
   /**
-   * Check if a directory name is a Jekyll special directory
+   * Check if a directory name is a special directory that should be excluded
+   * Includes Jekyll directories (underscore-prefixed) and version control
    */
   private isJekyllDirectory(name: string): boolean {
-    return name.startsWith('_') || name === '.git' || name === '.gitignore';
+    return name.startsWith('_') || name === '.git';
   }
 
   /**

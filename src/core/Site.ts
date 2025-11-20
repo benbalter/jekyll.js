@@ -251,7 +251,13 @@ export class Site {
         }
 
         // For shallow walks, skip underscore directories except at root
-        if (shallow && entry.startsWith('_')) {
+        const rootDir = resolve(this.config.source ?? process.cwd());
+        const currentDir = resolve(dir);
+        if (
+          shallow &&
+          entry.startsWith('_') &&
+          currentDir !== rootDir
+        ) {
           continue;
         }
 

@@ -1,13 +1,28 @@
 import { existsSync, readdirSync, statSync } from 'fs';
-import { join, resolve, extname } from 'path';
+import { join, resolve, extname, dirname } from 'path';
 import { Document, DocumentType } from './Document';
-import { JekyllConfig } from '../config';
+import { JekyllConfig, loadConfig } from '../config';
 
 /**
  * Site configuration interface
  * @deprecated Use JekyllConfig from '../config' instead
  */
 export type SiteConfig = JekyllConfig;
+
+/**
+ * Factory function to create a Site from a configuration file
+ * @param configPath Path to _config.yml (defaults to _config.yml in current directory)
+ * @param verbose Whether to print verbose output
+ * @returns A new Site instance
+ */
+export function createSiteFromConfig(
+  configPath: string = '_config.yml',
+  verbose: boolean = false
+): Site {
+  const config = loadConfig(configPath, verbose);
+  const source = config.source || dirname(resolve(configPath));
+  return new Site(source, config);
+}
 
 /**
  * Site class represents a Jekyll site and manages all documents

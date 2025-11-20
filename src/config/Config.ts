@@ -110,6 +110,8 @@ export interface JekyllConfig {
   strict_front_matter?: boolean;
   
   // Additional user-defined keys
+  // Custom configuration values should be simple types (string, number, boolean, arrays, objects)
+  // Used for custom site metadata, theme settings, or plugin configuration
   [key: string]: any;
 }
 
@@ -148,6 +150,7 @@ export function loadConfig(
   
   try {
     // Read and parse YAML file
+    // Note: yaml.load() in js-yaml v4+ is safe by default
     const fileContent = readFileSync(resolvedPath, 'utf-8');
     const config = yaml.load(fileContent) as JekyllConfig;
     
@@ -384,15 +387,8 @@ export function validateConfig(config: JekyllConfig): ConfigValidation {
   }
   
   // Validate timezone
-  if (config.timezone) {
-    try {
-      // Basic timezone validation - just check if it's a string
-      if (typeof config.timezone !== 'string') {
-        errors.push('Timezone must be a string.');
-      }
-    } catch {
-      warnings.push(`Invalid timezone: ${config.timezone}. Using UTC.`);
-    }
+  if (config.timezone && typeof config.timezone !== 'string') {
+    errors.push('Timezone must be a string.');
   }
   
   // Validate liquid options
@@ -413,8 +409,9 @@ export function validateConfig(config: JekyllConfig): ConfigValidation {
     const dest = resolve(config.destination);
     const relativeDest = relative(source, dest);
     
-    // Check if destination is inside source (relative path doesn't start with ..)
-    if (relativeDest && !relativeDest.startsWith('..') && relativeDest !== '.') {
+    // Check if destination is inside source
+    // relative() returns empty string when paths are equal, or starts with '..' when dest is outside source
+    if (relativeDest && !relativeDest.startsWith('..')) {
       const isExcluded = config.exclude?.some(pattern => {
         // Check if the relative path matches or starts with the pattern
         return relativeDest === pattern || relativeDest.startsWith(pattern + '/');

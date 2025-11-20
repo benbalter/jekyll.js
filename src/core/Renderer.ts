@@ -353,7 +353,15 @@ export class Renderer {
     // If document is markdown, convert to HTML
     const isMarkdown = ['.md', '.markdown'].includes(document.extname.toLowerCase());
     if (isMarkdown) {
-      content = await processMarkdown(content);
+      try {
+        content = await processMarkdown(content);
+      } catch (err) {
+        logger.error(
+          `Error processing markdown for document '${document.relativePath}': ${err instanceof Error ? err.message : String(err)}`
+        );
+        // Fallback: return original content (unprocessed)
+        // Optionally, could set content = "" or a helpful error HTML
+      }
     }
     
     // Update context with rendered content

@@ -156,6 +156,14 @@ describe('Renderer', () => {
       expect(result).toBe('hello-world');
     });
 
+    it('should support markdownify filter', async () => {
+      const renderer = new Renderer(site);
+      const template = '{{ text | markdownify }}';
+      const result = await renderer.render(template, { text: '# Hello\n\nThis is **bold**' });
+      expect(result).toContain('<h1>Hello</h1>');
+      expect(result).toContain('<strong>bold</strong>');
+    });
+
     it('should support jsonify filter', async () => {
       const renderer = new Renderer(site);
       const template = '{{ data | jsonify }}';

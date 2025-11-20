@@ -2,6 +2,9 @@ import { Liquid } from 'liquidjs';
 import { Site } from './Site';
 import { Document } from './Document';
 import { logger } from '../utils/logger';
+import slugifyLib from 'slugify';
+import { format, parseISO } from 'date-fns';
+import MarkdownIt from 'markdown-it';
 
 /**
  * Renderer configuration options
@@ -29,6 +32,7 @@ export interface RendererOptions {
 export class Renderer {
   private liquid: Liquid;
   private site: Site;
+  private md: MarkdownIt;
 
   /**
    * Create a new Renderer instance
@@ -37,6 +41,13 @@ export class Renderer {
    */
   constructor(site: Site, options: RendererOptions = {}) {
     this.site = site;
+
+    // Initialize markdown-it for markdown rendering
+    this.md = new MarkdownIt({
+      html: true,
+      linkify: true,
+      typographer: true,
+    });
 
     // Initialize liquidjs with Jekyll-compatible settings
     this.liquid = new Liquid({
@@ -61,37 +72,29 @@ export class Renderer {
    * Register Jekyll-compatible Liquid filters
    */
   private registerFilters(): void {
-    // Date formatting filter
+    // Date formatting filters - using date-fns library
     this.liquid.registerFilter('date_to_xmlschema', (date: any) => {
       if (!date) return '';
-      const d = new Date(date);
-      return d.toISOString();
+      const d = typeof date === 'string' ? parseISO(date) : new Date(date);
+      return format(d, "yyyy-MM-dd'T'HH:mm:ss.SSSxxx");
     });
 
     this.liquid.registerFilter('date_to_rfc822', (date: any) => {
       if (!date) return '';
-      const d = new Date(date);
-      return d.toUTCString();
+      const d = typeof date === 'string' ? parseISO(date) : new Date(date);
+      return format(d, 'EEE, dd MMM yyyy HH:mm:ss xx');
     });
 
     this.liquid.registerFilter('date_to_string', (date: any) => {
       if (!date) return '';
-      const d = new Date(date);
-      const day = d.getDate().toString().padStart(2, '0');
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const month = months[d.getMonth()];
-      const year = d.getFullYear();
-      return `${day} ${month} ${year}`;
+      const d = typeof date === 'string' ? parseISO(date) : new Date(date);
+      return format(d, 'dd MMM yyyy');
     });
 
     this.liquid.registerFilter('date_to_long_string', (date: any) => {
       if (!date) return '';
-      const d = new Date(date);
-      const day = d.getDate().toString().padStart(2, '0');
-      const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-      const month = months[d.getMonth()];
-      const year = d.getFullYear();
-      return `${day} ${month} ${year}`;
+      const d = typeof date === 'string' ? parseISO(date) : new Date(date);
+      return format(d, 'dd MMMM yyyy');
     });
 
     // URL filters
@@ -203,10 +206,9 @@ export class Renderer {
 
     // String filters
     this.liquid.registerFilter('markdownify', (input: string) => {
-      // TODO: Integrate a markdown processor (e.g., marked, markdown-it)
-      // For now, this is a placeholder that returns the input unchanged
-      logger.warn('markdownify filter is not yet implemented - returning raw input');
-      return input;
+      if (!input) return '';
+      // Use markdown-it library to convert markdown to HTML
+      return this.md.render(String(input));
     });
 
     this.liquid.registerFilter('smartify', (input: string) => {
@@ -222,20 +224,32 @@ export class Renderer {
 
     this.liquid.registerFilter('slugify', (input: string, mode: string = 'default') => {
       if (!input) return '';
-      let slug = String(input).toLowerCase().trim();
+      
+      // Use slugify library with Jekyll-compatible modes
+      const options: Parameters<typeof slugifyLib>[1] = {
+        lower: true,
+        strict: false,
+        trim: true,
+      };
       
       if (mode === 'raw') {
-        slug = slug.replace(/\s+/g, '-');
+        // Raw mode: only replace spaces, keep everything else
+        options.strict = false;
+        options.replacement = '-';
       } else if (mode === 'pretty') {
-        slug = slug.replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+        // Pretty mode: allow word chars, spaces, and hyphens
+        options.strict = false;
+        options.remove = /[^\w\s-]/g;
       } else if (mode === 'ascii') {
-        slug = slug.replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-');
+        // ASCII mode: only ASCII alphanumeric characters
+        options.strict = true;
       } else {
-        // default mode
-        slug = slug.replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+        // Default mode: similar to pretty
+        options.strict = false;
+        options.remove = /[^\w\s-]/g;
       }
       
-      return slug.replace(/-+/g, '-').replace(/^-|-$/g, '');
+      return slugifyLib(String(input), options);
     });
 
     // JSON filter

@@ -76,13 +76,13 @@ export class Renderer {
     this.liquid.registerFilter('date_to_xmlschema', (date: any) => {
       if (!date) return '';
       const d = typeof date === 'string' ? parseISO(date) : new Date(date);
-      return format(d, "yyyy-MM-dd'T'HH:mm:ss.SSSxxx");
+      return format(d, "yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
     });
 
     this.liquid.registerFilter('date_to_rfc822', (date: any) => {
       if (!date) return '';
       const d = typeof date === 'string' ? parseISO(date) : new Date(date);
-      return format(d, 'EEE, dd MMM yyyy HH:mm:ss xx');
+      return format(d, "EEE, dd MMM yyyy HH:mm:ss 'GMT'");
     });
 
     this.liquid.registerFilter('date_to_string', (date: any) => {

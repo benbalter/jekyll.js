@@ -38,7 +38,10 @@ export class Builder {
    */
   constructor(site: Site, options: BuilderOptions = {}) {
     this.site = site;
-    this.renderer = new Renderer(site);
+    this.renderer = new Renderer(site, {
+      layoutsDir: join(site.source, '_layouts'),
+      includesDir: join(site.source, '_includes'),
+    });
     this.options = {
       showDrafts: false,
       showFuture: false,

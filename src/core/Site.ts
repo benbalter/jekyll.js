@@ -1,41 +1,13 @@
 import { existsSync, readdirSync, statSync } from 'fs';
 import { join, resolve, extname } from 'path';
 import { Document, DocumentType } from './Document';
+import { JekyllConfig } from '../config';
 
 /**
  * Site configuration interface
+ * @deprecated Use JekyllConfig from '../config' instead
  */
-export interface SiteConfig {
-  /** Site title */
-  title?: string;
-  
-  /** Site description */
-  description?: string;
-  
-  /** Base URL */
-  url?: string;
-  
-  /** Base path */
-  baseurl?: string;
-  
-  /** Source directory */
-  source?: string;
-  
-  /** Destination directory */
-  destination?: string;
-  
-  /** Collections configuration */
-  collections?: Record<string, any>;
-  
-  /** Exclude patterns */
-  exclude?: string[];
-  
-  /** Include patterns */
-  include?: string[];
-  
-  /** Additional configuration */
-  [key: string]: any;
-}
+export type SiteConfig = JekyllConfig;
 
 /**
  * Site class represents a Jekyll site and manages all documents

@@ -1,0 +1,26 @@
+---
+layout: default
+---
+
+<div class="post">
+  <div class="post-meta">
+    <time datetime="{{ page.date }}">{{ page.date | date: "%B %d, %Y" }}</time>
+    {% if page.categories.size > 0 %}
+      <span class="categories">
+        {% for category in page.categories %}
+          <span class="category">{{ category }}</span>
+        {% endfor %}
+      </span>
+    {% endif %}
+  </div>
+  
+  {{ content }}
+  
+  {% if page.tags.size > 0 %}
+    <div class="tags">
+      {% for tag in page.tags %}
+        <span class="tag">{{ tag }}</span>
+      {% endfor %}
+    </div>
+  {% endif %}
+</div>

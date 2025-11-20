@@ -261,14 +261,14 @@ describe('Integration: Fixture Site Build', () => {
       expect(existsSync(join(destDir, '_includes'))).toBe(false);
     });
 
-    it('should not include README in output', () => {
+    it('should not include README in output', async () => {
       const site = createSiteFromConfig(configPath);
       const builder = new Builder(site);
       
-      return builder.build().then(() => {
-        expect(existsSync(join(destDir, 'README.html'))).toBe(false);
-        expect(existsSync(join(destDir, 'README.md'))).toBe(false);
-      });
+      await builder.build();
+      
+      expect(existsSync(join(destDir, 'README.html'))).toBe(false);
+      expect(existsSync(join(destDir, 'README.md'))).toBe(false);
     });
   });
 });

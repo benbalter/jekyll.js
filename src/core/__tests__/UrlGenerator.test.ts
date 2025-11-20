@@ -2,9 +2,10 @@ import { UrlGenerator } from '../UrlGenerator';
 import { Document, DocumentType } from '../Document';
 import { writeFileSync, mkdirSync, rmSync } from 'fs';
 import { join } from 'path';
+import { tmpdir } from 'os';
 
 describe('UrlGenerator', () => {
-  const testDir = '/tmp/url-generator-test';
+  const testDir = join(tmpdir(), 'url-generator-test');
 
   beforeEach(() => {
     // Create test directory

@@ -2,9 +2,10 @@ import { Builder } from '../Builder';
 import { Site } from '../Site';
 import { writeFileSync, mkdirSync, rmSync, existsSync, readFileSync } from 'fs';
 import { join } from 'path';
+import { tmpdir } from 'os';
 
 describe('Builder', () => {
-  const testDir = '/tmp/builder-test';
+  const testDir = join(tmpdir(), 'builder-test');
   const destDir = join(testDir, '_site');
 
   beforeEach(() => {

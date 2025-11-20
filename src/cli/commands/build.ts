@@ -95,8 +95,18 @@ async function loadConfig(configPath: string): Promise<Record<string, any>> {
 
   try {
     const configContent = await readFile(configPath, 'utf-8');
-    const config = loadYaml(configContent) as Record<string, any>;
-    return config || {};
+    const config = loadYaml(configContent);
+    
+    // Ensure config is an object
+    if (config === null || config === undefined) {
+      return {};
+    }
+    
+    if (typeof config !== 'object' || Array.isArray(config)) {
+      throw new Error('Configuration file must contain a YAML object');
+    }
+    
+    return config as Record<string, any>;
   } catch (error) {
     if (error instanceof Error) {
       throw new Error(`Failed to parse config file: ${error.message}`);

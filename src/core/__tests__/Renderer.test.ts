@@ -3,9 +3,10 @@ import { Site } from '../Site';
 import { Document, DocumentType } from '../Document';
 import { writeFileSync, mkdirSync, rmSync } from 'fs';
 import { join } from 'path';
+import { tmpdir } from 'os';
 
 describe('Renderer', () => {
-  const testDir = '/tmp/renderer-test';
+  const testDir = join(tmpdir(), 'renderer-test');
 
   beforeEach(() => {
     // Create test directory structure

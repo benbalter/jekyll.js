@@ -398,6 +398,7 @@ export class Renderer {
    */
   async renderDocument(document: Document): Promise<string> {
     // Create context with document data and site data
+    const siteData = this.site.toJSON();
     const context = {
       page: {
         ...document.data,
@@ -409,7 +410,15 @@ export class Renderer {
         categories: document.categories,
         tags: document.tags,
       },
-      site: this.site.toJSON(),
+      site: {
+        ...siteData.config,  // Flatten config into site for Jekyll compatibility
+        config: siteData.config,  // Also keep config for backward compatibility
+        pages: siteData.pages,
+        posts: siteData.posts,
+        collections: siteData.collections,
+        source: siteData.source,
+        destination: siteData.destination,
+      },
     };
 
     // First render the document content

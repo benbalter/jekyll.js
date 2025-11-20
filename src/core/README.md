@@ -4,6 +4,66 @@ This module contains the core Jekyll site processing functionality.
 
 ## Classes
 
+### Builder
+
+The `Builder` class orchestrates the entire static site build process. It coordinates reading files, rendering content, generating URLs, and writing output files.
+
+#### Usage
+
+```typescript
+import { Site, Builder } from './core';
+
+// Create a site and builder
+const site = new Site('/path/to/site', {
+  title: 'My Site',
+  collections: {
+    recipes: { output: true }
+  }
+});
+
+const builder = new Builder(site, {
+  showDrafts: false,
+  showFuture: false,
+  clean: true,
+  verbose: true,
+});
+
+// Build the site
+await builder.build();
+```
+
+#### Options
+
+```typescript
+interface BuilderOptions {
+  showDrafts?: boolean;    // Show unpublished posts (default: false)
+  showFuture?: boolean;    // Show future-dated posts (default: false)
+  clean?: boolean;         // Clean destination before build (default: true)
+  verbose?: boolean;       // Verbose logging (default: false)
+}
+```
+
+#### Features
+
+- **Pages**: Renders all pages from the site root
+- **Posts**: Renders posts from `_posts/` with date-based URLs
+- **Collections**: Renders collection documents with configurable output
+- **Layouts**: Applies layouts with support for nested layouts
+- **Includes**: Supports template includes
+- **URL Generation**: Generates URLs based on permalinks and Jekyll conventions
+- **Static Files**: Copies non-Jekyll files (CSS, JS, images) to destination
+- **Filtering**: Filters drafts and future posts based on options
+
+#### Build Process
+
+1. Read all site files using `Site.read()`
+2. Clean destination directory (if enabled)
+3. Generate URLs for all documents
+4. Render pages with layouts and Liquid templates
+5. Render posts (filtered by publish status and date)
+6. Render collections (if output is enabled)
+7. Copy static files to destination
+
 ### Document
 
 The `Document` class represents a single file in a Jekyll site. It supports:

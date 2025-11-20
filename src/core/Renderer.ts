@@ -95,17 +95,21 @@ export class Renderer {
     this.liquid.registerFilter('relative_url', (input: string) => {
       if (!input) return '';
       const baseurl = this.site.config.baseurl || '';
-      // Remove leading slash from input to avoid double slashes
-      const path = input.startsWith('/') ? input.slice(1) : input;
-      return baseurl ? `${baseurl}/${path}` : `/${path}`;
+      // Ensure input starts with /
+      const path = input.startsWith('/') ? input : `/${input}`;
+      // If no baseurl, just return the normalized path
+      if (!baseurl) return path;
+      // Combine baseurl and path, ensuring single slash
+      return `${baseurl}${path}`;
     });
 
     this.liquid.registerFilter('absolute_url', (input: string) => {
       if (!input) return '';
       const url = this.site.config.url || '';
       const baseurl = this.site.config.baseurl || '';
-      const path = input.startsWith('/') ? input.slice(1) : input;
-      return `${url}${baseurl}/${path}`;
+      // Ensure input starts with /
+      const path = input.startsWith('/') ? input : `/${input}`;
+      return `${url}${baseurl}${path}`;
     });
 
     // Array filters
@@ -120,12 +124,11 @@ export class Renderer {
 
     this.liquid.registerFilter('where_exp', (array: any[], _variable: string, _expression: string) => {
       if (!Array.isArray(array)) return [];
-      // Simple expression evaluation (very basic)
-      return array.filter((_item) => {
-        // This is a simplified implementation
-        // A full implementation would need proper expression parsing
-        return true;
-      });
+      // TODO: Implement full expression evaluation
+      // For now, this is a placeholder that returns the full array
+      // A complete implementation would parse and evaluate the expression
+      console.warn('where_exp filter has limited support - returning all items');
+      return array;
     });
 
     this.liquid.registerFilter('group_by', (array: any[], property: string) => {
@@ -148,11 +151,10 @@ export class Renderer {
     });
 
     this.liquid.registerFilter('group_by_exp', (array: any[], _variable: string, _expression: string) => {
-      // Simplified implementation - this would need proper expression evaluation
-      // For now, just return empty array since full implementation requires expression parsing
       if (!Array.isArray(array)) return [];
-      // A real implementation would parse and evaluate the expression
-      // For MVP, we'll return the array as-is
+      // TODO: Implement full expression evaluation for grouping
+      // For now, this is a placeholder that returns empty array
+      console.warn('group_by_exp filter is not yet implemented - returning empty array');
       return [];
     });
 
@@ -196,8 +198,9 @@ export class Renderer {
 
     // String filters
     this.liquid.registerFilter('markdownify', (input: string) => {
-      // Placeholder - would need a markdown parser
-      // For now, just return the input
+      // TODO: Integrate a markdown processor (e.g., marked, markdown-it)
+      // For now, this is a placeholder that returns the input unchanged
+      console.warn('markdownify filter is not yet implemented - returning raw input');
       return input;
     });
 
@@ -252,7 +255,8 @@ export class Renderer {
     
     this.liquid.registerTag('highlight', {
       parse(token: any) {
-        this.language = token.args.trim();
+        // Sanitize language to prevent XSS
+        this.language = String(token.args.trim()).replace(/[^a-zA-Z0-9_-]/g, '');
       },
       render: async function* (_ctx: any): any {
         const content = yield this.liquid.renderer.renderTemplates(this.templates, _ctx);

@@ -17,9 +17,7 @@ describe('Renderer', () => {
 
   afterEach(() => {
     // Clean up
-    if (rmSync) {
-      rmSync(testDir, { recursive: true, force: true });
-    }
+    rmSync(testDir, { recursive: true, force: true });
   });
 
   describe('constructor', () => {

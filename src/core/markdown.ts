@@ -26,12 +26,10 @@ export async function processMarkdown(content: string): Promise<string> {
 /**
  * Process markdown content to HTML synchronously
  * Note: This is not supported due to ESM module limitations
- * @param _content Markdown content to process (unused)
- * @returns HTML output
+ * Always throws an error. Use processMarkdown instead.
+ * @deprecated Use processMarkdown instead
+ * @throws {Error} Always throws - synchronous processing not supported
  */
-export function processMarkdownSync(_content: string): string {
-  // For sync version, we'll just return the content as-is
-  // This is a temporary limitation due to ESM dynamic imports
-  // In practice, callers should use the async version
+export function processMarkdownSync(): never {
   throw new Error('processMarkdownSync is not supported. Use processMarkdown instead.');
 }

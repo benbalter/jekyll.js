@@ -188,7 +188,7 @@ describe('Markdown processing', () => {
 
   describe('processMarkdownSync', () => {
     it('should throw error as it is not supported', () => {
-      expect(() => processMarkdownSync('# Test')).toThrow(
+      expect(() => processMarkdownSync()).toThrow(
         'processMarkdownSync is not supported. Use processMarkdown instead.'
       );
     });

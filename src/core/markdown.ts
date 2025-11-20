@@ -30,6 +30,6 @@ export async function processMarkdown(content: string): Promise<string> {
  * @deprecated Use processMarkdown instead
  * @throws {Error} Always throws - synchronous processing not supported
  */
-export function processMarkdownSync(): never {
+export function processMarkdownSync(content: string): never {
   throw new Error('processMarkdownSync is not supported. Use processMarkdown instead.');
 }

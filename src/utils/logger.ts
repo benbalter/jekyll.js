@@ -25,8 +25,10 @@ function formatLogMessage(
   metadata: Record<string, unknown>
 ): string {
   let msg = `[${timestamp}] [${level}] ${String(message)}`;
-  // Include metadata if present, excluding timestamp which is already in the message
-  if (Object.keys(metadata).length > 0 && metadata.timestamp === undefined) {
+  // Include metadata if present. Winston's timestamp format already extracts timestamp
+  // from metadata, so we check to avoid duplication. This works because winston.format.timestamp()
+  // removes the timestamp from metadata before passing it to printf.
+  if (Object.keys(metadata).length > 0) {
     msg += ` ${JSON.stringify(metadata)}`;
   }
   return msg;

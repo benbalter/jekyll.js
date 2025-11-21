@@ -294,7 +294,9 @@ export function mergeWithDefaults(
   // Use lodash.merge for deep merging - it handles nested objects properly
   const merged = merge({}, defaults, userConfig);
   
-  // Handle exclude array specially - we want to combine and deduplicate
+  // Handle exclude array specially - we want to combine and deduplicate, not replace
+  // lodash.merge replaces arrays by default, but for exclude patterns we want to
+  // combine defaults with user-specified patterns (e.g., default 'node_modules' + user's custom excludes)
   const mergedExclude = [
     ...(defaults.exclude || []),
     ...(userConfig.exclude || []),

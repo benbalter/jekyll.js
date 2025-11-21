@@ -344,9 +344,13 @@ export class Renderer {
       if (!Array.isArray(array) || array.length === 0) return count ? [] : null;
       
       if (count !== undefined) {
-        // Return multiple samples
+        // Return multiple samples using Fisher-Yates shuffle
         const numSamples = Math.min(Math.max(0, count), array.length);
-        const shuffled = [...array].sort(() => Math.random() - 0.5);
+        const shuffled = [...array];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
         return shuffled.slice(0, numSamples);
       }
       
@@ -401,6 +405,8 @@ export class Renderer {
 
     this.liquid.registerFilter('strip_html', (input: string) => {
       if (!input) return '';
+      // Simple HTML tag removal matching Jekyll's behavior
+      // Note: This is not for security purposes - input should already be sanitized
       return String(input).replace(/<[^>]*>/g, '');
     });
 

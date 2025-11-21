@@ -227,7 +227,9 @@ Current performance compared to Jekyll.rb (as of v0.1.0):
 |-----------|-----------|-----------|-------|
 | Small (10 pages) | ~1s | ~1.2s | 1.2x |
 | Medium (100 pages) | ~3s | ~4.5s | 1.5x |
-| Large (1000 pages) | ~30s | TBD | TBD |
+| Large (1000 pages) | ~30s | TBD* | TBD* |
+
+\* *Insufficient test data - benchmarks needed for large sites*
 
 **Goals for v1.0.0:**
 - Build time within 2x of Jekyll.rb

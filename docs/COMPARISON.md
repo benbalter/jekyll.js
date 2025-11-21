@@ -6,6 +6,8 @@ Side-by-side comparison of jekyll.js (TypeScript) and Jekyll.rb (Ruby) features.
 - Jekyll.js: v0.1.0
 - Jekyll.rb: v4.3.x
 
+> 📝 **Note**: This comparison reflects the current state as of the last update date below. Version numbers and feature status will evolve with each release.
+
 ---
 
 ## Quick Summary
@@ -254,7 +256,7 @@ Side-by-side comparison of jekyll.js (TypeScript) and Jekyll.rb (Ruby) features.
 | 100 pages | ~3.0s | ~4.5s | 1.5x slower |
 | 1000 pages | ~30s | TBD | TBD |
 
-**Note**: Performance numbers are preliminary and from limited testing.
+**Note**: Performance numbers are preliminary and from limited testing on a standard development machine. Test methodology: Basic Jekyll site with posts, pages, and default layout. Results may vary based on hardware, site complexity, and system load. TBD entries indicate insufficient data for reliable comparison.
 
 ### Performance Goals
 

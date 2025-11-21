@@ -3,6 +3,8 @@
 This roadmap outlines the development timeline for jekyll.js to achieve full compatibility with Jekyll 4.x.
 
 > 📋 For detailed feature specifications, see [Jekyll Compatibility Plan](./jekyll-compatibility-plan.md)
+> 
+> ⏰ **Note**: Target dates are estimates and may be adjusted based on progress and community feedback. Last updated: 2025-11-21
 
 ---
 

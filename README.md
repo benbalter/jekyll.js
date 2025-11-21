@@ -116,6 +116,38 @@ Run the test suite:
 npm test
 ```
 
+### Benchmark
+
+Run benchmark tests comparing Jekyll TS performance:
+
+```bash
+npm run benchmark
+```
+
+This runs a full integration benchmark test that:
+- Builds the test fixture site using Jekyll TS via CLI
+- Compares build times against Ruby Jekyll (if installed)
+- Runs multiple iterations to measure consistency
+- Outputs detailed performance metrics
+
+If Ruby Jekyll is not installed, the benchmark will only measure Jekyll TS performance.
+
+#### Setting up Ruby Jekyll for benchmarking
+
+To enable side-by-side comparison with Ruby Jekyll:
+
+1. Install Ruby (version 3.2 or higher recommended)
+2. Install dependencies:
+   ```bash
+   bundle install
+   ```
+3. Run the benchmark:
+   ```bash
+   npm run benchmark
+   ```
+
+The Gemfile includes Jekyll 4.3 and required dependencies for running the benchmark comparison.
+
 ### Lint
 
 Lint the source code:

@@ -3,6 +3,11 @@ node_modules/
 yarn.lock
 pnpm-lock.yaml
 
+# Ruby dependencies
+Gemfile.lock
+vendor/
+.bundle/
+
 # Build outputs
 dist/
 build/

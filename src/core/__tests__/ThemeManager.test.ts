@@ -6,11 +6,12 @@ import { ThemeManager } from '../ThemeManager';
 import { JekyllConfig } from '../../config';
 import { mkdirSync, writeFileSync, rmSync } from 'fs';
 import { join } from 'path';
+import { tmpdir } from 'os';
 
 describe('ThemeManager', () => {
-  const testDir = '/tmp/jekyll-theme-test';
-  const themeDir = '/tmp/jekyll-theme-test/test-theme';
-  const nodeModulesDir = '/tmp/jekyll-theme-test/node_modules';
+  const testDir = join(tmpdir(), 'jekyll-theme-test');
+  const themeDir = join(testDir, 'test-theme');
+  const nodeModulesDir = join(testDir, 'node_modules');
   const npmThemeDir = join(nodeModulesDir, 'jekyll-theme-test');
   
   beforeEach(() => {
@@ -43,8 +44,9 @@ describe('ThemeManager', () => {
   });
   
   afterEach(() => {
-    // Clean up
-    if (testDir.startsWith('/tmp/')) {
+    // Clean up - remove test directory if it's in the OS temp directory
+    const osTmpDir = tmpdir();
+    if (testDir.startsWith(osTmpDir)) {
       rmSync(testDir, { recursive: true, force: true });
     }
   });

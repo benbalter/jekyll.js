@@ -6,9 +6,10 @@ import { Site } from '../Site';
 import { Builder } from '../Builder';
 import { mkdirSync, writeFileSync, rmSync, readFileSync, existsSync } from 'fs';
 import { join } from 'path';
+import { tmpdir } from 'os';
 
 describe('Integration: Theme Support', () => {
-  const testDir = '/tmp/jekyll-theme-integration-test';
+  const testDir = join(tmpdir(), 'jekyll-theme-integration-test');
   const siteDir = join(testDir, 'my-site');
   
   beforeAll(() => {
@@ -76,8 +77,9 @@ describe('Integration: Theme Support', () => {
   });
   
   afterAll(() => {
-    // Clean up
-    if (testDir.startsWith('/tmp/')) {
+    // Clean up - remove test directory if it's in the OS temp directory
+    const osTmpDir = tmpdir();
+    if (testDir.startsWith(osTmpDir)) {
       rmSync(testDir, { recursive: true, force: true });
     }
   });

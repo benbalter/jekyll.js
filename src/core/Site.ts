@@ -119,12 +119,15 @@ export class Site {
 
   /**
    * Read all layouts from _layouts directory (site and theme)
+   * Site layouts take precedence over theme layouts
    */
   private readLayouts(): void {
     // Get all layout directories (site first, then theme)
     const layoutDirs = this.themeManager.getLayoutDirectories();
     
-    // Read layouts from all directories (site layouts will override theme layouts)
+    // Read layouts from all directories
+    // Site layouts (first in array) will be processed first and added to the map.
+    // Theme layouts will only be added if not already present (override mechanism).
     for (const layoutsDir of layoutDirs) {
       const files = this.walkDirectory(layoutsDir);
       for (const file of files) {
@@ -139,12 +142,15 @@ export class Site {
 
   /**
    * Read all includes from _includes directory (site and theme)
+   * Site includes take precedence over theme includes
    */
   private readIncludes(): void {
     // Get all include directories (site first, then theme)
     const includeDirs = this.themeManager.getIncludeDirectories();
     
-    // Read includes from all directories (site includes will override theme includes)
+    // Read includes from all directories
+    // Site includes (first in array) will be processed first and added to the map.
+    // Theme includes will only be added if not already present (override mechanism).
     for (const includesDir of includeDirs) {
       const files = this.walkDirectory(includesDir);
       for (const file of files) {

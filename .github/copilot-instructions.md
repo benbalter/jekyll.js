@@ -204,8 +204,132 @@ The project is successful when:
 4. Error messages help users fix issues quickly
 5. The codebase is maintainable and extensible
 
+## Setup & Development Workflow
+
+### Initial Setup
+1. Clone the repository
+2. Install dependencies: `npm install`
+3. Build the project: `npm run build`
+
+### Development Commands
+- **Build**: `npm run build` - Compile TypeScript to JavaScript
+- **Watch**: `npm run dev` - Build in watch mode for development
+- **Lint**: `npm run lint` - Run ESLint on source files
+- **Lint Fix**: `npm run lint:fix` - Auto-fix linting issues where possible
+- **Test**: `npm test` - Run all tests with Jest
+- **Test Watch**: `npm run test:watch` - Run tests in watch mode
+
+### Requirements
+- Node.js >= 18.0.0
+- npm (comes with Node.js)
+- No Ruby installation required
+
+## Contribution Guidelines
+
+### Code Quality Standards
+1. **Linting**: All code must pass ESLint checks (`npm run lint`)
+   - Fix warnings about `any` types where possible
+   - Use strict TypeScript types
+2. **Testing**: All tests must pass (`npm test`)
+   - Write tests for new features
+   - Update tests when modifying existing functionality
+3. **Building**: Code must compile without errors (`npm run build`)
+4. **Type Safety**: Use TypeScript strict mode, avoid `any` types when possible
+
+### Code Style
+- Follow existing code patterns in the repository
+- Use TypeScript strict mode
+- Add JSDoc comments for public APIs
+- Use descriptive variable and function names
+- Prefer functional programming patterns where appropriate
+- Use async/await for asynchronous operations
+
+### Documentation
+- Update relevant documentation when changing behavior
+- Include code comments for complex logic
+- Keep README.md up to date with new features
+- Update `.github/copilot-instructions.md` if project patterns change
+
+### Commit Messages
+- Use clear, descriptive commit messages
+- Reference issue numbers where applicable
+- Keep commits focused on a single logical change
+
+## Acceptance Criteria for Pull Requests
+
+Every PR should meet these criteria:
+
+1. **Functionality**
+   - ✅ Addresses the stated issue or requirement
+   - ✅ Works with existing Jekyll sites without modification
+   - ✅ Maintains compatibility with Jekyll's expected behavior
+
+2. **Code Quality**
+   - ✅ Passes all linting checks (`npm run lint`)
+   - ✅ All tests pass (`npm test`)
+   - ✅ Builds successfully (`npm run build`)
+   - ✅ No new TypeScript errors introduced
+   - ✅ Follows existing code style and patterns
+
+3. **Testing**
+   - ✅ New features include unit tests
+   - ✅ Bug fixes include regression tests
+   - ✅ Tests follow existing test patterns in the repository
+   - ✅ Test coverage is maintained or improved
+
+4. **Documentation**
+   - ✅ User-facing changes are documented in README.md
+   - ✅ Complex logic has explanatory comments
+   - ✅ API changes are reflected in JSDoc comments
+   - ✅ Breaking changes are clearly noted
+
+5. **Security & Performance**
+   - ✅ No security vulnerabilities introduced
+   - ✅ Performance regressions avoided
+   - ✅ Error handling is appropriate and clear
+
+## How Copilot Should Work
+
+### General Approach
+- **Minimal Changes**: Make the smallest possible changes to accomplish the goal
+- **Compatibility First**: Prioritize Jekyll compatibility over clever optimizations
+- **Clear Communication**: Explain what you're doing and why
+- **Incremental Progress**: Work in small, verifiable steps
+- **Test Early**: Run tests frequently during development
+
+### Before Making Changes
+1. Understand the existing code structure
+2. Run tests to understand current state: `npm test`
+3. Run linting to see baseline: `npm run lint`
+4. Review related files and tests
+5. Plan minimal changes needed
+
+### While Coding
+1. Make focused, surgical changes
+2. Follow existing patterns in the codebase
+3. Write or update tests alongside code changes
+4. Run `npm run lint` and `npm test` frequently
+5. Build with `npm run build` to catch TypeScript errors
+
+### Before Submitting
+1. Run full test suite: `npm test`
+2. Run linter: `npm run lint`
+3. Build the project: `npm run build`
+4. Verify changes work as expected
+5. Review your changes for unnecessary modifications
+6. Update documentation if needed
+
+### Debugging Failed Tests or Builds
+- Read error messages carefully
+- Check file paths and imports
+- Verify TypeScript types are correct
+- Look at existing test patterns for guidance
+- Run individual test files to isolate issues
+
 ## Resources
 
 - Jekyll Documentation: https://jekyllrb.com/docs/
 - Liquid Template Language: https://shopify.github.io/liquid/
 - Jekyll Source Code: https://github.com/jekyll/jekyll (for reference)
+- TypeScript Documentation: https://www.typescriptlang.org/docs/
+- Jest Testing Framework: https://jestjs.io/docs/getting-started

@@ -116,6 +116,22 @@ Run the test suite:
 npm test
 ```
 
+### Benchmark
+
+Run benchmark tests comparing Jekyll TS performance:
+
+```bash
+npm run benchmark
+```
+
+This runs a full integration benchmark test that:
+- Builds the test fixture site using Jekyll TS via CLI
+- Compares build times against Ruby Jekyll (if installed)
+- Runs multiple iterations to measure consistency
+- Outputs detailed performance metrics
+
+If Ruby Jekyll is not installed, the benchmark will only measure Jekyll TS performance.
+
 ### Lint
 
 Lint the source code:

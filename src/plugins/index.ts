@@ -8,6 +8,12 @@ export { SeoTagPlugin } from './seo-tag';
 export { SitemapPlugin } from './sitemap';
 export { FeedPlugin } from './feed';
 
+// Export modern functionality modules - these are exported separately to avoid
+// importing ESM-only dependencies (like shiki) at the top level
+// Users should import these directly when needed:
+// import { highlightCode } from 'jekyll-ts/plugins/syntax-highlighting';
+// import { optimizeImage } from 'jekyll-ts/plugins/image-optimization';
+
 import { Renderer } from '../core/Renderer';
 import { Site } from '../core/Site';
 import { SeoTagPlugin } from './seo-tag';

@@ -313,6 +313,128 @@ export class Renderer {
     this.liquid.registerFilter('inspect', (input: any) => {
       return JSON.stringify(input, null, 2);
     });
+
+    // Array manipulation filters
+    this.liquid.registerFilter('sort', (array: any[], property?: string) => {
+      if (!Array.isArray(array)) return array;
+      const arr = [...array]; // Create a copy to avoid mutating original
+      
+      if (property) {
+        // Sort by property
+        return arr.sort((a, b) => {
+          const aVal = a?.[property];
+          const bVal = b?.[property];
+          if (aVal === bVal) return 0;
+          if (aVal == null) return 1;
+          if (bVal == null) return -1;
+          return aVal > bVal ? 1 : -1;
+        });
+      }
+      
+      // Default sort
+      return arr.sort();
+    });
+
+    this.liquid.registerFilter('uniq', (array: any[]) => {
+      if (!Array.isArray(array)) return array;
+      return Array.from(new Set(array));
+    });
+
+    this.liquid.registerFilter('sample', (array: any[], count?: number) => {
+      if (!Array.isArray(array) || array.length === 0) return count ? [] : null;
+      
+      if (count !== undefined) {
+        // Return multiple samples
+        const numSamples = Math.min(Math.max(0, count), array.length);
+        const shuffled = [...array].sort(() => Math.random() - 0.5);
+        return shuffled.slice(0, numSamples);
+      }
+      
+      // Return single random item
+      return array[Math.floor(Math.random() * array.length)];
+    });
+
+    this.liquid.registerFilter('pop', (array: any[], count?: number) => {
+      if (!Array.isArray(array)) return array;
+      const arr = [...array]; // Create a copy to avoid mutating original
+      
+      if (count !== undefined) {
+        return arr.slice(0, -count);
+      }
+      
+      arr.pop();
+      return arr;
+    });
+
+    this.liquid.registerFilter('push', (array: any[], item: any) => {
+      if (!Array.isArray(array)) return [item];
+      return [...array, item];
+    });
+
+    this.liquid.registerFilter('shift', (array: any[], count?: number) => {
+      if (!Array.isArray(array)) return array;
+      const arr = [...array]; // Create a copy to avoid mutating original
+      
+      if (count !== undefined) {
+        return arr.slice(count);
+      }
+      
+      arr.shift();
+      return arr;
+    });
+
+    this.liquid.registerFilter('unshift', (array: any[], item: any) => {
+      if (!Array.isArray(array)) return [item];
+      return [item, ...array];
+    });
+
+    // Additional string filters
+    this.liquid.registerFilter('normalize_whitespace', (input: string) => {
+      if (!input) return '';
+      return String(input).replace(/\s+/g, ' ').trim();
+    });
+
+    this.liquid.registerFilter('newline_to_br', (input: string) => {
+      if (!input) return '';
+      return String(input).replace(/\n/g, '<br>\n');
+    });
+
+    this.liquid.registerFilter('strip_html', (input: string) => {
+      if (!input) return '';
+      return String(input).replace(/<[^>]*>/g, '');
+    });
+
+    this.liquid.registerFilter('strip_newlines', (input: string) => {
+      if (!input) return '';
+      return String(input).replace(/\n/g, '');
+    });
+
+    // Number/Math filters
+    this.liquid.registerFilter('to_integer', (input: any) => {
+      const num = parseInt(String(input), 10);
+      return isNaN(num) ? 0 : num;
+    });
+
+    this.liquid.registerFilter('abs', (input: number) => {
+      const num = Number(input);
+      return isNaN(num) ? 0 : Math.abs(num);
+    });
+
+    this.liquid.registerFilter('at_least', (input: number, min: number) => {
+      const num = Number(input);
+      const minimum = Number(min);
+      if (isNaN(num)) return minimum;
+      if (isNaN(minimum)) return num;
+      return Math.max(num, minimum);
+    });
+
+    this.liquid.registerFilter('at_most', (input: number, max: number) => {
+      const num = Number(input);
+      const maximum = Number(max);
+      if (isNaN(num)) return maximum;
+      if (isNaN(maximum)) return num;
+      return Math.min(num, maximum);
+    });
   }
 
   /**

@@ -49,7 +49,7 @@ export class FileWatcher {
 
     this.watcher = watch(this.options.source, {
       ignored: [
-        destRelative,
+        this.options.destination,
         '**/node_modules/**',
         '**/.git/**',
         '**/.DS_Store',

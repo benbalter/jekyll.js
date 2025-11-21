@@ -222,6 +222,8 @@ export function parseErrorLocation(errorMessage: string): {
   column?: number;
 } {
   // Try to match common error formats: "line X, column Y", "X:Y", etc.
+  // Try to match "line X, column Y" format (case insensitive)
+  // Examples: "line 10, column 5", "line:10 column:5"
   const lineColMatch = errorMessage.match(/line[:\s]+(\d+)[:,\s]+column[:\s]+(\d+)/i);
   if (lineColMatch && lineColMatch[1] && lineColMatch[2]) {
     return {
@@ -230,8 +232,10 @@ export function parseErrorLocation(errorMessage: string): {
     };
   }
 
-  // More specific pattern to avoid matching timestamps or URLs
-  // Require either start of string, whitespace, or "at"/"position" prefix
+  // Match "X:Y" format with context to avoid false positives
+  // Requires prefix like "at", "position", start of string, whitespace, or comma
+  // Examples: "at 10:5", "position 10:5", "error at 10:5"
+  // Avoids: "http://example.com:8080", "12:34:56 timestamp"
   const colonMatch = errorMessage.match(/(?:^|[\s,]|at\s|position\s)(\d+):(\d+)\b/);
   if (colonMatch && colonMatch[1] && colonMatch[2]) {
     return {

@@ -6,6 +6,7 @@ import { TemplateError, parseErrorLocation } from '../utils/errors';
 import { processMarkdown } from './markdown';
 import slugifyLib from 'slugify';
 import { format, parseISO, formatISO, formatRFC7231, isValid } from 'date-fns';
+import striptags from 'striptags';
 import { dirname, join, resolve, normalize, relative } from 'path';
 import { readFileSync, existsSync, statSync } from 'fs';
 
@@ -314,6 +315,137 @@ export class Renderer {
     // Inspect filter for debugging
     this.liquid.registerFilter('inspect', (input: any) => {
       return JSON.stringify(input, null, 2);
+    });
+
+    // Array manipulation filters
+    this.liquid.registerFilter('sort', (array: any[], property?: string) => {
+      if (!Array.isArray(array)) return array;
+      const arr = [...array]; // Create a copy to avoid mutating original
+      
+      if (property) {
+        // Sort by property
+        return arr.sort((a, b) => {
+          const aVal = a?.[property];
+          const bVal = b?.[property];
+          if (aVal === bVal) return 0;
+          if (aVal == null) return 1;
+          if (bVal == null) return -1;
+          return aVal > bVal ? 1 : -1;
+        });
+      }
+      
+      // Default sort
+      return arr.sort();
+    });
+
+    this.liquid.registerFilter('uniq', (array: any[]) => {
+      if (!Array.isArray(array)) return array;
+      return Array.from(new Set(array));
+    });
+
+    this.liquid.registerFilter('sample', (array: any[], count?: number) => {
+      if (!Array.isArray(array) || array.length === 0) return count ? [] : null;
+      
+      if (count !== undefined) {
+        // Return multiple samples using Fisher-Yates shuffle
+        const numSamples = Math.min(Math.max(0, count), array.length);
+        const shuffled = [...array];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        return shuffled.slice(0, numSamples);
+      }
+      
+      // Return single random item
+      return array[Math.floor(Math.random() * array.length)];
+    });
+
+    this.liquid.registerFilter('pop', (array: any[], count?: number) => {
+      if (!Array.isArray(array)) return array;
+      const arr = [...array]; // Create a copy to avoid mutating original
+      
+      if (count !== undefined) {
+        if (count <= 0) return arr;
+        return arr.slice(0, -count);
+      }
+      
+      arr.pop();
+      return arr;
+    });
+
+    this.liquid.registerFilter('push', (array: any[], item: any) => {
+      if (!Array.isArray(array)) return [item];
+      return [...array, item];
+    });
+
+    this.liquid.registerFilter('shift', (array: any[], count?: number) => {
+      if (!Array.isArray(array)) return array;
+      const arr = [...array]; // Create a copy to avoid mutating original
+      
+      if (count !== undefined) {
+        const normalizedCount = Math.max(0, count);
+        return arr.slice(normalizedCount);
+      }
+      
+      arr.shift();
+      return arr;
+    });
+
+    this.liquid.registerFilter('unshift', (array: any[], item: any) => {
+      if (!Array.isArray(array)) return [item];
+      return [item, ...array];
+    });
+
+    // Additional string filters
+    this.liquid.registerFilter('normalize_whitespace', (input: string) => {
+      if (!input) return '';
+      return String(input).replace(/\s+/g, ' ').trim();
+    });
+
+    this.liquid.registerFilter('newline_to_br', (input: string) => {
+      if (!input) return '';
+      return String(input).replace(/\n/g, '<br>\n');
+    });
+
+    this.liquid.registerFilter('strip_html', (input: string) => {
+      if (!input) return '';
+      // Use striptags library for proper HTML parsing and removal
+      // Handles edge cases: self-closing tags, nested tags, malformed HTML, 
+      // HTML comments, and preserves HTML entities properly
+      return striptags(String(input));
+    });
+
+    this.liquid.registerFilter('strip_newlines', (input: string) => {
+      if (!input) return '';
+      return String(input).replace(/\n/g, '');
+    });
+
+    // Number/Math filters
+    this.liquid.registerFilter('to_integer', (input: any) => {
+      const num = parseInt(String(input), 10);
+      return isNaN(num) ? 0 : num;
+    });
+
+    this.liquid.registerFilter('abs', (input: number) => {
+      const num = Number(input);
+      return isNaN(num) ? 0 : Math.abs(num);
+    });
+
+    this.liquid.registerFilter('at_least', (input: number, min: number) => {
+      const num = Number(input);
+      const minimum = Number(min);
+      if (isNaN(num)) return minimum;
+      if (isNaN(minimum)) return num;
+      return Math.max(num, minimum);
+    });
+
+    this.liquid.registerFilter('at_most', (input: number, max: number) => {
+      const num = Number(input);
+      const maximum = Number(max);
+      if (isNaN(num)) return maximum;
+      if (isNaN(maximum)) return num;
+      return Math.min(num, maximum);
     });
   }
 

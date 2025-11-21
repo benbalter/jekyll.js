@@ -220,6 +220,207 @@ describe('Renderer', () => {
       expect(result).toContain('Hello');
       expect(result).toContain('<strong>bold</strong>');
     });
+
+    describe('Array manipulation filters', () => {
+      it('should support sort filter', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ items | sort | join: "," }}';
+        const result = await renderer.render(template, { items: [3, 1, 2] });
+        expect(result).toBe('1,2,3');
+      });
+
+      it('should support sort filter with property', async () => {
+        const renderer = new Renderer(site);
+        const items = [
+          { name: 'banana', order: 2 },
+          { name: 'apple', order: 1 },
+          { name: 'cherry', order: 3 },
+        ];
+        const template = '{% assign sorted = items | sort: "order" %}{{ sorted[0].name }}';
+        const result = await renderer.render(template, { items });
+        expect(result).toBe('apple');
+      });
+
+      it('should support uniq filter', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ items | uniq | join: "," }}';
+        const result = await renderer.render(template, { items: [1, 2, 2, 3, 1] });
+        expect(result).toBe('1,2,3');
+      });
+
+      it('should support sample filter for single item', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ items | sample }}';
+        const items = ['a', 'b', 'c'];
+        const result = await renderer.render(template, { items });
+        expect(items).toContain(result);
+      });
+
+      it('should support sample filter for multiple items', async () => {
+        const renderer = new Renderer(site);
+        const template = '{% assign samples = items | sample: 2 %}{{ samples.size }}';
+        const result = await renderer.render(template, { items: ['a', 'b', 'c', 'd'] });
+        expect(result).toBe('2');
+      });
+
+      it('should support pop filter', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ items | pop | join: "," }}';
+        const result = await renderer.render(template, { items: ['a', 'b', 'c'] });
+        expect(result).toBe('a,b');
+      });
+
+      it('should support pop filter with count', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ items | pop: 2 | join: "," }}';
+        const result = await renderer.render(template, { items: ['a', 'b', 'c', 'd'] });
+        expect(result).toBe('a,b');
+      });
+
+      it('should support pop filter with count 0', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ items | pop: 0 | join: "," }}';
+        const result = await renderer.render(template, { items: ['a', 'b', 'c'] });
+        expect(result).toBe('a,b,c');
+      });
+
+      it('should support pop filter with negative count', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ items | pop: -1 | join: "," }}';
+        const result = await renderer.render(template, { items: ['a', 'b', 'c'] });
+        expect(result).toBe('a,b,c');
+      });
+
+      it('should support push filter', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ items | push: "d" | join: "," }}';
+        const result = await renderer.render(template, { items: ['a', 'b', 'c'] });
+        expect(result).toBe('a,b,c,d');
+      });
+
+      it('should support shift filter', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ items | shift | join: "," }}';
+        const result = await renderer.render(template, { items: ['a', 'b', 'c'] });
+        expect(result).toBe('b,c');
+      });
+
+      it('should support shift filter with count', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ items | shift: 2 | join: "," }}';
+        const result = await renderer.render(template, { items: ['a', 'b', 'c', 'd'] });
+        expect(result).toBe('c,d');
+      });
+
+      it('should support shift filter with negative count', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ items | shift: -1 | join: "," }}';
+        const result = await renderer.render(template, { items: ['a', 'b', 'c'] });
+        expect(result).toBe('a,b,c');
+      });
+
+      it('should support unshift filter', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ items | unshift: "z" | join: "," }}';
+        const result = await renderer.render(template, { items: ['a', 'b', 'c'] });
+        expect(result).toBe('z,a,b,c');
+      });
+    });
+
+    describe('String manipulation filters', () => {
+      it('should support normalize_whitespace filter', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ text | normalize_whitespace }}';
+        const result = await renderer.render(template, { text: '  hello   world  \n  test  ' });
+        expect(result).toBe('hello world test');
+      });
+
+      it('should support newline_to_br filter', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ text | newline_to_br }}';
+        const result = await renderer.render(template, { text: 'line1\nline2\nline3' });
+        expect(result).toBe('line1<br>\nline2<br>\nline3');
+      });
+
+      it('should support strip_html filter', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ text | strip_html }}';
+        const result = await renderer.render(template, { text: '<p>Hello <strong>world</strong></p>' });
+        expect(result).toBe('Hello world');
+      });
+
+      it('should support strip_newlines filter', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ text | strip_newlines }}';
+        const result = await renderer.render(template, { text: 'line1\nline2\nline3' });
+        expect(result).toBe('line1line2line3');
+      });
+    });
+
+    describe('Number/Math filters', () => {
+      it('should support to_integer filter', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ value | to_integer }}';
+        const result = await renderer.render(template, { value: '42' });
+        expect(result).toBe('42');
+      });
+
+      it('should support to_integer filter with decimal', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ value | to_integer }}';
+        const result = await renderer.render(template, { value: '42.99' });
+        expect(result).toBe('42');
+      });
+
+      it('should support to_integer filter with invalid input', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ value | to_integer }}';
+        const result = await renderer.render(template, { value: 'not-a-number' });
+        expect(result).toBe('0');
+      });
+
+      it('should support abs filter', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ value | abs }}';
+        const result = await renderer.render(template, { value: -42 });
+        expect(result).toBe('42');
+      });
+
+      it('should support abs filter with positive number', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ value | abs }}';
+        const result = await renderer.render(template, { value: 42 });
+        expect(result).toBe('42');
+      });
+
+      it('should support at_least filter', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ value | at_least: 10 }}';
+        const result = await renderer.render(template, { value: 5 });
+        expect(result).toBe('10');
+      });
+
+      it('should support at_least filter with larger value', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ value | at_least: 10 }}';
+        const result = await renderer.render(template, { value: 15 });
+        expect(result).toBe('15');
+      });
+
+      it('should support at_most filter', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ value | at_most: 10 }}';
+        const result = await renderer.render(template, { value: 15 });
+        expect(result).toBe('10');
+      });
+
+      it('should support at_most filter with smaller value', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ value | at_most: 10 }}';
+        const result = await renderer.render(template, { value: 5 });
+        expect(result).toBe('5');
+      });
+    });
   });
 
   describe('renderDocument', () => {

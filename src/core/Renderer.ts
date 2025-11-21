@@ -407,7 +407,8 @@ export class Renderer {
     this.liquid.registerFilter('strip_html', (input: string) => {
       if (!input) return '';
       // Use striptags library for proper HTML parsing and removal
-      // This is more robust than regex and handles edge cases better
+      // Handles edge cases: self-closing tags, nested tags, malformed HTML, 
+      // HTML comments, and preserves HTML entities properly
       return striptags(String(input));
     });
 

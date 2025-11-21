@@ -12,3 +12,6 @@ export {
   validateConfig,
   printValidation,
 } from './Config';
+
+// Export modern validation with Zod
+export * from './validation';

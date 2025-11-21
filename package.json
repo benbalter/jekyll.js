@@ -14,7 +14,7 @@
     "lint:fix": "eslint src --ext .ts --fix",
     "test": "jest",
     "test:watch": "jest --watch",
-    "benchmark": "jest benchmark.test.ts",
+    "benchmark": "jest src/cli/commands/__tests__/benchmark.test.ts",
     "prepublishOnly": "npm run build"
   },
   "keywords": [

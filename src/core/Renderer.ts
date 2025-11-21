@@ -443,6 +443,7 @@ export class Renderer {
       site: {
         ...siteData.config,  // Flatten config into site for Jekyll compatibility
         config: siteData.config,  // Also keep config for backward compatibility
+        data: siteData.data,  // Add data files
         pages: siteData.pages,
         posts: siteData.posts,
         collections: siteData.collections,

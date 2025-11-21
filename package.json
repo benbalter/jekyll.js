@@ -35,7 +35,11 @@
     "js-yaml": "^4.1.0",
     "liquidjs": "^10.10.0",
     "markdown-it": "^14.1.0",
-    "slugify": "^1.6.6"
+    "remark": "^15.0.1",
+    "remark-gfm": "^4.0.1",
+    "remark-html": "^16.0.1",
+    "slugify": "^1.6.6",
+    "unified": "^11.0.5"
   },
   "devDependencies": {
     "@types/jest": "^29.5.11",

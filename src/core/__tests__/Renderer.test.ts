@@ -4,6 +4,27 @@ import { Document, DocumentType } from '../Document';
 import { mkdirSync, writeFileSync, rmSync } from 'fs';
 import { join } from 'path';
 
+// Mock the markdown module to avoid ESM import issues in Jest
+jest.mock('../markdown', () => ({
+  processMarkdown: jest.fn(async (input: string) => {
+    // Simple markdown-to-HTML conversion for testing
+    return input
+      .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+      .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.+?)\*/g, '<em>$1</em>')
+      .replace(/\n\n/g, '</p><p>')
+      .replace(/^(?!<[h])/gm, '<p>')
+      .replace(/$/gm, '</p>')
+      .replace(/<p><\/p>/g, '')
+      .replace(/<p>(<h\d>)/g, '$1')
+      .replace(/(<\/h\d>)<\/p>/g, '$1');
+  }),
+  processMarkdownSync: jest.fn((_input: string) => {
+    throw new Error('processMarkdownSync is not supported. Use processMarkdown instead.');
+  }),
+}));
+
 describe('Renderer', () => {
   const testDir = join(__dirname, '../../../../tmp/test-renderer');
   let site: Site;
@@ -189,6 +210,16 @@ describe('Renderer', () => {
       const result = await renderer.render(template, { data: { key: 'value' } });
       expect(result).toBe('{"key":"value"}');
     });
+
+    it('should support markdownify filter', async () => {
+      const renderer = new Renderer(site);
+      const template = '{{ text | markdownify }}';
+      const result = await renderer.render(template, { text: '# Hello\n\nThis is **bold** text.' });
+      // The mock converts markdown to simple HTML
+      expect(result).toContain('<h1>');
+      expect(result).toContain('Hello');
+      expect(result).toContain('<strong>bold</strong>');
+    });
   });
 
   describe('renderDocument', () => {
@@ -211,7 +242,8 @@ Hello World!`
       const renderer = new Renderer(site);
       const result = await renderer.renderDocument(doc);
 
-      expect(result).toContain('# Test Page');
+      // Markdown should be converted to HTML
+      expect(result).toContain('<h1>Test Page</h1>');
       expect(result).toContain('Hello World!');
     });
 
@@ -354,8 +386,8 @@ Content`
       const renderer = new Renderer(site);
       const result = await renderer.renderDocument(doc);
 
-      // Should render content even without layout
-      expect(result).toBe('Content');
+      // Should render content even without layout (markdown gets converted to HTML)
+      expect(result).toContain('Content');
     });
 
     it('should handle empty templates', async () => {

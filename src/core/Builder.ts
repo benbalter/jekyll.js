@@ -7,6 +7,7 @@ import { mkdirSync, writeFileSync, existsSync, readdirSync, statSync, copyFileSy
 import { join, dirname, extname, basename, relative } from 'path';
 import { rmSync } from 'fs';
 import { registerPlugins } from '../plugins';
+import { CacheManager } from './CacheManager';
 
 /**
  * Builder options interface
@@ -23,6 +24,9 @@ export interface BuilderOptions {
   
   /** Verbose output */
   verbose?: boolean;
+  
+  /** Enable incremental builds */
+  incremental?: boolean;
 }
 
 /**
@@ -32,6 +36,7 @@ export class Builder {
   private site: Site;
   private renderer: Renderer;
   private options: BuilderOptions;
+  private cacheManager: CacheManager;
 
   /**
    * Create a new Builder instance
@@ -54,11 +59,15 @@ export class Builder {
       showFuture: false,
       clean: true,
       verbose: false,
+      incremental: false,
       ...options,
     };
     
     // Configure logger based on options
     logger.setVerbose(this.options.verbose || false);
+    
+    // Initialize cache manager
+    this.cacheManager = new CacheManager(site.source);
     
     // Register plugins
     registerPlugins(this.renderer, this.site);
@@ -78,8 +87,8 @@ export class Builder {
         collections: Array.from(this.site.collections.keys()).join(', '),
       });
 
-      // Clean destination directory if needed
-      if (this.options.clean) {
+      // Clean destination directory if needed (skip for incremental)
+      if (this.options.clean && !this.options.incremental) {
         this.cleanDestination();
       }
 
@@ -97,20 +106,58 @@ export class Builder {
       logger.info('Generating URLs...');
       this.generateUrls();
 
+      // Determine what needs to be rebuilt
+      let pagesToRender = this.site.pages;
+      let postsToRender = this.site.posts;
+      let collectionsToRender = new Map(this.site.collections);
+
+      if (this.options.incremental) {
+        const cacheStats = this.cacheManager.getStats();
+        logger.info(`Using incremental build (${cacheStats.fileCount} files cached)`);
+        
+        // Filter documents that need rebuilding
+        pagesToRender = this.filterChangedDocuments(this.site.pages);
+        postsToRender = this.filterChangedDocuments(this.site.posts);
+        
+        // Filter collection documents
+        collectionsToRender = new Map();
+        for (const [name, docs] of this.site.collections) {
+          const changedDocs = this.filterChangedDocuments(docs);
+          if (changedDocs.length > 0) {
+            collectionsToRender.set(name, changedDocs);
+          }
+        }
+
+        const totalToRender = pagesToRender.length + postsToRender.length + 
+          Array.from(collectionsToRender.values()).reduce((sum, docs) => sum + docs.length, 0);
+        
+        if (totalToRender === 0) {
+          logger.success('No changes detected, skipping build');
+          return;
+        }
+        
+        logger.info(`Rebuilding ${totalToRender} changed files`);
+      }
+
       // Render pages
-      await this.renderPages();
+      await this.renderPages(pagesToRender);
 
       // Render posts
-      await this.renderPosts();
+      await this.renderPosts(postsToRender);
 
       // Render collections
-      await this.renderCollections();
+      await this.renderCollections(collectionsToRender);
 
       // Copy static files
       this.copyStaticFiles();
 
       // Generate plugin output files (sitemap, feed, etc.)
       this.generatePluginFiles();
+
+      // Save cache if incremental mode is enabled
+      if (this.options.incremental) {
+        this.cacheManager.save();
+      }
 
       logger.success(`Site built successfully to ${this.site.destination}`);
     } catch (error) {
@@ -268,10 +315,11 @@ export class Builder {
   /**
    * Render all pages
    */
-  private async renderPages(): Promise<void> {
-    logger.info(`Rendering ${this.site.pages.length} pages...`);
+  private async renderPages(pages?: Document[]): Promise<void> {
+    const pagesToRender = pages || this.site.pages;
+    logger.info(`Rendering ${pagesToRender.length} pages...`);
 
-    for (const page of this.site.pages) {
+    for (const page of pagesToRender) {
       await this.renderDocument(page);
     }
   }
@@ -279,9 +327,10 @@ export class Builder {
   /**
    * Render all posts
    */
-  private async renderPosts(): Promise<void> {
+  private async renderPosts(posts?: Document[]): Promise<void> {
     // Filter posts based on options
-    const posts = this.site.posts.filter((post) => {
+    const postsToFilter = posts || this.site.posts;
+    const filteredPosts = postsToFilter.filter((post) => {
       // Filter unpublished posts unless showDrafts is enabled
       if (!post.published && !this.options.showDrafts) {
         return false;
@@ -295,9 +344,9 @@ export class Builder {
       return true;
     });
 
-    logger.info(`Rendering ${posts.length} posts...`);
+    logger.info(`Rendering ${filteredPosts.length} posts...`);
 
-    for (const post of posts) {
+    for (const post of filteredPosts) {
       await this.renderDocument(post);
     }
   }
@@ -305,8 +354,10 @@ export class Builder {
   /**
    * Render all collections
    */
-  private async renderCollections(): Promise<void> {
-    for (const [collectionName, documents] of this.site.collections) {
+  private async renderCollections(collections?: Map<string, Document[]>): Promise<void> {
+    const collectionsToRender = collections || this.site.collections;
+    
+    for (const [collectionName, documents] of collectionsToRender) {
       const collectionConfig = this.site.config.collections?.[collectionName];
       const outputCollection = collectionConfig?.output !== false;
 
@@ -352,6 +403,22 @@ export class Builder {
           file: outputPath,
           cause: error instanceof Error ? error : undefined,
         });
+      }
+
+      // Update cache with document and its dependencies
+      if (this.options.incremental) {
+        const dependencies: string[] = [];
+
+        // Track layout dependency
+        if (doc.layout) {
+          const layout = this.site.getLayout(doc.layout);
+          if (layout) {
+            dependencies.push(layout.relativePath);
+          }
+        }
+
+        // Update cache
+        this.cacheManager.updateFile(doc.path, doc.relativePath, dependencies);
       }
 
       logger.debug(`Rendered: ${doc.relativePath} → ${relative(this.site.destination, outputPath)}`);
@@ -531,6 +598,38 @@ export class Builder {
         }
       }
     }
+  }
+
+  /**
+   * Filter documents to only include those that have changed
+   * @param documents List of documents to filter
+   * @returns Documents that need to be rebuilt
+   */
+  private filterChangedDocuments(documents: Document[]): Document[] {
+    return documents.filter((doc) => {
+      // Check if document itself has changed
+      if (this.cacheManager.hasChanged(doc.path, doc.relativePath)) {
+        logger.debug(`Changed: ${doc.relativePath}`);
+        return true;
+      }
+
+      // Check if any dependencies have changed
+      if (this.cacheManager.hasDependencyChanges(doc.relativePath, this.site.source)) {
+        logger.debug(`Dependency changed for: ${doc.relativePath}`);
+        return true;
+      }
+
+      // Check if layout has changed
+      if (doc.layout) {
+        const layout = this.site.getLayout(doc.layout);
+        if (layout && this.cacheManager.hasChanged(layout.path, layout.relativePath)) {
+          logger.debug(`Layout changed for: ${doc.relativePath}`);
+          return true;
+        }
+      }
+
+      return false;
+    });
   }
 
   /**

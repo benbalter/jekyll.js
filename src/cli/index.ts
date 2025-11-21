@@ -23,6 +23,7 @@ program
   .option('--drafts', 'Process and render draft posts')
   .option('--future', 'Publish posts with a future date')
   .option('-w, --watch', 'Watch for changes and rebuild')
+  .option('-I, --incremental', 'Enable incremental build')
   .option('--verbose', 'Print verbose output')
   .action(buildCommand);
 

@@ -3,6 +3,7 @@ import { resolve, join, dirname } from 'path';
 import { loadConfig, validateConfig, printValidation } from '../../config';
 import { Site, Builder } from '../../core';
 import { logger } from '../../utils/logger';
+import { FileWatcher } from '../../utils/watcher';
 
 interface BuildOptions {
   source: string;
@@ -88,10 +89,27 @@ export async function buildCommand(options: BuildOptions): Promise<void> {
     console.log('  Output:', destPath);
     
     if (config.watch) {
-      console.log(chalk.yellow('\nWatching for changes...'));
-      console.log(chalk.gray('Press Ctrl+C to stop'));
-      // TODO: Implement file watching
-      // Keep process alive for now
+      // Start file watcher for automatic rebuilds
+      const watcher = new FileWatcher({
+        source: sourcePath,
+        destination: destPath,
+        builder,
+        verbose: options.verbose,
+      });
+
+      watcher.start();
+
+      // Keep process alive and handle graceful shutdown
+      const shutdown = async () => {
+        console.log(chalk.yellow('\n\nShutting down...'));
+        await watcher.stop();
+        process.exit(0);
+      };
+
+      process.on('SIGINT', shutdown);
+      process.on('SIGTERM', shutdown);
+
+      // Keep process running
       await new Promise(() => {}); // eslint-disable-line @typescript-eslint/no-unused-vars
     }
   } catch (error) {

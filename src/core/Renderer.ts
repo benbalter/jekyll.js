@@ -6,6 +6,7 @@ import { TemplateError, parseErrorLocation } from '../utils/errors';
 import { processMarkdown } from './markdown';
 import slugifyLib from 'slugify';
 import { format, parseISO, formatISO, formatRFC7231, isValid } from 'date-fns';
+import striptags from 'striptags';
 
 /**
  * Renderer configuration options
@@ -405,11 +406,9 @@ export class Renderer {
 
     this.liquid.registerFilter('strip_html', (input: string) => {
       if (!input) return '';
-      // Simple HTML tag removal matching Jekyll's behavior
-      // SECURITY NOTE: This filter is for display purposes only (e.g., creating text excerpts)
-      // and is NOT a security sanitization function. Content should be sanitized before
-      // reaching templates. This matches Ruby Jekyll's strip_html which also uses simple regex.
-      return String(input).replace(/<[^>]*>/g, '');
+      // Use striptags library for proper HTML parsing and removal
+      // This is more robust than regex and handles edge cases better
+      return striptags(String(input));
     });
 
     this.liquid.registerFilter('strip_newlines', (input: string) => {

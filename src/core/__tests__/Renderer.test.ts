@@ -495,5 +495,45 @@ Main content
       expect(result).toContain('Main content');
       expect(result).toContain('This is relative content: Hello World');
     });
+
+    it('should prevent directory traversal in include_relative tag', async () => {
+      // Create a file outside the test directory that should not be accessible
+      const outsideDir = join(testDir, '../outside');
+      mkdirSync(outsideDir, { recursive: true });
+      writeFileSync(join(outsideDir, 'secret.txt'), 'Secret content');
+
+      // Create a page that tries to use directory traversal
+      const pagePath = join(testDir, 'malicious.md');
+      writeFileSync(
+        pagePath,
+        `---
+title: Malicious Page
+---
+{% include_relative ../outside/secret.txt %}`
+      );
+
+      await site.read();
+
+      const doc = new Document(pagePath, testDir, DocumentType.PAGE);
+      const renderer = new Renderer(site);
+      
+      const context = {
+        page: {
+          ...doc.data,
+          path: doc.relativePath,
+        },
+        site: {
+          source: testDir,
+        },
+      };
+      
+      // Should throw an error about path being outside source directory
+      await expect(renderer.render(doc.content, context)).rejects.toThrow(
+        /resolves outside the site source directory/
+      );
+
+      // Clean up
+      rmSync(outsideDir, { recursive: true, force: true });
+    });
   });
 });

@@ -6,6 +6,8 @@ import { TemplateError, parseErrorLocation } from '../utils/errors';
 import { processMarkdown } from './markdown';
 import slugifyLib from 'slugify';
 import { format, parseISO, formatISO, formatRFC7231, isValid } from 'date-fns';
+import { dirname, join, resolve, normalize, relative } from 'path';
+import { readFileSync } from 'fs';
 
 /**
  * Renderer configuration options
@@ -377,8 +379,8 @@ export class Renderer {
         if (!match) {
           throw new Error('include_relative tag requires a file path argument');
         }
-        // Sanitize path to prevent directory traversal attacks
-        this.includePath = match[1].replace(/\.\./g, '');
+        // Store the raw path - validation happens during render
+        this.includePath = match[1];
       },
       render: async function (ctx: any, emitter: any) {
         try {
@@ -388,19 +390,25 @@ export class Renderer {
             throw new Error('include_relative: current page path not found in context');
           }
 
-          // Get the directory of the current page
-          const { dirname, join, resolve } = await import('path');
-          const { readFileSync } = await import('fs');
+          // Get the site source path
+          const site = ctx.environments?.site || ctx.site || ctx.scopes?.[0]?.site;
+          const sourcePath = site?.source || '.';
+          const absoluteSourcePath = resolve(sourcePath);
           
           // Resolve the include path relative to the current page's directory
           const pagePath = page.path;
           const pageDir = dirname(pagePath);
-          const relativePath = join(pageDir, this.includePath);
+          const relativePath = normalize(join(pageDir, this.includePath));
           
-          // Resolve to absolute path using site source
-          const site = ctx.environments?.site || ctx.site || ctx.scopes?.[0]?.site;
-          const sourcePath = site?.source || '.';
-          const absolutePath = resolve(sourcePath, relativePath);
+          // Resolve to absolute path
+          const absolutePath = resolve(absoluteSourcePath, relativePath);
+          
+          // Security check: Ensure the resolved path is within the site source directory
+          // This prevents directory traversal attacks
+          const relativeToSource = relative(absoluteSourcePath, absolutePath);
+          if (relativeToSource.startsWith('..') || relativeToSource.startsWith('/')) {
+            throw new Error(`include_relative: Path '${this.includePath}' resolves outside the site source directory`);
+          }
           
           // Read and render the file
           const content = readFileSync(absolutePath, 'utf-8');

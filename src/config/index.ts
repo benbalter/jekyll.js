@@ -11,4 +11,5 @@ export {
   mergeWithDefaults,
   validateConfig,
   printValidation,
+  applyFrontMatterDefaults,
 } from './Config';

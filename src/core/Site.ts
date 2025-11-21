@@ -273,7 +273,7 @@ export class Site {
     const files = this.walkDirectory(postsDir);
     for (const file of files) {
       if (this.isMarkdownOrHtml(file)) {
-        const doc = new Document(file, this.source, DocumentType.POST);
+        const doc = new Document(file, this.source, DocumentType.POST, undefined, this.config);
         this.posts.push(doc);
       }
     }
@@ -309,7 +309,8 @@ export class Site {
             file,
             this.source,
             DocumentType.COLLECTION,
-            collectionName
+            collectionName,
+            this.config
           );
           documents.push(doc);
         }
@@ -328,7 +329,7 @@ export class Site {
     
     for (const file of files) {
       if (this.isMarkdownOrHtml(file) && !this.isSpecialDirectory(file)) {
-        const doc = new Document(file, this.source, DocumentType.PAGE);
+        const doc = new Document(file, this.source, DocumentType.PAGE, undefined, this.config);
         this.pages.push(doc);
       }
     }

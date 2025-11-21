@@ -40,9 +40,14 @@ export class Builder {
    */
   constructor(site: Site, options: BuilderOptions = {}) {
     this.site = site;
+    
+    // Get layout and include directories from site (includes theme directories)
+    const layoutDirs = site.themeManager.getLayoutDirectories();
+    const includeDirs = site.themeManager.getIncludeDirectories();
+    
     this.renderer = new Renderer(site, {
-      layoutsDir: join(site.source, site.config.layouts_dir || '_layouts'),
-      includesDir: join(site.source, site.config.includes_dir || '_includes'),
+      layoutsDir: layoutDirs.length > 0 ? layoutDirs : [join(site.source, site.config.layouts_dir || '_layouts')],
+      includesDir: includeDirs.length > 0 ? includeDirs : [join(site.source, site.config.includes_dir || '_includes')],
     });
     this.options = {
       showDrafts: false,

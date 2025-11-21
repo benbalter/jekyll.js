@@ -1,0 +1,11 @@
+- name: Alice Johnson
+  role: Developer
+  email: alice@example.com
+  
+- name: Bob Smith
+  role: Designer
+  email: bob@example.com
+  
+- name: Carol Williams
+  role: Manager
+  email: carol@example.com

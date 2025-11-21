@@ -218,6 +218,92 @@ collections:
       expect(site.includes.size).toBe(1);
       expect(site.includes.has('social/twitter.html')).toBe(true);
     });
+
+    it('should read data files from _data directory', async () => {
+      // Create _data directory and test data files
+      const dataDir = join(testSiteDir, '_data');
+      mkdirSync(dataDir);
+
+      // YAML data file
+      writeFileSync(
+        join(dataDir, 'members.yml'),
+        'name: Alice\nrole: Developer'
+      );
+
+      // JSON data file
+      writeFileSync(
+        join(dataDir, 'settings.json'),
+        '{"theme": "dark", "lang": "en"}'
+      );
+
+      const site = new Site(testSiteDir);
+      await site.read();
+
+      expect(site.data).toBeDefined();
+      expect(site.data.members).toEqual({ name: 'Alice', role: 'Developer' });
+      expect(site.data.settings).toEqual({ theme: 'dark', lang: 'en' });
+    });
+
+    it('should read nested data files', async () => {
+      // Create nested _data directory structure
+      const dataDir = join(testSiteDir, '_data');
+      const teamDir = join(dataDir, 'team');
+      mkdirSync(teamDir, { recursive: true });
+
+      writeFileSync(
+        join(teamDir, 'developers.yml'),
+        'lead: Alice\nmembers:\n  - Bob\n  - Carol'
+      );
+
+      const site = new Site(testSiteDir);
+      await site.read();
+
+      expect(site.data.team).toBeDefined();
+      expect(site.data.team.developers).toBeDefined();
+      expect(site.data.team.developers.lead).toBe('Alice');
+      expect(site.data.team.developers.members).toEqual(['Bob', 'Carol']);
+    });
+
+    it('should handle invalid data files gracefully', async () => {
+      const dataDir = join(testSiteDir, '_data');
+      mkdirSync(dataDir);
+
+      // Invalid YAML
+      writeFileSync(join(dataDir, 'invalid.yml'), '{ invalid yaml content [');
+      
+      // Valid JSON for comparison
+      writeFileSync(join(dataDir, 'valid.json'), '{"key": "value"}');
+
+      const site = new Site(testSiteDir);
+      
+      // Should not throw, just warn
+      await expect(site.read()).resolves.not.toThrow();
+      
+      // Valid data should still be loaded
+      expect(site.data.valid).toEqual({ key: 'value' });
+      // Invalid data should not be loaded
+      expect(site.data.invalid).toBeUndefined();
+    });
+
+    it('should support custom data_dir configuration', async () => {
+      // Create custom data directory
+      const customDataDir = join(testSiteDir, 'custom_data');
+      mkdirSync(customDataDir);
+
+      writeFileSync(
+        join(customDataDir, 'info.yml'),
+        'name: Custom'
+      );
+
+      const config: SiteConfig = {
+        data_dir: 'custom_data',
+      };
+
+      const site = new Site(testSiteDir, config);
+      await site.read();
+
+      expect(site.data.info).toEqual({ name: 'Custom' });
+    });
   });
 
   describe('getLayout method', () => {
@@ -329,6 +415,19 @@ collections:
       expect(json.source).toBe(testSiteDir);
       expect(json.pages).toHaveLength(1);
       expect(Array.isArray(json.pages)).toBe(true);
+    });
+
+    it('should include data in JSON representation', async () => {
+      const dataDir = join(testSiteDir, '_data');
+      mkdirSync(dataDir);
+      writeFileSync(join(dataDir, 'info.json'), '{"version": "1.0"}');
+
+      const site = new Site(testSiteDir);
+      await site.read();
+
+      const json = site.toJSON();
+      expect(json.data).toBeDefined();
+      expect(json.data.info).toEqual({ version: '1.0' });
     });
   });
 });

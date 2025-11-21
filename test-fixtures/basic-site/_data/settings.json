@@ -1,0 +1,8 @@
+{
+  "site_name": "Test Site",
+  "version": "1.0.0",
+  "features": {
+    "comments": true,
+    "analytics": false
+  }
+}

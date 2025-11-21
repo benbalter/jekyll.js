@@ -426,7 +426,10 @@ export class Builder {
         const parsed = matter(fileContent);
         
         // Only process files with front matter (Jekyll convention)
-        // If content equals original content, no front matter delimiters were present
+        // We detect front matter by comparing content to original: if gray-matter removed
+        // delimiters (---), the content will differ from the original file content.
+        // This approach correctly identifies both empty front matter (---\n---) and
+        // front matter with data, while skipping files with no delimiters at all.
         const hasFrontMatter = parsed.content !== fileContent;
         if (!hasFrontMatter) {
           logger.debug(`Skipping ${relative(this.site.source, file)} (no front matter)`);

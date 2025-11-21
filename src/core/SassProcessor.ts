@@ -35,9 +35,15 @@ export class SassProcessor {
     const sassConfig = options.config.sass || {};
     this.sassDir = resolve(this.source, sassConfig.sass_dir || '_sass');
     
-    // Map Jekyll style names to sass output styles
-    // Note: Modern Dart Sass only supports 'expanded' and 'compressed'
-    // Jekyll's 'nested' and 'compact' are mapped to the closest equivalents
+    /**
+     * Map Jekyll-compatible style names to Dart Sass output styles.
+     * 
+     * Jekyll originally supported four styles from Ruby Sass: nested, expanded, compact, compressed.
+     * Modern Dart Sass (used by this implementation) only supports two: 'expanded' and 'compressed'.
+     * For compatibility with existing Jekyll configurations:
+     * - 'nested' → 'expanded' (closest equivalent for readable output)
+     * - 'compact' → 'compressed' (closest equivalent for minified output)
+     */
     const styleMap: Record<string, OutputStyle> = {
       'nested': 'expanded',      // Dart Sass doesn't support nested, use expanded
       'expanded': 'expanded',

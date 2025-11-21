@@ -101,6 +101,13 @@ export interface JekyllConfig {
   livereload_max_delay?: number;
   livereload_ignore?: string[];
   
+  // SASS/SCSS configuration
+  sass?: {
+    sass_dir?: string;
+    style?: 'nested' | 'expanded' | 'compact' | 'compressed';
+    source_comments?: boolean;
+  };
+  
   // Quiet mode
   quiet?: boolean;
   verbose?: boolean;

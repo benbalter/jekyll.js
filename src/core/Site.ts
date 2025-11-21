@@ -2,6 +2,7 @@ import { existsSync, readdirSync, statSync } from 'fs';
 import { join, resolve, extname, dirname } from 'path';
 import { Document, DocumentType } from './Document';
 import { JekyllConfig, loadConfig } from '../config';
+import { ThemeManager } from './ThemeManager';
 
 /**
  * Site configuration interface
@@ -58,6 +59,9 @@ export class Site {
   /** Static files (non-Jekyll files) */
   public readonly staticFiles: string[] = [];
 
+  /** Theme manager for handling theme files */
+  public readonly themeManager: ThemeManager;
+
   /**
    * Create a new Site
    * @param source Source directory path
@@ -88,6 +92,9 @@ export class Site {
       include: config.include || [],
     };
     this.destination = resolve(this.config.destination as string);
+    
+    // Initialize theme manager
+    this.themeManager = new ThemeManager(this.source, this.config);
   }
 
   /**
@@ -111,35 +118,43 @@ export class Site {
   }
 
   /**
-   * Read all layouts from _layouts directory
+   * Read all layouts from _layouts directory (site and theme)
    */
   private readLayouts(): void {
-    const layoutsDir = join(this.source, '_layouts');
-    if (!existsSync(layoutsDir)) {
-      return;
-    }
-
-    const files = this.walkDirectory(layoutsDir);
-    for (const file of files) {
-      const doc = new Document(file, this.source, DocumentType.LAYOUT);
-      this.layouts.set(doc.basename, doc);
+    // Get all layout directories (site first, then theme)
+    const layoutDirs = this.themeManager.getLayoutDirectories();
+    
+    // Read layouts from all directories (site layouts will override theme layouts)
+    for (const layoutsDir of layoutDirs) {
+      const files = this.walkDirectory(layoutsDir);
+      for (const file of files) {
+        const doc = new Document(file, this.source, DocumentType.LAYOUT);
+        // Site layouts take precedence, so only add if not already present
+        if (!this.layouts.has(doc.basename)) {
+          this.layouts.set(doc.basename, doc);
+        }
+      }
     }
   }
 
   /**
-   * Read all includes from _includes directory
+   * Read all includes from _includes directory (site and theme)
    */
   private readIncludes(): void {
-    const includesDir = join(this.source, '_includes');
-    if (!existsSync(includesDir)) {
-      return;
-    }
-
-    const files = this.walkDirectory(includesDir);
-    for (const file of files) {
-      const doc = new Document(file, this.source, DocumentType.INCLUDE);
-      const relativePath = file.substring(includesDir.length + 1);
-      this.includes.set(relativePath, doc);
+    // Get all include directories (site first, then theme)
+    const includeDirs = this.themeManager.getIncludeDirectories();
+    
+    // Read includes from all directories (site includes will override theme includes)
+    for (const includesDir of includeDirs) {
+      const files = this.walkDirectory(includesDir);
+      for (const file of files) {
+        const doc = new Document(file, this.source, DocumentType.INCLUDE);
+        const relativePath = file.substring(includesDir.length + 1);
+        // Site includes take precedence, so only add if not already present
+        if (!this.includes.has(relativePath)) {
+          this.includes.set(relativePath, doc);
+        }
+      }
     }
   }
 

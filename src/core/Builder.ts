@@ -5,6 +5,7 @@ import { logger } from '../utils/logger';
 import { mkdirSync, writeFileSync, existsSync, readdirSync, statSync, copyFileSync } from 'fs';
 import { join, dirname, extname, basename, relative } from 'path';
 import { rmSync } from 'fs';
+import { registerPlugins } from '../plugins';
 
 /**
  * Builder options interface
@@ -49,6 +50,9 @@ export class Builder {
       verbose: false,
       ...options,
     };
+    
+    // Register plugins
+    registerPlugins(this.renderer, this.site);
   }
 
   /**
@@ -82,6 +86,9 @@ export class Builder {
 
     // Copy static files
     this.copyStaticFiles();
+
+    // Generate plugin output files (sitemap, feed, etc.)
+    this.generatePluginFiles();
 
     logger.info(`Site built successfully to ${this.site.destination}`);
   }
@@ -428,6 +435,44 @@ export class Builder {
    */
   private isJekyllDirectory(name: string): boolean {
     return name.startsWith('_') || name === '.git';
+  }
+
+  /**
+   * Generate plugin output files (sitemap, feed, etc.)
+   */
+  private generatePluginFiles(): void {
+    const configuredPlugins = this.site.config.plugins || [];
+    
+    // Generate sitemap if plugin is enabled
+    if (configuredPlugins.length === 0 || configuredPlugins.includes('jekyll-sitemap')) {
+      const sitemapPlugin = (this.site as any)._sitemapPlugin;
+      if (sitemapPlugin) {
+        const sitemapContent = sitemapPlugin.generateSitemap(this.site);
+        const sitemapPath = join(this.site.destination, 'sitemap.xml');
+        writeFileSync(sitemapPath, sitemapContent, 'utf-8');
+        if (this.options.verbose) {
+          logger.info('Generated sitemap.xml');
+        }
+      }
+    }
+
+    // Generate feed if plugin is enabled
+    if (configuredPlugins.length === 0 || configuredPlugins.includes('jekyll-feed')) {
+      const feedPlugin = (this.site as any)._feedPlugin;
+      if (feedPlugin) {
+        const feedContent = feedPlugin.generateFeed(this.site);
+        const feedPath = this.site.config.feed?.path || '/feed.xml';
+        const feedFilePath = join(this.site.destination, feedPath.replace(/^\//, ''));
+        
+        // Ensure directory exists
+        mkdirSync(dirname(feedFilePath), { recursive: true });
+        
+        writeFileSync(feedFilePath, feedContent, 'utf-8');
+        if (this.options.verbose) {
+          logger.info(`Generated ${feedPath}`);
+        }
+      }
+    }
   }
 
   /**

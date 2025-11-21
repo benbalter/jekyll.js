@@ -196,6 +196,7 @@ jekyll.js/
 - [x] Liquid template rendering
 - [x] Page and post processing
 - [x] Collections support
+- [x] Data files support (`_data` directory)
 - [x] Markdown processing (using Remark)
 - [x] Plugin system
 - [x] Built-in plugins (SEO, sitemap, feed)
@@ -203,7 +204,7 @@ jekyll.js/
 
 ### Next Version (v0.2.0 - Phase 1)
 
-- [ ] Data files (`_data` directory)
+- [x] Data files (`_data` directory)
 - [ ] Watch mode for builds
 - [ ] SASS/SCSS processing
 - [ ] Front matter defaults
@@ -221,6 +222,7 @@ This project aims to be compatible with Jekyll 4.x. While the goal is 100% compa
 - ✅ Pages and posts
 - ✅ Collections
 - ✅ Layouts and includes
+- ✅ Data files (`_data` directory) - YAML and JSON support
 - ✅ Front matter (YAML)
 - ✅ Markdown processing (using Remark with GFM support)
 - ✅ Permalinks and URL generation

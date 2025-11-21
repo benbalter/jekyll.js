@@ -14,6 +14,7 @@ Welcome to the jekyll.js documentation! This directory contains comprehensive gu
 | [**FEATURES.md**](./FEATURES.md) | Feature status reference | Check if feature is supported |
 | [**COMPARISON.md**](./COMPARISON.md) | jekyll.js vs Jekyll.rb | Deciding which to use |
 | [**liquid-rendering.md**](./liquid-rendering.md) | Template engine guide | Using Liquid templates |
+| [**theme-development.md**](./theme-development.md) | Theme creation guide | Creating or using themes |
 
 ### For Contributors
 
@@ -171,6 +172,9 @@ Liquid template engine documentation. Contains:
 **...write Liquid templates**
 → Read [liquid-rendering.md](./liquid-rendering.md)
 
+**...create or use a theme**
+→ Read [theme-development.md](./theme-development.md)
+
 **...report a bug**
 → [GitHub Issues](https://github.com/benbalter/jekyll.js/issues)
 
@@ -281,7 +285,7 @@ When updating documentation:
 - [ ] Performance tuning guide
 
 **Medium Term (v0.3.0)**:
-- [ ] Theme development guide
+- [x] Theme development guide
 - [ ] Plugin development guide
 - [ ] API reference documentation
 - [ ] Video tutorials

@@ -405,8 +405,9 @@ export class Renderer {
           
           // Security check: Ensure the resolved path is within the site source directory
           // This prevents directory traversal attacks
+          // path.relative() returns a path starting with '..' if the target is outside the base
           const relativeToSource = relative(absoluteSourcePath, absolutePath);
-          if (relativeToSource.startsWith('..') || relativeToSource.startsWith('/')) {
+          if (relativeToSource.startsWith('..')) {
             throw new Error(`include_relative: Path '${this.includePath}' resolves outside the site source directory`);
           }
           
@@ -414,6 +415,8 @@ export class Renderer {
           const content = readFileSync(absolutePath, 'utf-8');
           
           // Render the included content with the current context
+          // Note: Jekyll's include_relative has full access to the current context
+          // This is consistent with Jekyll's behavior where included files can access all variables
           const html = await this.liquid.parseAndRender(content, ctx);
           emitter.write(html);
         } catch (error) {

@@ -2,7 +2,7 @@ import { Liquid } from 'liquidjs';
 import { Site } from './Site';
 import { Document } from './Document';
 import { logger } from '../utils/logger';
-import { TemplateError, MarkdownError, parseErrorLocation } from '../utils/errors';
+import { TemplateError, parseErrorLocation } from '../utils/errors';
 import { processMarkdown } from './markdown';
 import slugifyLib from 'slugify';
 import { format, parseISO, formatISO, formatRFC7231, isValid } from 'date-fns';
@@ -474,13 +474,12 @@ export class Renderer {
       try {
         content = await processMarkdown(content);
       } catch (err) {
-        throw new MarkdownError(
-          `Failed to process markdown: ${err instanceof Error ? err.message : String(err)}`,
-          {
-            file: document.relativePath,
-            cause: err instanceof Error ? err : undefined,
-          }
+        // Log the error but don't fail the build - markdown processing can be fragile
+        logger.warn(
+          `Failed to process markdown for '${document.relativePath}': ${err instanceof Error ? err.message : String(err)}. Using rendered Liquid content instead.`,
+          { file: document.relativePath }
         );
+        // Keep the Liquid-rendered content (which may include HTML already)
       }
     }
     

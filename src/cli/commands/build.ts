@@ -99,18 +99,21 @@ export async function buildCommand(options: BuildOptions): Promise<void> {
 
       watcher.start();
 
-      // Keep process alive and handle graceful shutdown
+      // Promise to keep process running until shutdown
+      let resolveShutdown: (() => void) | undefined;
+      
       const shutdown = async () => {
         console.log(chalk.yellow('\n\nShutting down...'));
         await watcher.stop();
         process.off('SIGINT', shutdown);
         process.off('SIGTERM', shutdown);
-        // Do not call process.exit(0) here; allow function to return
-        resolvePromise();
+        if (resolveShutdown) {
+          resolveShutdown();
+        }
       };
 
-      // Promise to keep process running until shutdown
-      await new Promise<void>((resolvePromise) => {
+      await new Promise<void>((resolve) => {
+        resolveShutdown = resolve;
         process.on('SIGINT', shutdown);
         process.on('SIGTERM', shutdown);
       });

@@ -44,9 +44,6 @@ export class FileWatcher {
    * Start watching for file changes
    */
   start(): void {
-    // Watch source directory, excluding destination
-    const destRelative = relative(this.options.source, this.options.destination);
-
     this.watcher = watch(this.options.source, {
       ignored: [
         this.options.destination,

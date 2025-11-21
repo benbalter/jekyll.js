@@ -103,14 +103,17 @@ export async function buildCommand(options: BuildOptions): Promise<void> {
       const shutdown = async () => {
         console.log(chalk.yellow('\n\nShutting down...'));
         await watcher.stop();
-        process.exit(0);
+        process.off('SIGINT', shutdown);
+        process.off('SIGTERM', shutdown);
+        // Do not call process.exit(0) here; allow function to return
+        resolvePromise();
       };
 
-      process.on('SIGINT', shutdown);
-      process.on('SIGTERM', shutdown);
-
-      // Keep process running
-      await new Promise(() => {}); // eslint-disable-line @typescript-eslint/no-unused-vars
+      // Promise to keep process running until shutdown
+      await new Promise<void>((resolvePromise) => {
+        process.on('SIGINT', shutdown);
+        process.on('SIGTERM', shutdown);
+      });
     }
   } catch (error) {
     logger.logError(error instanceof Error ? error : new Error(String(error)));

@@ -64,7 +64,8 @@ class Logger {
       return;
     }
 
-    // Skip debug logs unless verbose
+    // Skip debug logs unless verbose mode is enabled
+    // Debug can be enabled via setVerbose(), configure(), or DEBUG environment variable
     if (level === 'debug' && !this.options.verbose && !process.env.DEBUG) {
       return;
     }
@@ -146,9 +147,15 @@ class Logger {
   private formatContext(context: Record<string, any>): string {
     return Object.entries(context)
       .map(([key, value]) => {
-        const formattedValue = typeof value === 'object' 
-          ? JSON.stringify(value, null, 2)
-          : String(value);
+        let formattedValue: string;
+        try {
+          formattedValue = typeof value === 'object' 
+            ? JSON.stringify(value, null, 2)
+            : String(value);
+        } catch (error) {
+          // Handle circular references or other stringify errors
+          formattedValue = '[Complex Object]';
+        }
         return chalk.gray(`  ${key}: ${formattedValue}`);
       })
       .join('\n');
@@ -177,9 +184,13 @@ class Logger {
       // Show cause if available
       if (error.cause && this.options.verbose) {
         console.error(chalk.gray('\nCaused by:'));
-        console.error(chalk.gray(error.cause.message));
-        if (error.cause.stack) {
-          console.error(chalk.gray(error.cause.stack));
+        if (error.cause instanceof Error) {
+          console.error(chalk.gray(error.cause.message));
+          if (error.cause.stack) {
+            console.error(chalk.gray(error.cause.stack));
+          }
+        } else {
+          console.error(chalk.gray(String(error.cause)));
         }
       }
     } else {

@@ -475,11 +475,11 @@ export class Renderer {
         content = await processMarkdown(content);
       } catch (err) {
         // Log the error but don't fail the build - markdown processing can be fragile
+        // The content remains as-is (Liquid-rendered), which may already contain HTML
         logger.warn(
-          `Failed to process markdown for '${document.relativePath}': ${err instanceof Error ? err.message : String(err)}. Using rendered Liquid content instead.`,
+          `Failed to process markdown for '${document.relativePath}': ${err instanceof Error ? err.message : String(err)}. Document will be rendered with Liquid-processed content only.`,
           { file: document.relativePath }
         );
-        // Keep the Liquid-rendered content (which may include HTML already)
       }
     }
     

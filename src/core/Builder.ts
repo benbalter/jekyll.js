@@ -346,10 +346,11 @@ export class Builder {
 
       logger.debug(`Rendered: ${doc.relativePath} → ${relative(this.site.destination, outputPath)}`);
     } catch (error) {
-      // Re-throw with additional context
-      logger.logError(error instanceof Error ? error : new Error(String(error)), {
-        document: doc.relativePath,
-      });
+      // Add document context to error before re-throwing
+      // The build() method will handle final error logging
+      if (error instanceof Error) {
+        error.message = `${error.message} (document: ${doc.relativePath})`;
+      }
       throw error;
     }
   }

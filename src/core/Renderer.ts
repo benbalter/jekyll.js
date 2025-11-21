@@ -401,7 +401,7 @@ export class Renderer {
           const relativePath = normalize(join(pageDir, this.includePath));
           
           // Resolve to absolute path
-          const absolutePath = resolve(absoluteSourcePath, relativePath);
+          const absolutePath = normalize(resolve(absoluteSourcePath, relativePath));
           
           // Security check: Ensure the resolved path is within the site source directory
           // This prevents directory traversal attacks

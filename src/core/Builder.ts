@@ -346,12 +346,15 @@ export class Builder {
 
       logger.debug(`Rendered: ${doc.relativePath} → ${relative(this.site.destination, outputPath)}`);
     } catch (error) {
-      // Add document context to error before re-throwing
+      // Wrap error with document context for structured error handling
       // The build() method will handle final error logging
-      if (error instanceof Error) {
-        error.message = `${error.message} (document: ${doc.relativePath})`;
-      }
-      throw error;
+      throw new BuildError(
+        `Failed to render document: ${error instanceof Error ? error.message : String(error)}`,
+        {
+          file: doc.relativePath,
+          cause: error instanceof Error ? error : undefined,
+        }
+      );
     }
   }
 

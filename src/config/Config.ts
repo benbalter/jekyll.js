@@ -395,13 +395,6 @@ export function validateConfig(config: JekyllConfig): ConfigValidation {
     );
   }
   
-  // Check for pagination
-  if (config.paginate && config.paginate > 0) {
-    warnings.push(
-      'Pagination is not implemented yet and will be ignored.'
-    );
-  }
-  
   // Validate port number
   if (config.port !== undefined) {
     if (typeof config.port !== 'number' || config.port < 1 || config.port > 65535) {

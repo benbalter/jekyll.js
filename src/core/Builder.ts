@@ -2,6 +2,7 @@ import { Site } from './Site';
 import { Renderer } from './Renderer';
 import { Document, DocumentType } from './Document';
 import { logger } from '../utils/logger';
+import { BuildError, FileSystemError, JekyllError } from '../utils/errors';
 import { mkdirSync, writeFileSync, existsSync, readdirSync, statSync, copyFileSync } from 'fs';
 import { join, dirname, extname, basename, relative } from 'path';
 import { rmSync } from 'fs';
@@ -51,6 +52,9 @@ export class Builder {
       ...options,
     };
     
+    // Configure logger based on options
+    logger.setVerbose(this.options.verbose || false);
+    
     // Register plugins
     registerPlugins(this.renderer, this.site);
   }
@@ -59,38 +63,61 @@ export class Builder {
    * Build the entire site
    */
   async build(): Promise<void> {
-    logger.info('Building site...');
+    logger.section('Building Site');
 
-    // Read all site files
-    await this.site.read();
+    try {
+      // Read all site files
+      logger.info('Reading site files...');
+      await this.site.read();
+      logger.debug(`Found ${this.site.pages.length} pages, ${this.site.posts.length} posts`, {
+        collections: Array.from(this.site.collections.keys()).join(', '),
+      });
 
-    // Clean destination directory if needed
-    if (this.options.clean) {
-      this.cleanDestination();
+      // Clean destination directory if needed
+      if (this.options.clean) {
+        this.cleanDestination();
+      }
+
+      // Ensure destination exists
+      try {
+        mkdirSync(this.site.destination, { recursive: true });
+      } catch (error) {
+        throw new FileSystemError('Failed to create destination directory', {
+          file: this.site.destination,
+          cause: error instanceof Error ? error : undefined,
+        });
+      }
+
+      // Generate URLs for all documents
+      logger.info('Generating URLs...');
+      this.generateUrls();
+
+      // Render pages
+      await this.renderPages();
+
+      // Render posts
+      await this.renderPosts();
+
+      // Render collections
+      await this.renderCollections();
+
+      // Copy static files
+      this.copyStaticFiles();
+
+      // Generate plugin output files (sitemap, feed, etc.)
+      this.generatePluginFiles();
+
+      logger.success(`Site built successfully to ${this.site.destination}`);
+    } catch (error) {
+      // Re-throw specific errors as-is, or log and exit
+      if (error instanceof JekyllError) {
+        throw error; // Already has proper context
+      }
+      // Only wrap unknown errors
+      throw new BuildError('Build failed', {
+        cause: error instanceof Error ? error : undefined,
+      });
     }
-
-    // Ensure destination exists
-    mkdirSync(this.site.destination, { recursive: true });
-
-    // Generate URLs for all documents
-    this.generateUrls();
-
-    // Render pages
-    await this.renderPages();
-
-    // Render posts
-    await this.renderPosts();
-
-    // Render collections
-    await this.renderCollections();
-
-    // Copy static files
-    this.copyStaticFiles();
-
-    // Generate plugin output files (sitemap, feed, etc.)
-    this.generatePluginFiles();
-
-    logger.info(`Site built successfully to ${this.site.destination}`);
   }
 
   /**
@@ -98,10 +125,15 @@ export class Builder {
    */
   private cleanDestination(): void {
     if (existsSync(this.site.destination)) {
-      if (this.options.verbose) {
-        logger.info(`Cleaning ${this.site.destination}`);
+      logger.info(`Cleaning destination directory: ${this.site.destination}`);
+      try {
+        rmSync(this.site.destination, { recursive: true, force: true });
+      } catch (error) {
+        throw new FileSystemError('Failed to clean destination directory', {
+          file: this.site.destination,
+          cause: error instanceof Error ? error : undefined,
+        });
       }
-      rmSync(this.site.destination, { recursive: true, force: true });
     }
   }
 
@@ -232,9 +264,7 @@ export class Builder {
    * Render all pages
    */
   private async renderPages(): Promise<void> {
-    if (this.options.verbose) {
-      logger.info(`Rendering ${this.site.pages.length} pages...`);
-    }
+    logger.info(`Rendering ${this.site.pages.length} pages...`);
 
     for (const page of this.site.pages) {
       await this.renderDocument(page);
@@ -260,9 +290,7 @@ export class Builder {
       return true;
     });
 
-    if (this.options.verbose) {
-      logger.info(`Rendering ${posts.length} posts...`);
-    }
+    logger.info(`Rendering ${posts.length} posts...`);
 
     for (const post of posts) {
       await this.renderDocument(post);
@@ -278,15 +306,11 @@ export class Builder {
       const outputCollection = collectionConfig?.output !== false;
 
       if (!outputCollection) {
-        if (this.options.verbose) {
-          logger.info(`Skipping collection '${collectionName}' (output: false)`);
-        }
+        logger.debug(`Skipping collection '${collectionName}' (output: false)`);
         continue;
       }
 
-      if (this.options.verbose) {
-        logger.info(`Rendering ${documents.length} documents from collection '${collectionName}'...`);
-      }
+      logger.info(`Rendering ${documents.length} documents from collection '${collectionName}'...`);
 
       for (const doc of documents) {
         await this.renderDocument(doc);
@@ -306,17 +330,36 @@ export class Builder {
       const outputPath = this.getOutputPath(doc);
 
       // Ensure directory exists
-      mkdirSync(dirname(outputPath), { recursive: true });
+      try {
+        mkdirSync(dirname(outputPath), { recursive: true });
+      } catch (error) {
+        throw new FileSystemError('Failed to create output directory', {
+          file: dirname(outputPath),
+          cause: error instanceof Error ? error : undefined,
+        });
+      }
 
       // Write file
-      writeFileSync(outputPath, html, 'utf-8');
-
-      if (this.options.verbose) {
-        logger.info(`  - ${doc.relativePath} → ${relative(this.site.destination, outputPath)}`);
+      try {
+        writeFileSync(outputPath, html, 'utf-8');
+      } catch (error) {
+        throw new FileSystemError('Failed to write output file', {
+          file: outputPath,
+          cause: error instanceof Error ? error : undefined,
+        });
       }
+
+      logger.debug(`Rendered: ${doc.relativePath} → ${relative(this.site.destination, outputPath)}`);
     } catch (error) {
-      logger.error(`Error rendering ${doc.relativePath}: ${error instanceof Error ? error.message : String(error)}`);
-      throw error;
+      // Wrap error with document context for structured error handling
+      // The build() method will handle final error logging
+      throw new BuildError(
+        `Failed to render document: ${error instanceof Error ? error.message : String(error)}`,
+        {
+          file: doc.relativePath,
+          cause: error instanceof Error ? error : undefined,
+        }
+      );
     }
   }
 
@@ -350,22 +393,24 @@ export class Builder {
   private copyStaticFiles(): void {
     const staticFiles = this.findStaticFiles(this.site.source);
 
-    if (this.options.verbose) {
-      logger.info(`Copying ${staticFiles.length} static files...`);
-    }
+    logger.info(`Copying ${staticFiles.length} static files...`);
 
     for (const file of staticFiles) {
       const relativePath = relative(this.site.source, file);
       const destPath = join(this.site.destination, relativePath);
 
-      // Ensure directory exists
-      mkdirSync(dirname(destPath), { recursive: true });
+      try {
+        // Ensure directory exists
+        mkdirSync(dirname(destPath), { recursive: true });
 
-      // Copy file
-      copyFileSync(file, destPath);
+        // Copy file
+        copyFileSync(file, destPath);
 
-      if (this.options.verbose) {
-        logger.info(`  - ${relativePath}`);
+        logger.debug(`Copied: ${relativePath}`);
+      } catch (error) {
+        logger.warn(`Failed to copy static file: ${relativePath}`, {
+          error: error instanceof Error ? error.message : String(error),
+        });
       }
     }
   }
@@ -447,11 +492,15 @@ export class Builder {
     if (configuredPlugins.length === 0 || configuredPlugins.includes('jekyll-sitemap')) {
       const sitemapPlugin = (this.site as any)._sitemapPlugin;
       if (sitemapPlugin) {
-        const sitemapContent = sitemapPlugin.generateSitemap(this.site);
-        const sitemapPath = join(this.site.destination, 'sitemap.xml');
-        writeFileSync(sitemapPath, sitemapContent, 'utf-8');
-        if (this.options.verbose) {
-          logger.info('Generated sitemap.xml');
+        try {
+          const sitemapContent = sitemapPlugin.generateSitemap(this.site);
+          const sitemapPath = join(this.site.destination, 'sitemap.xml');
+          writeFileSync(sitemapPath, sitemapContent, 'utf-8');
+          logger.debug('Generated sitemap.xml');
+        } catch (error) {
+          logger.warn('Failed to generate sitemap', {
+            error: error instanceof Error ? error.message : String(error),
+          });
         }
       }
     }
@@ -460,16 +509,20 @@ export class Builder {
     if (configuredPlugins.length === 0 || configuredPlugins.includes('jekyll-feed')) {
       const feedPlugin = (this.site as any)._feedPlugin;
       if (feedPlugin) {
-        const feedContent = feedPlugin.generateFeed(this.site);
-        const feedPath = this.site.config.feed?.path || '/feed.xml';
-        const feedFilePath = join(this.site.destination, feedPath.replace(/^\//, ''));
-        
-        // Ensure directory exists
-        mkdirSync(dirname(feedFilePath), { recursive: true });
-        
-        writeFileSync(feedFilePath, feedContent, 'utf-8');
-        if (this.options.verbose) {
-          logger.info(`Generated ${feedPath}`);
+        try {
+          const feedContent = feedPlugin.generateFeed(this.site);
+          const feedPath = this.site.config.feed?.path || '/feed.xml';
+          const feedFilePath = join(this.site.destination, feedPath.replace(/^\//, ''));
+          
+          // Ensure directory exists
+          mkdirSync(dirname(feedFilePath), { recursive: true });
+          
+          writeFileSync(feedFilePath, feedContent, 'utf-8');
+          logger.debug(`Generated ${feedPath}`);
+        } catch (error) {
+          logger.warn('Failed to generate feed', {
+            error: error instanceof Error ? error.message : String(error),
+          });
         }
       }
     }

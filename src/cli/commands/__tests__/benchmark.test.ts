@@ -8,12 +8,14 @@ import { join, resolve } from 'path';
  */
 describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
   const fixtureDir = resolve(__dirname, '../../../../test-fixtures/basic-site');
+  const projectRoot = resolve(__dirname, '../../../..');
   const destDirTs = join(fixtureDir, '_site-ts');
   const destDirRuby = join(fixtureDir, '_site-ruby');
   const jekyllTsBin = resolve(__dirname, '../../../../dist/cli/index.js');
 
   // Check if Ruby Jekyll is available
   let rubyJekyllAvailable = false;
+  let useBundle = false;
 
   /**
    * Helper function to clean up destination directories
@@ -28,14 +30,43 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
   };
 
   beforeAll(() => {
-    // Check if Ruby Jekyll is installed
+    // Check if Ruby Jekyll is installed (try both direct and bundle exec)
     try {
       execSync('jekyll --version', { stdio: 'pipe' });
       rubyJekyllAvailable = true;
+      useBundle = false;
       console.log('✓ Ruby Jekyll detected - will run comparison benchmark');
     } catch (error) {
-      rubyJekyllAvailable = false;
-      console.log('⚠ Ruby Jekyll not found - will only benchmark jekyll-ts');
+      // Try bundle exec jekyll (from project root where Gemfile is)
+      // Check if vendor/bundle exists (indicating bundle install was run)
+      const vendorBundlePath = join(projectRoot, 'vendor', 'bundle');
+      if (existsSync(vendorBundlePath)) {
+        try {
+          // Try to find bundle in common locations
+          const bundlePaths = [
+            `${process.env.HOME}/.local/share/gem/ruby/3.2.0/bin/bundle`,
+            'bundle'
+          ];
+          
+          for (const bundlePath of bundlePaths) {
+            try {
+              execSync(`${bundlePath} exec jekyll --version`, { stdio: 'pipe', cwd: projectRoot });
+              rubyJekyllAvailable = true;
+              useBundle = true;
+              console.log('✓ Ruby Jekyll detected via bundle - will run comparison benchmark');
+              break;
+            } catch (e) {
+              // Try next path
+            }
+          }
+        } catch (bundleError) {
+          // Continue to not available
+        }
+      }
+      
+      if (!rubyJekyllAvailable) {
+        console.log('⚠ Ruby Jekyll not found - will only benchmark jekyll-ts');
+      }
     }
 
     // Verify fixture site exists
@@ -133,10 +164,16 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
     console.log(`📊 Jekyll TS build time: ${durationTs}ms`);
 
     // Benchmark Ruby Jekyll
+    const jekyllCommand = useBundle ? 'bundle' : 'jekyll';
+    const jekyllArgs = useBundle 
+      ? ['exec', 'jekyll', 'build', '--source', fixtureDir, '--destination', destDirRuby]
+      : ['build', '--source', fixtureDir, '--destination', destDirRuby];
+    const jekyllCwd = useBundle ? projectRoot : fixtureDir;
+    
     const durationRuby = await benchmarkBuild(
-      'jekyll',
-      ['build', '--source', fixtureDir, '--destination', destDirRuby],
-      fixtureDir
+      jekyllCommand,
+      jekyllArgs,
+      jekyllCwd
     );
 
     console.log(`📊 Ruby Jekyll build time: ${durationRuby}ms`);

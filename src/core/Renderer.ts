@@ -2,6 +2,7 @@ import { Liquid } from 'liquidjs';
 import { Site } from './Site';
 import { Document } from './Document';
 import { logger } from '../utils/logger';
+import { TemplateError, MarkdownError, parseErrorLocation } from '../utils/errors';
 import { processMarkdown } from './markdown';
 import slugifyLib from 'slugify';
 import { format, parseISO, formatISO, formatRFC7231, isValid } from 'date-fns';
@@ -374,7 +375,23 @@ export class Renderer {
    * @returns Rendered output
    */
   async render(template: string, context: Record<string, any> = {}): Promise<string> {
-    return this.liquid.parseAndRender(template, context);
+    try {
+      return await this.liquid.parseAndRender(template, context);
+    } catch (error) {
+      if (error instanceof Error) {
+        // Extract line/column information if available
+        const location = parseErrorLocation(error.message);
+        
+        throw new TemplateError(
+          `Liquid template error: ${error.message}`,
+          {
+            ...location,
+            cause: error,
+          }
+        );
+      }
+      throw error;
+    }
   }
 
   /**
@@ -384,7 +401,24 @@ export class Renderer {
    * @returns Rendered output
    */
   async renderFile(filepath: string, context: Record<string, any> = {}): Promise<string> {
-    return this.liquid.renderFile(filepath, context);
+    try {
+      return await this.liquid.renderFile(filepath, context);
+    } catch (error) {
+      if (error instanceof Error) {
+        // Extract line/column information if available
+        const location = parseErrorLocation(error.message);
+        
+        throw new TemplateError(
+          `Failed to render file: ${error.message}`,
+          {
+            file: filepath,
+            ...location,
+            cause: error,
+          }
+        );
+      }
+      throw error;
+    }
   }
 
   /**
@@ -418,7 +452,21 @@ export class Renderer {
     };
 
     // First render the document content (processes Liquid tags)
-    let content = await this.render(document.content, context);
+    let content: string;
+    try {
+      content = await this.render(document.content, context);
+    } catch (error) {
+      if (error instanceof TemplateError) {
+        // Add document file information to template error
+        throw new TemplateError(error.message, {
+          file: document.relativePath,
+          line: error.line,
+          column: error.column,
+          cause: error.cause,
+        });
+      }
+      throw error;
+    }
     
     // If document is markdown, convert to HTML
     const isMarkdown = ['.md', '.markdown'].includes(document.extname.toLowerCase());
@@ -426,11 +474,13 @@ export class Renderer {
       try {
         content = await processMarkdown(content);
       } catch (err) {
-        logger.error(
-          `Error processing markdown for document '${document.relativePath}': ${err instanceof Error ? err.message : String(err)}`
+        throw new MarkdownError(
+          `Failed to process markdown: ${err instanceof Error ? err.message : String(err)}`,
+          {
+            file: document.relativePath,
+            cause: err instanceof Error ? err : undefined,
+          }
         );
-        // Fallback: return original content (unprocessed)
-        // Optionally, could set content = "" or a helpful error HTML
       }
     }
     
@@ -441,7 +491,24 @@ export class Renderer {
     if (document.layout) {
       const layout = this.site.getLayout(document.layout);
       if (layout) {
-        content = await this.renderWithLayout(content, layout, context);
+        try {
+          content = await this.renderWithLayout(content, layout, context);
+        } catch (error) {
+          if (error instanceof TemplateError) {
+            // The error already has layout context, just add document info
+            throw new TemplateError(
+              `Error rendering document with layout '${document.layout}': ${error.message}`,
+              {
+                file: document.relativePath,
+                line: error.line,
+                column: error.column,
+                templateName: document.layout,
+                cause: error.cause,
+              }
+            );
+          }
+          throw error;
+        }
       } else {
         logger.warn(
           `Layout '${document.layout}' not found for document '${document.relativePath}'. The document will be rendered without a layout.`
@@ -468,7 +535,13 @@ export class Renderer {
   ): Promise<string> {
     // Check for circular layout references
     if (visited.has(layout.basename)) {
-      throw new Error(`Circular layout reference detected: ${layout.basename}`);
+      throw new TemplateError(
+        `Circular layout reference detected: ${Array.from(visited).join(' -> ')} -> ${layout.basename}`,
+        {
+          file: layout.relativePath,
+          templateName: layout.basename,
+        }
+      );
     }
     visited.add(layout.basename);
 
@@ -476,7 +549,24 @@ export class Renderer {
     context.content = content;
 
     // Render the layout
-    let rendered = await this.render(layout.content, context);
+    let rendered: string;
+    try {
+      rendered = await this.render(layout.content, context);
+    } catch (error) {
+      if (error instanceof TemplateError) {
+        throw new TemplateError(
+          error.message,
+          {
+            file: layout.relativePath,
+            line: error.line,
+            column: error.column,
+            templateName: layout.basename,
+            cause: error.cause,
+          }
+        );
+      }
+      throw error;
+    }
 
     // If the layout itself has a layout, recursively render
     if (layout.layout) {

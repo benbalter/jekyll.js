@@ -37,34 +37,14 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
       useBundle = false;
       console.log('✓ Ruby Jekyll detected - will run comparison benchmark');
     } catch (error) {
-      // Try bundle exec jekyll (from project root where Gemfile is)
-      // Check if vendor/bundle exists (indicating bundle install was run)
-      const vendorBundlePath = join(projectRoot, 'vendor', 'bundle');
-      if (existsSync(vendorBundlePath)) {
-        try {
-          // Try to find bundle in common locations
-          const bundlePaths = [
-            `${process.env.HOME}/.local/share/gem/ruby/3.2.0/bin/bundle`,
-            'bundle'
-          ];
-          
-          for (const bundlePath of bundlePaths) {
-            try {
-              execSync(`${bundlePath} exec jekyll --version`, { stdio: 'pipe', cwd: projectRoot });
-              rubyJekyllAvailable = true;
-              useBundle = true;
-              console.log('✓ Ruby Jekyll detected via bundle - will run comparison benchmark');
-              break;
-            } catch (e) {
-              // Try next path
-            }
-          }
-        } catch (bundleError) {
-          // Continue to not available
-        }
-      }
-      
-      if (!rubyJekyllAvailable) {
+      // Try bundle exec jekyll (CI uses bundler-cache which makes bundle available)
+      try {
+        execSync('bundle exec jekyll --version', { stdio: 'pipe', cwd: projectRoot });
+        rubyJekyllAvailable = true;
+        useBundle = true;
+        console.log('✓ Ruby Jekyll detected via bundle - will run comparison benchmark');
+      } catch (bundleError) {
+        rubyJekyllAvailable = false;
         console.log('⚠ Ruby Jekyll not found - will only benchmark jekyll-ts');
       }
     }

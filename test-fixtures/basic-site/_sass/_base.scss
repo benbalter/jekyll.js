@@ -1,0 +1,30 @@
+// Base styles
+body {
+  font-family: $font-family;
+  font-size: $base-font-size;
+  line-height: $line-height;
+  color: #333;
+  margin: 0;
+  padding: 20px;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: $primary-color;
+  margin-top: 1em;
+  margin-bottom: 0.5em;
+}
+
+a {
+  color: $primary-color;
+  text-decoration: none;
+  
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 15px;
+}

@@ -104,11 +104,33 @@ The Renderer includes the following Jekyll-compatible tags:
 
 ### Include Tag
 
-Use the built-in `include` tag to include partials:
+Use the built-in `include` tag to include partials from the `_includes` directory:
 
 ```liquid
 {% include header.html %}
 {% include footer.html title="My Footer" %}
+```
+
+### Include Relative Tag
+
+Include a file relative to the current file (not from `_includes`):
+
+```liquid
+{% include_relative ../shared/sidebar.html %}
+{% include_relative ./fragments/metadata.md %}
+```
+
+This is useful for including files that are organized alongside your content rather than in the `_includes` directory.
+
+### Raw Tag
+
+Disable Liquid processing for a block of content (built into liquidjs):
+
+```liquid
+{% raw %}
+{{ This will not be processed }}
+{% if true %}This will not be evaluated{% endif %}
+{% endraw %}
 ```
 
 ### Highlight Tag
@@ -266,6 +288,9 @@ The Renderer aims for compatibility with Jekyll 4.x Liquid templates. Most commo
 - Basic array filters (where, group_by)
 - String manipulation filters (including `markdownify` using `markdown-it`)
 - Include tag
+- Include relative tag
+- Raw tag (via liquidjs)
+- Highlight tag
 - Layout rendering
 
 ### Simplified/Partial Support

@@ -366,6 +366,54 @@ export class Renderer {
         return `/${this.postName}`;
       },
     });
+
+    // include_relative tag - includes file relative to current file
+    this.liquid.registerTag('include_relative', {
+      parse(token: any) {
+        // Parse the file path from arguments
+        // Support both quoted and unquoted paths
+        const args = token.args.trim();
+        const match = args.match(/^["']?([^"'\s]+)["']?/);
+        if (!match) {
+          throw new Error('include_relative tag requires a file path argument');
+        }
+        // Sanitize path to prevent directory traversal attacks
+        this.includePath = match[1].replace(/\.\./g, '');
+      },
+      render: async function (ctx: any, emitter: any) {
+        try {
+          // Get the current page path from context
+          const page = ctx.environments?.page || ctx.page || ctx.scopes?.[0]?.page;
+          if (!page || !page.path) {
+            throw new Error('include_relative: current page path not found in context');
+          }
+
+          // Get the directory of the current page
+          const { dirname, join, resolve } = await import('path');
+          const { readFileSync } = await import('fs');
+          
+          // Resolve the include path relative to the current page's directory
+          const pagePath = page.path;
+          const pageDir = dirname(pagePath);
+          const relativePath = join(pageDir, this.includePath);
+          
+          // Resolve to absolute path using site source
+          const site = ctx.environments?.site || ctx.site || ctx.scopes?.[0]?.site;
+          const sourcePath = site?.source || '.';
+          const absolutePath = resolve(sourcePath, relativePath);
+          
+          // Read and render the file
+          const content = readFileSync(absolutePath, 'utf-8');
+          
+          // Render the included content with the current context
+          const html = await this.liquid.parseAndRender(content, ctx);
+          emitter.write(html);
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          throw new Error(`include_relative: Failed to include '${this.includePath}': ${errorMessage}`);
+        }
+      },
+    });
   }
 
   /**

@@ -441,4 +441,59 @@ Content`
       await expect(renderer.renderDocument(doc)).rejects.toThrow('Circular layout reference detected');
     });
   });
+
+  describe('Jekyll tags', () => {
+    beforeEach(() => {
+      site = new Site(testDir);
+    });
+
+    it('should support raw tag (liquidjs built-in)', async () => {
+      const renderer = new Renderer(site);
+      const template = '{% raw %}{{ this should not be processed }}{% endraw %}';
+      const result = await renderer.render(template, {});
+      expect(result).toBe('{{ this should not be processed }}');
+    });
+
+    it('should support include_relative tag', async () => {
+      // Create a test file to include
+      const includeDir = join(testDir, 'includes-test');
+      mkdirSync(includeDir, { recursive: true });
+      writeFileSync(
+        join(includeDir, 'relative-include.md'),
+        'This is relative content: {{ message }}'
+      );
+
+      // Create main page that uses include_relative
+      const pagePath = join(includeDir, 'page.md');
+      writeFileSync(
+        pagePath,
+        `---
+title: Test Page
+---
+Main content
+{% include_relative relative-include.md %}`
+      );
+
+      await site.read();
+
+      const doc = new Document(pagePath, testDir, DocumentType.PAGE);
+      const renderer = new Renderer(site);
+      
+      // Render with context
+      const context = {
+        page: {
+          ...doc.data,
+          path: doc.relativePath,
+        },
+        site: {
+          source: testDir,
+        },
+        message: 'Hello World',
+      };
+      
+      const result = await renderer.render(doc.content, context);
+      expect(result).toContain('Main content');
+      expect(result).toContain('This is relative content: Hello World');
+    });
+  });
 });

@@ -1,6 +1,8 @@
 import chalk from 'chalk';
-import { resolve, join } from 'path';
+import { resolve, join, dirname } from 'path';
 import { loadConfig, validateConfig, printValidation } from '../../config';
+import { Site, Builder } from '../../core';
+import { DevServer } from '../../server';
 
 interface ServeOptions {
   source: string;
@@ -63,22 +65,56 @@ export async function serveCommand(options: ServeOptions): Promise<void> {
 
     // Build the site first
     console.log(chalk.green('\nBuilding site...'));
-    // TODO: Call actual build logic
+    
+    // Determine source directory
+    const sourcePath = config.source 
+      ? resolve(config.source)
+      : dirname(resolve(configPath));
+    
+    // Update config with final paths
+    config.source = sourcePath;
+    config.destination = destPath;
+    
+    // Create site and builder
+    const site = new Site(sourcePath, config);
+    const builder = new Builder(site, {
+      showDrafts: options.drafts,
+      showFuture: options.future,
+      clean: true,
+      verbose: options.verbose,
+    });
+    
+    // Build the site
+    await builder.build();
+    
     console.log(chalk.green('✓'), 'Site built successfully!');
+    console.log('  Output:', destPath);
     
-    // Start the server
-    console.log(chalk.green('Starting server...'));
-    console.log(chalk.green('✓'), `Server running at http://${host}:${port}/`);
-    console.log(chalk.gray('  Press Ctrl+C to stop'));
+    // Start the development server
+    console.log(chalk.green('\nStarting server...'));
     
-    // TODO: Implement actual server
-    // - Serve static files from destination
-    // - Watch for file changes
-    // - Rebuild on changes
-    // - LiveReload support
+    const server = new DevServer({
+      port,
+      host,
+      destination: destPath,
+      source: sourcePath,
+      livereload: config.livereload,
+      site,
+      builder,
+      verbose: options.verbose,
+    });
     
-    // Keep process alive
-    await new Promise(() => {}); // eslint-disable-line @typescript-eslint/no-unused-vars
+    await server.start();
+    
+    // Handle graceful shutdown
+    const shutdown = async () => {
+      console.log(chalk.yellow('\n\nShutting down...'));
+      await server.stop();
+      process.exit(0);
+    };
+    
+    process.on('SIGINT', shutdown);
+    process.on('SIGTERM', shutdown);
   } catch (error) {
     if (error instanceof Error) {
       console.error(chalk.red('\nServer failed:'), error.message);

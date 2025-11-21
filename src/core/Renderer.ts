@@ -406,7 +406,9 @@ export class Renderer {
     this.liquid.registerFilter('strip_html', (input: string) => {
       if (!input) return '';
       // Simple HTML tag removal matching Jekyll's behavior
-      // Note: This is not for security purposes - input should already be sanitized
+      // SECURITY NOTE: This filter is for display purposes only (e.g., creating text excerpts)
+      // and is NOT a security sanitization function. Content should be sanitized before
+      // reaching templates. This matches Ruby Jekyll's strip_html which also uses simple regex.
       return String(input).replace(/<[^>]*>/g, '');
     });
 

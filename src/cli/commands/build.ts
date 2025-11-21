@@ -2,6 +2,7 @@ import chalk from 'chalk';
 import { resolve, join, dirname } from 'path';
 import { loadConfig, validateConfig, printValidation } from '../../config';
 import { Site, Builder } from '../../core';
+import { logger } from '../../utils/logger';
 
 interface BuildOptions {
   source: string;
@@ -18,9 +19,14 @@ interface BuildOptions {
  * Generates the static site from source to destination
  */
 export async function buildCommand(options: BuildOptions): Promise<void> {
+  // Configure logger
+  logger.setVerbose(options.verbose || false);
+  
   try {
     // Load configuration from file
     const configPath = resolve(options.config);
+    
+    logger.debug('Loading configuration', { path: configPath });
     const config = loadConfig(configPath, options.verbose);
     
     // Validate configuration
@@ -48,7 +54,7 @@ export async function buildCommand(options: BuildOptions): Promise<void> {
     }
     
     if (options.verbose) {
-      console.log(chalk.blue('\nFinal configuration:'));
+      logger.section('Configuration');
       console.log('  Source:', config.source);
       console.log('  Destination:', destPath);
       console.log('  Config file:', configPath);
@@ -56,8 +62,6 @@ export async function buildCommand(options: BuildOptions): Promise<void> {
       if (config.future) console.log('  Future:', 'enabled');
       if (config.watch) console.log('  Watch:', 'enabled');
     }
-
-    console.log(chalk.green('\nBuilding site...'));
     
     // Determine source directory
     const sourcePath = config.source 
@@ -80,7 +84,7 @@ export async function buildCommand(options: BuildOptions): Promise<void> {
     // Build the site
     await builder.build();
     
-    console.log(chalk.green('✓'), 'Site built successfully!');
+    logger.success('Site built successfully!');
     console.log('  Output:', destPath);
     
     if (config.watch) {
@@ -91,12 +95,7 @@ export async function buildCommand(options: BuildOptions): Promise<void> {
       await new Promise(() => {}); // eslint-disable-line @typescript-eslint/no-unused-vars
     }
   } catch (error) {
-    if (error instanceof Error) {
-      console.error(chalk.red('\nBuild failed:'), error.message);
-      if (options.verbose && error.stack) {
-        console.error(error.stack);
-      }
-    }
-    throw error;
+    logger.logError(error instanceof Error ? error : new Error(String(error)));
+    process.exit(1);
   }
 }

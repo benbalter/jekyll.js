@@ -1,6 +1,7 @@
 import { readFileSync, statSync } from 'fs';
 import { basename, extname, relative } from 'path';
 import matter from 'gray-matter';
+import { FrontMatterError, FileSystemError } from '../utils/errors';
 
 /**
  * Document type enum
@@ -76,15 +77,44 @@ export class Document {
     this.basename = basename(path, this.extname);
 
     // Get file stats
-    const stats = statSync(path);
-    this.mtime = stats.mtime;
+    try {
+      const stats = statSync(path);
+      this.mtime = stats.mtime;
+    } catch (error) {
+      throw new FileSystemError(`Failed to read file stats`, {
+        file: this.relativePath,
+        cause: error instanceof Error ? error : undefined,
+      });
+    }
 
     // Parse the file
-    const fileContent = readFileSync(path, 'utf-8');
-    const parsed = matter(fileContent);
+    try {
+      const fileContent = readFileSync(path, 'utf-8');
+      const parsed = matter(fileContent);
 
-    this.data = parsed.data;
-    this.content = parsed.content;
+      this.data = parsed.data;
+      this.content = parsed.content;
+    } catch (error) {
+      if (error instanceof Error) {
+        // Check if it's a YAML parsing error (from js-yaml via gray-matter)
+        if ((error as any).name === 'YAMLException') {
+          throw new FrontMatterError(
+            `Failed to parse front matter: ${error.message}`,
+            {
+              file: this.relativePath,
+              cause: error,
+            }
+          );
+        }
+        
+        // Generic file read error
+        throw new FileSystemError(`Failed to read file: ${error.message}`, {
+          file: this.relativePath,
+          cause: error,
+        });
+      }
+      throw error;
+    }
   }
 
   /**

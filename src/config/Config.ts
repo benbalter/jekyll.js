@@ -8,6 +8,7 @@ import { readFileSync, existsSync } from 'fs';
 import { resolve, dirname, join, relative, isAbsolute } from 'path';
 import yaml from 'js-yaml';
 import chalk from 'chalk';
+import { ConfigError } from '../utils/errors';
 
 /**
  * Jekyll configuration interface
@@ -155,7 +156,9 @@ export function loadConfig(
     const config = yaml.load(fileContent) as JekyllConfig;
     
     if (!config || typeof config !== 'object') {
-      throw new Error('Configuration file is empty or invalid');
+      throw new ConfigError('Configuration file is empty or invalid', {
+        file: resolvedPath,
+      });
     }
     
     // Merge with defaults
@@ -167,8 +170,27 @@ export function loadConfig(
     
     return mergedConfig;
   } catch (error) {
+    if (error instanceof ConfigError) {
+      throw error;
+    }
+    
     if (error instanceof Error) {
-      throw new Error(`Failed to parse configuration file: ${error.message}`);
+      // Check if it's a YAML parsing error
+      if (error.message.includes('can not read') || 
+          error.message.includes('duplicated mapping key') ||
+          error.message.includes('unexpected') ||
+          error.name === 'YAMLException') {
+        throw new ConfigError(`Failed to parse configuration file: ${error.message}`, {
+          file: resolvedPath,
+          cause: error,
+        });
+      }
+      
+      // Generic file read error
+      throw new ConfigError(`Failed to read configuration file: ${error.message}`, {
+        file: resolvedPath,
+        cause: error,
+      });
     }
     throw error;
   }

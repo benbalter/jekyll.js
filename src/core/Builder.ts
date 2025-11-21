@@ -430,7 +430,7 @@ export class Builder {
         // delimiters (---), the content will differ from the original file content.
         // This approach correctly identifies both empty front matter (---\n---) and
         // front matter with data, while skipping files with no delimiters at all.
-        const hasFrontMatter = parsed.content !== fileContent;
+        const hasFrontMatter = fileContent.trimStart().startsWith('---');
         if (!hasFrontMatter) {
           logger.debug(`Skipping ${relative(this.site.source, file)} (no front matter)`);
           continue;

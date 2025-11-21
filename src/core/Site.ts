@@ -1,7 +1,8 @@
-import { existsSync, readdirSync, statSync } from 'fs';
-import { join, resolve, extname, dirname } from 'path';
+import { existsSync, readdirSync, statSync, readFileSync } from 'fs';
+import { join, resolve, extname, dirname, basename } from 'path';
 import { Document, DocumentType } from './Document';
 import { JekyllConfig, loadConfig } from '../config';
+import yaml from 'js-yaml';
 
 /**
  * Site configuration interface
@@ -58,6 +59,9 @@ export class Site {
   /** Static files (non-Jekyll files) */
   public readonly staticFiles: string[] = [];
 
+  /** Data files from _data directory */
+  public data: Record<string, any> = {};
+
   /**
    * Create a new Site
    * @param source Source directory path
@@ -99,6 +103,9 @@ export class Site {
 
     // Read includes
     this.readIncludes();
+
+    // Read data files
+    this.readData();
 
     // Read posts
     this.readPosts();
@@ -142,6 +149,96 @@ export class Site {
       this.includes.set(relativePath, doc);
     }
   }
+
+  /**
+   * Read all data files from _data directory
+   */
+  private readData(): void {
+    const dataDir = join(this.source, this.config.data_dir || '_data');
+    if (!existsSync(dataDir)) {
+      return;
+    }
+
+    this.data = this.readDataDirectory(dataDir, dataDir);
+  }
+
+  /**
+   * Recursively read data files from a directory
+   * @param dir Directory to read
+   * @param baseDir Base data directory for computing relative paths
+   * @returns Object containing parsed data files
+   */
+  private readDataDirectory(dir: string, baseDir: string): Record<string, any> {
+    const data: Record<string, any> = {};
+
+    if (!existsSync(dir)) {
+      return data;
+    }
+
+    const entries = readdirSync(dir);
+
+    for (const entry of entries) {
+      const fullPath = join(dir, entry);
+      const stats = statSync(fullPath);
+
+      if (stats.isDirectory()) {
+        // Skip excluded directories
+        if (this.shouldExclude(fullPath)) {
+          continue;
+        }
+
+        // Recursively read subdirectory
+        const subData = this.readDataDirectory(fullPath, baseDir);
+        if (Object.keys(subData).length > 0) {
+          data[entry] = subData;
+        }
+      } else if (stats.isFile()) {
+        // Skip excluded files
+        if (this.shouldExclude(fullPath)) {
+          continue;
+        }
+
+        // Parse data file
+        const parsedData = this.parseDataFile(fullPath);
+        if (parsedData !== null) {
+          // Use filename without extension as key
+          const key = basename(entry, extname(entry));
+          data[key] = parsedData;
+        }
+      }
+    }
+
+    return data;
+  }
+
+  /**
+   * Parse a data file (YAML, JSON, etc.)
+   * @param filePath Path to the data file
+   * @returns Parsed data or null if file cannot be parsed
+   */
+  private parseDataFile(filePath: string): any {
+    const ext = extname(filePath).toLowerCase();
+
+    try {
+      const content = readFileSync(filePath, 'utf-8');
+
+      switch (ext) {
+        case '.yml':
+        case '.yaml':
+          return yaml.load(content);
+        case '.json':
+          return JSON.parse(content);
+        // CSV and TSV can be added in the future
+        default:
+          return null;
+      }
+    } catch (error) {
+      // Log error but don't fail the build
+      console.warn(`Warning: Failed to parse data file ${filePath}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      return null;
+    }
+  }
+
 
   /**
    * Read all posts from _posts directory
@@ -356,6 +453,7 @@ export class Site {
       config: this.config,
       source: this.source,
       destination: this.destination,
+      data: this.data,
       pages: this.pages.map((p) => p.toJSON()),
       posts: this.posts.map((p) => p.toJSON()),
       collections: Object.fromEntries(

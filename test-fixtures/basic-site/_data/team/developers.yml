@@ -1,0 +1,9 @@
+lead:
+  name: Alice Johnson
+  github: alice-dev
+  
+members:
+  - name: Dan Lee
+    github: dan-codes
+  - name: Eva Martinez
+    github: eva-dev

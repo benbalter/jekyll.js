@@ -1,12 +1,12 @@
 import { createServer, IncomingMessage, ServerResponse, Server as HttpServer } from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
-import { watch, FSWatcher } from 'chokidar';
-import { resolve, join, extname, relative } from 'path';
+import { resolve, join, extname } from 'path';
 import { readFile, stat } from 'fs/promises';
 import chalk from 'chalk';
 import { lookup as mimeTypeLookup } from 'mime-types';
 import { Builder } from '../core';
 import { Site } from '../core';
+import { FileWatcher } from '../utils/watcher';
 
 export interface DevServerOptions {
   /**
@@ -61,9 +61,8 @@ export interface DevServerOptions {
 export class DevServer {
   private httpServer: HttpServer | null = null;
   private wsServer: WebSocketServer | null = null;
-  private watcher: FSWatcher | null = null;
+  private fileWatcher: FileWatcher | null = null;
   private clients: Set<WebSocket> = new Set();
-  private isRebuilding = false;
 
   constructor(private options: DevServerOptions) {}
 
@@ -118,9 +117,9 @@ export class DevServer {
     }
 
     // Close file watcher
-    if (this.watcher) {
-      await this.watcher.close();
-      this.watcher = null;
+    if (this.fileWatcher) {
+      await this.fileWatcher.stop();
+      this.fileWatcher = null;
     }
 
     // Close HTTP server
@@ -161,58 +160,20 @@ export class DevServer {
    * Start watching source files for changes
    */
   private startWatcher(): void {
-    // Watch source directory, excluding destination
-    const destRelative = relative(this.options.source, this.options.destination);
-    
-    this.watcher = watch(this.options.source, {
-      ignored: [
-        destRelative,
-        '**/node_modules/**',
-        '**/.git/**',
-        '**/.DS_Store',
-      ],
-      persistent: true,
-      ignoreInitial: true,
+    this.fileWatcher = new FileWatcher({
+      source: this.options.source,
+      destination: this.options.destination,
+      builder: this.options.builder,
+      verbose: this.options.verbose,
+      onRebuild: () => {
+        // Notify clients to reload after rebuild
+        if (this.options.livereload) {
+          this.notifyReload();
+        }
+      },
     });
 
-    this.watcher
-      .on('add', (path) => this.handleFileChange('added', path))
-      .on('change', (path) => this.handleFileChange('changed', path))
-      .on('unlink', (path) => this.handleFileChange('deleted', path));
-
-    console.log(chalk.yellow('Watching for changes...'));
-  }
-
-  /**
-   * Handle file changes
-   */
-  private async handleFileChange(event: string, filepath: string): Promise<void> {
-    if (this.isRebuilding) {
-      return; // Skip if already rebuilding
-    }
-
-    const relativePath = relative(this.options.source, filepath);
-    console.log(chalk.gray(`[${event}] ${relativePath}`));
-
-    this.isRebuilding = true;
-
-    try {
-      // Rebuild the site
-      console.log(chalk.yellow('Rebuilding...'));
-      await this.options.builder.build();
-      console.log(chalk.green('✓'), 'Site rebuilt');
-
-      // Notify clients to reload
-      if (this.options.livereload) {
-        this.notifyReload();
-      }
-    } catch (error) {
-      if (error instanceof Error) {
-        console.error(chalk.red('Build error:'), error.message);
-      }
-    } finally {
-      this.isRebuilding = false;
-    }
+    this.fileWatcher.start();
   }
 
   /**

@@ -12,6 +12,11 @@ collections:
 markdown: kramdown
 permalink: /:categories/:year/:month/:day/:title.html
 
+# SASS/SCSS settings
+sass:
+  style: compressed
+  sass_dir: _sass
+
 # Exclude directories
 exclude:
   - node_modules

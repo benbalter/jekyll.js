@@ -7,6 +7,25 @@
   "bin": {
     "jekyll-ts": "dist/cli/index.js"
   },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/benbalter/jekyll.js.git"
+  },
+  "homepage": "https://github.com/benbalter/jekyll.js#readme",
+  "bugs": {
+    "url": "https://github.com/benbalter/jekyll.js/issues"
+  },
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
@@ -49,7 +68,7 @@
     "ws": "^8.18.3"
   },
   "devDependencies": {
-    "@types/jest": "^29.5.11",
+    "@types/jest": "30.0.0",
     "@types/js-yaml": "^4.0.9",
     "@types/lodash.merge": "^4.6.9",
     "@types/markdown-it": "^14.1.2",
@@ -60,7 +79,7 @@
     "@typescript-eslint/eslint-plugin": "8.47.0",
     "@typescript-eslint/parser": "8.47.0",
     "eslint": "9.39.1",
-    "jest": "^29.7.0",
+    "jest": "30.2.0",
     "ts-jest": "^29.1.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3"

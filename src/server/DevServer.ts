@@ -231,7 +231,7 @@ export class DevServer {
       });
 
       res.end(responseContent);
-    } catch (error) {
+    } catch (_error) {
       // File not found or other error
       this.send404(res, req.url || '/');
     }

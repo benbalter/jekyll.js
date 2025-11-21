@@ -1,9 +1,10 @@
 import { SassProcessor } from '../SassProcessor';
 import { mkdirSync, writeFileSync, rmSync, existsSync } from 'fs';
 import { join } from 'path';
+import * as os from 'os';
 
-describe('SassProcessor', () => {
-  const testDir = join(__dirname, '../../..', 'tmp', 'sass-test');
+  // Use a truly isolated temp directory for each test run
+  const testDir = join(os.tmpdir(), 'jekyll-ts-sass-test-' + Date.now() + '-' + Math.random().toString(36).slice(2));
   const sassDir = join(testDir, '_sass');
 
   beforeEach(() => {

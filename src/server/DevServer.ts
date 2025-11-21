@@ -275,18 +275,18 @@ export class DevServer {
       const ext = extname(filepath);
       const mimeType = MIME_TYPES[ext] || 'application/octet-stream';
 
+      // Inject live reload script for HTML files
+      let responseContent: Buffer | string = content;
+      if (this.options.livereload && ext === '.html') {
+        responseContent = this.injectLiveReloadScript(content.toString());
+      }
+
       res.writeHead(200, {
         'Content-Type': mimeType,
-        'Content-Length': content.length,
+        'Content-Length': Buffer.byteLength(responseContent),
       });
 
-      // Inject live reload script for HTML files
-      if (this.options.livereload && ext === '.html') {
-        const injected = this.injectLiveReloadScript(content.toString());
-        res.end(injected);
-      } else {
-        res.end(content);
-      }
+      res.end(responseContent);
     } catch (error) {
       // File not found or other error
       this.send404(res, req.url || '/');

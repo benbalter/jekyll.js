@@ -101,10 +101,10 @@ This roadmap outlines the development timeline for jekyll.js to achieve full com
   - Partial regeneration
   - Build cache
 
-- [ ] **Additional Liquid Tags**
-  - `{% raw %}` tag
+- [x] **Additional Liquid Tags**
+  - `{% raw %}` tag (built into liquidjs)
   - `{% include_relative %}` tag
-  - Custom block tags support
+  - Custom block tags support (future)
 
 ### Success Criteria
 - ✅ Pagination works with common blog layouts

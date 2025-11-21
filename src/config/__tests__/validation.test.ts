@@ -8,7 +8,6 @@ import {
   getDefaultConfig,
   mergeAndValidateConfig,
   validatePartialConfig,
-  JekyllConfigSchema,
 } from '../validation';
 
 describe('Config Validation', () => {

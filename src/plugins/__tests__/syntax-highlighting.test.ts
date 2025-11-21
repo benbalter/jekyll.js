@@ -2,6 +2,23 @@
  * Tests for modern syntax highlighting with Shiki
  */
 
+// Mock shiki to avoid ESM module issues in Jest
+jest.mock('shiki', () => ({
+  getHighlighter: jest.fn().mockResolvedValue({
+    codeToHtml: jest.fn((code: string, _options: any) => {
+      // Simple HTML escaping for the mock
+      const escaped = code
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+      return `<pre class="shiki"><code>${escaped}</code></pre>`;
+    }),
+    getLoadedLanguages: jest.fn(() => ['javascript', 'typescript']),
+  }),
+}));
+
 import {
   highlightCode,
   isLanguageSupported,

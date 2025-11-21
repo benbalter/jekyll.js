@@ -4,6 +4,7 @@ import { watch, FSWatcher } from 'chokidar';
 import { resolve, join, extname, relative } from 'path';
 import { readFile, stat } from 'fs/promises';
 import chalk from 'chalk';
+import { lookup as mimeTypeLookup } from 'mime-types';
 import { Builder } from '../core';
 import { Site } from '../core';
 
@@ -50,27 +51,9 @@ export interface DevServerOptions {
 }
 
 /**
- * MIME types for common file extensions
+ * MIME type lookup is now handled by the 'mime-types' library
+ * which maintains a comprehensive database of MIME types
  */
-const MIME_TYPES: Record<string, string> = {
-  '.html': 'text/html',
-  '.css': 'text/css',
-  '.js': 'application/javascript',
-  '.json': 'application/json',
-  '.png': 'image/png',
-  '.jpg': 'image/jpeg',
-  '.jpeg': 'image/jpeg',
-  '.gif': 'image/gif',
-  '.svg': 'image/svg+xml',
-  '.ico': 'image/x-icon',
-  '.xml': 'application/xml',
-  '.txt': 'text/plain',
-  '.md': 'text/markdown',
-  '.woff': 'font/woff',
-  '.woff2': 'font/woff2',
-  '.ttf': 'font/ttf',
-  '.eot': 'application/vnd.ms-fontobject',
-};
 
 /**
  * Development server with static file serving, file watching, and live reload
@@ -273,7 +256,7 @@ export class DevServer {
       // Read and serve file
       const content = await readFile(filepath);
       const ext = extname(filepath);
-      const mimeType = MIME_TYPES[ext] || 'application/octet-stream';
+      const mimeType = mimeTypeLookup(filepath) || 'application/octet-stream';
 
       // Inject live reload script for HTML files
       let responseContent: Buffer | string = content;

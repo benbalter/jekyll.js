@@ -1,13 +1,14 @@
 /**
  * Configuration module for Jekyll.js
  * 
- * Dependencies: js-yaml, chalk (defined in package.json)
+ * Dependencies: js-yaml, chalk, lodash.merge (defined in package.json)
  */
 
 import { readFileSync, existsSync } from 'fs';
 import { resolve, dirname, join, relative, isAbsolute } from 'path';
 import yaml from 'js-yaml';
 import chalk from 'chalk';
+import merge from 'lodash.merge';
 
 /**
  * Jekyll configuration interface
@@ -279,6 +280,7 @@ export function getDefaultConfig(sourcePath: string = '.'): JekyllConfig {
 
 /**
  * Merge user configuration with defaults
+ * Uses lodash.merge for deep merging of nested configuration objects
  * @param userConfig User-provided configuration
  * @param sourcePath Source directory path
  * @returns Merged configuration
@@ -289,36 +291,32 @@ export function mergeWithDefaults(
 ): JekyllConfig {
   const defaults = getDefaultConfig(sourcePath);
   
-  // Deep merge exclude arrays
+  // Use lodash.merge for deep merging - it handles nested objects properly
+  const merged = merge({}, defaults, userConfig);
+  
+  // Handle exclude array specially - we want to combine and deduplicate
   const mergedExclude = [
     ...(defaults.exclude || []),
     ...(userConfig.exclude || []),
   ];
-  
-  // Remove duplicates from exclude list
   const uniqueExclude = Array.from(new Set(mergedExclude));
+  merged.exclude = uniqueExclude;
   
   // Resolve source path - if absolute, use as-is; if relative, resolve from sourcePath (config dir)
-  const resolvedSource = userConfig.source
+  merged.source = userConfig.source
     ? isAbsolute(userConfig.source)
       ? resolve(userConfig.source)
       : resolve(sourcePath, userConfig.source)
     : defaults.source!;
   
   // Resolve destination path - if absolute, use as-is; if relative, resolve from sourcePath (config dir)
-  const resolvedDestination = userConfig.destination
+  merged.destination = userConfig.destination
     ? isAbsolute(userConfig.destination)
       ? resolve(userConfig.destination)
       : resolve(sourcePath, userConfig.destination)
     : defaults.destination!;
   
-  return {
-    ...defaults,
-    ...userConfig,
-    exclude: uniqueExclude,
-    source: resolvedSource,
-    destination: resolvedDestination,
-  };
+  return merged;
 }
 
 /**

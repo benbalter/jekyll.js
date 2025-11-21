@@ -136,7 +136,7 @@ If Ruby Jekyll is not installed, the benchmark will only measure Jekyll TS perfo
 
 To enable side-by-side comparison with Ruby Jekyll:
 
-1. Install Ruby (version 3.0 or higher recommended)
+1. Install Ruby (version 3.2 or higher recommended)
 2. Install dependencies:
    ```bash
    bundle install

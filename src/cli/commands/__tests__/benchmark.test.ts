@@ -15,6 +15,18 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
   // Check if Ruby Jekyll is available
   let rubyJekyllAvailable = false;
 
+  /**
+   * Helper function to clean up destination directories
+   */
+  const cleanupDirs = () => {
+    if (existsSync(destDirTs)) {
+      rmSync(destDirTs, { recursive: true, force: true });
+    }
+    if (existsSync(destDirRuby)) {
+      rmSync(destDirRuby, { recursive: true, force: true });
+    }
+  };
+
   beforeAll(() => {
     // Check if Ruby Jekyll is installed
     try {
@@ -34,23 +46,11 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
   });
 
   beforeEach(() => {
-    // Clean up destination directories
-    if (existsSync(destDirTs)) {
-      rmSync(destDirTs, { recursive: true, force: true });
-    }
-    if (existsSync(destDirRuby)) {
-      rmSync(destDirRuby, { recursive: true, force: true });
-    }
+    cleanupDirs();
   });
 
   afterEach(() => {
-    // Clean up destination directories
-    if (existsSync(destDirTs)) {
-      rmSync(destDirTs, { recursive: true, force: true });
-    }
-    if (existsSync(destDirRuby)) {
-      rmSync(destDirRuby, { recursive: true, force: true });
-    }
+    cleanupDirs();
   });
 
   /**
@@ -139,7 +139,9 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
 
     // Calculate comparison
     const difference = durationTs - durationRuby;
-    const percentageDiff = ((difference / durationRuby) * 100).toFixed(2);
+    const percentageDiff = durationRuby > 0 
+      ? ((difference / durationRuby) * 100).toFixed(2)
+      : '0.00';
 
     console.log('\n📈 Comparison:');
     if (durationTs < durationRuby) {
@@ -163,9 +165,7 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
 
     for (let i = 0; i < runs; i++) {
       // Clean up before each run
-      if (existsSync(destDirTs)) {
-        rmSync(destDirTs, { recursive: true, force: true });
-      }
+      cleanupDirs();
 
       const duration = await benchmarkBuild(
         'node',

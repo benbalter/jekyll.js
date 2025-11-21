@@ -522,6 +522,66 @@ Site: {{ site.config.title }}`
 
       expect(result).toContain('Site: My Site');
     });
+
+    it('should have access to data files in templates', async () => {
+      // Create data directory and files
+      const dataDir = join(testDir, '_data');
+      mkdirSync(dataDir, { recursive: true });
+      writeFileSync(dataDir + '/author.yml', 'name: John Doe\nemail: john@example.com');
+      writeFileSync(dataDir + '/settings.json', '{"theme": "dark", "version": "1.0"}');
+
+      site = new Site(testDir);
+      await site.read();
+
+      const docPath = join(testDir, 'test.md');
+      writeFileSync(
+        docPath,
+        `---
+title: Test Page
+---
+Author: {{ site.data.author.name }}
+Email: {{ site.data.author.email }}
+Theme: {{ site.data.settings.theme }}
+Version: {{ site.data.settings.version }}`
+      );
+
+      const doc = new Document(docPath, testDir, DocumentType.PAGE);
+      const renderer = new Renderer(site);
+      const result = await renderer.renderDocument(doc);
+
+      expect(result).toContain('Author: John Doe');
+      expect(result).toContain('Email: john@example.com');
+      expect(result).toContain('Theme: dark');
+      expect(result).toContain('Version: 1.0');
+    });
+
+    it('should have access to nested data files in templates', async () => {
+      // Create nested data directory structure
+      const dataDir = join(testDir, '_data');
+      const teamDir = join(dataDir, 'team');
+      mkdirSync(teamDir, { recursive: true });
+      writeFileSync(teamDir + '/developers.yml', 'lead: Alice\ncount: 5');
+
+      site = new Site(testDir);
+      await site.read();
+
+      const docPath = join(testDir, 'test.md');
+      writeFileSync(
+        docPath,
+        `---
+title: Test Page
+---
+Team Lead: {{ site.data.team.developers.lead }}
+Team Size: {{ site.data.team.developers.count }}`
+      );
+
+      const doc = new Document(docPath, testDir, DocumentType.PAGE);
+      const renderer = new Renderer(site);
+      const result = await renderer.renderDocument(doc);
+
+      expect(result).toContain('Team Lead: Alice');
+      expect(result).toContain('Team Size: 5');
+    });
   });
 
   describe('custom filters and tags', () => {

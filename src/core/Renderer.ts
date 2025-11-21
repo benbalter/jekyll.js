@@ -15,11 +15,11 @@ export interface RendererOptions {
   /** Root directory for includes */
   root?: string;
   
-  /** Layout directory */
-  layoutsDir?: string;
+  /** Layout directory (or array of directories) */
+  layoutsDir?: string | string[];
   
-  /** Includes directory */
-  includesDir?: string;
+  /** Includes directory (or array of directories) */
+  includesDir?: string | string[];
   
   /** Enable strict mode for variables */
   strictVariables?: boolean;
@@ -573,6 +573,7 @@ export class Renderer {
       site: {
         ...siteData.config,  // Flatten config into site for Jekyll compatibility
         config: siteData.config,  // Also keep config for backward compatibility
+        data: siteData.data,  // Add data files
         pages: siteData.pages,
         posts: siteData.posts,
         collections: siteData.collections,

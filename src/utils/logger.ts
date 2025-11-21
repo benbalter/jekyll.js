@@ -1,150 +1,100 @@
 /**
- * Enhanced logger utility for structured logging with color support
+ * Logger utility using Winston for structured logging
+ * 
+ * Winston provides battle-tested, feature-rich logging with:
+ * - Multiple log levels (error, warn, info, debug, etc.)
+ * - Multiple transports (console, file, http, etc.)
+ * - Flexible formatting
+ * - Production-ready error handling
+ * 
+ * This wrapper adds Jekyll-specific features on top of Winston.
  */
 
+import winston from 'winston';
 import chalk from 'chalk';
 import { JekyllError } from './errors';
 
-type LogLevel = 'info' | 'warn' | 'error' | 'debug' | 'success';
+/**
+ * Custom Winston logger wrapper with Jekyll-specific features
+ */
+class JekyllLogger {
+  private winstonLogger: winston.Logger;
+  private verbose = false;
+  private quiet = false;
+  private colors = true;
 
-interface LogEntry {
-  level: LogLevel;
-  message: string;
-  timestamp: Date;
-  context?: Record<string, any>;
-}
-
-interface LoggerOptions {
-  verbose?: boolean;
-  quiet?: boolean;
-  colors?: boolean;
-}
-
-class Logger {
-  private static instance: Logger;
-  private options: LoggerOptions = {
-    verbose: false,
-    quiet: false,
-    colors: true,
-  };
-
-  private constructor() {}
-
-  static getInstance(): Logger {
-    if (!Logger.instance) {
-      Logger.instance = new Logger();
-    }
-    return Logger.instance;
-  }
-
-  /**
-   * Configure the logger
-   */
-  configure(options: LoggerOptions): void {
-    this.options = { ...this.options, ...options };
-  }
-
-  /**
-   * Set verbose mode
-   */
-  setVerbose(verbose: boolean): void {
-    this.options.verbose = verbose;
-  }
-
-  /**
-   * Set quiet mode
-   */
-  setQuiet(quiet: boolean): void {
-    this.options.quiet = quiet;
-  }
-
-  private log(level: LogLevel, message: string, context?: Record<string, any>): void {
-    // Skip logs in quiet mode (except errors)
-    if (this.options.quiet && level !== 'error') {
-      return;
-    }
-
-    // Skip debug logs unless verbose mode is enabled
-    // Debug can be enabled via setVerbose(), configure(), or DEBUG environment variable
-    if (level === 'debug' && !this.options.verbose && !process.env.DEBUG) {
-      return;
-    }
-
-    const entry: LogEntry = {
-      level,
-      message,
-      timestamp: new Date(),
-      context,
-    };
-
-    const formattedMessage = this.formatMessage(entry);
+  constructor() {
+    // Create Winston logger with custom formatting
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    const self = this; // Needed to access JekyllLogger instance from Winston callbacks
     
-    switch (level) {
-      case 'error':
-        console.error(formattedMessage);
-        break;
-      case 'warn':
-        console.warn(formattedMessage);
-        break;
-      default:
-        console.log(formattedMessage);
-    }
-  }
-
-  /**
-   * Format a log message with color and context
-   */
-  private formatMessage(entry: LogEntry): string {
-    const { level, message, context } = entry;
-    const timestamp = this.options.verbose
-      ? `[${entry.timestamp.toISOString()}] `
-      : '';
-
-    let coloredLevel = '';
-    let coloredMessage = message;
-
-    if (this.options.colors) {
-      switch (level) {
-        case 'error':
-          coloredLevel = chalk.red('✗');
-          coloredMessage = chalk.red(message);
-          break;
-        case 'warn':
-          coloredLevel = chalk.yellow('⚠');
-          coloredMessage = chalk.yellow(message);
-          break;
-        case 'success':
-          coloredLevel = chalk.green('✓');
-          coloredMessage = chalk.green(message);
-          break;
-        case 'debug':
-          coloredLevel = chalk.gray('[DEBUG]');
-          coloredMessage = chalk.gray(message);
-          break;
-        case 'info':
-        default:
-          coloredLevel = chalk.blue('ℹ');
-          break;
-      }
-    } else {
-      coloredLevel = `[${level.toUpperCase()}]`;
-    }
-
-    const parts = [timestamp, coloredLevel, coloredMessage].filter(Boolean);
-    let formatted = parts.join(' ');
-
-    // Add context if in verbose mode
-    if (this.options.verbose && context && Object.keys(context).length > 0) {
-      formatted += '\n' + this.formatContext(context);
-    }
-
-    return formatted;
+    this.winstonLogger = winston.createLogger({
+      level: 'info',
+      format: winston.format.combine(
+        winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+        winston.format.errors({ stack: true }),
+        winston.format.json() // Store as JSON internally
+      ),
+      transports: [
+        new winston.transports.Console({
+          // Override console methods to use console.log for all levels
+          // This matches the original logger behavior and test expectations
+          log(info: any, callback: () => void) {
+            if (this.format) {
+              const formatted = this.format.transform(info, this.format.options || {});
+              if (formatted && typeof formatted === 'object') {
+                // Get the formatted message
+                const msg = (formatted as any)[Symbol.for('message')] || (formatted as any).message;
+                
+                // Use console.log for info/debug/success, console.error for error, console.warn for warn
+                const level = info[Symbol.for('level')] || info.level;
+                if (level === 'error') {
+                  console.error(msg);
+                } else if (level === 'warn') {
+                  console.warn(msg);
+                } else {
+                  console.log(msg);
+                }
+              }
+            }
+            callback();
+          },
+          format: winston.format.printf((info) => {
+            const ts = self.verbose ? `[${info.timestamp}] ` : '';
+            let formattedMessage = `${ts}${info.message}`;
+            
+            // Add context in verbose mode
+            if (self.verbose) {
+              // Filter out Winston internal fields
+              const metadata: Record<string, any> = {};
+              const excludeKeys = ['timestamp', 'level', 'message', 'splat'];
+              
+              for (const [key, value] of Object.entries(info)) {
+                if (!excludeKeys.includes(key) && typeof key === 'string' && !key.startsWith('Symbol')) {
+                  metadata[key] = value;
+                }
+              }
+              
+              if (Object.keys(metadata).length > 0) {
+                formattedMessage += '\n' + self.formatContext(metadata);
+              }
+            }
+            
+            return formattedMessage;
+          })
+        }),
+      ],
+    });
   }
 
   /**
    * Format context data for display
    */
   private formatContext(context: Record<string, any>): string {
+    if (Object.keys(context).length === 0) {
+      return '';
+    }
+
     return Object.entries(context)
       .map(([key, value]) => {
         let formattedValue: string;
@@ -162,12 +112,96 @@ class Logger {
             formattedValue = String(value);
           }
         } catch (error) {
-          // Handle other stringify errors
           formattedValue = '[Complex Object]';
         }
-        return chalk.gray(`  ${key}: ${formattedValue}`);
+        const prefix = this.colors ? chalk.gray(`  ${key}: `) : `  ${key}: `;
+        return prefix + formattedValue;
       })
       .join('\n');
+  }
+
+  /**
+   * Configure the logger
+   */
+  configure(options: { verbose?: boolean; quiet?: boolean; colors?: boolean }): void {
+    if (options.verbose !== undefined) {
+      this.setVerbose(options.verbose);
+    }
+    if (options.quiet !== undefined) {
+      this.setQuiet(options.quiet);
+    }
+    if (options.colors !== undefined) {
+      this.colors = options.colors;
+    }
+  }
+
+  /**
+   * Set verbose mode
+   */
+  setVerbose(verbose: boolean): void {
+    this.verbose = verbose;
+    this.winstonLogger.level = verbose || process.env.DEBUG ? 'debug' : 'info';
+  }
+
+  /**
+   * Set quiet mode
+   */
+  setQuiet(quiet: boolean): void {
+    this.quiet = quiet;
+    this.winstonLogger.level = quiet ? 'error' : (this.verbose ? 'debug' : 'info');
+  }
+
+  /**
+   * Log info message
+   */
+  info(message: string, context?: Record<string, any>): void {
+    if (this.quiet) return;
+    const icon = this.colors ? chalk.blue('ℹ') : 'ℹ';
+    const formatted = icon + ' ' + message;
+    this.winstonLogger.info(formatted, context);
+  }
+
+  /**
+   * Log warning message
+   */
+  warn(message: string, context?: Record<string, any>): void {
+    if (this.quiet) return;
+    const icon = this.colors ? chalk.yellow('⚠') : '⚠';
+    const msg = this.colors ? chalk.yellow(message) : message;
+    const formatted = icon + ' ' + msg;
+    this.winstonLogger.warn(formatted, context);
+  }
+
+  /**
+   * Log error message
+   */
+  error(message: string, context?: Record<string, any>): void {
+    const icon = this.colors ? chalk.red('✗') : '✗';
+    const msg = this.colors ? chalk.red(message) : message;
+    const formatted = icon + ' ' + msg;
+    this.winstonLogger.error(formatted, context);
+  }
+
+  /**
+   * Log debug message
+   */
+  debug(message: string, context?: Record<string, any>): void {
+    if (!this.verbose && !process.env.DEBUG) return;
+    const prefix = this.colors ? chalk.gray('[DEBUG]') : '[DEBUG]';
+    const msg = this.colors ? chalk.gray(message) : message;
+    const formatted = prefix + ' ' + msg;
+    this.winstonLogger.debug(formatted, context);
+  }
+
+  /**
+   * Log success message
+   */
+  success(message: string, context?: Record<string, any>): void {
+    if (this.quiet) return;
+    const icon = this.colors ? chalk.green('✓') : '✓';
+    const msg = this.colors ? chalk.green(message) : message;
+    const formatted = icon + ' ' + msg;
+    this.winstonLogger.info(formatted, context);
   }
 
   /**
@@ -184,72 +218,67 @@ class Logger {
 
       this.error(error.getFormattedMessage(), context);
 
-      // In verbose mode, also show the stack trace
-      if (this.options.verbose && error.stack) {
-        console.error(chalk.gray('\nStack trace:'));
-        console.error(chalk.gray(error.stack));
+      // In verbose mode, show the stack trace
+      if (this.verbose && error.stack) {
+        const stackPrefix = this.colors ? chalk.gray('\nStack trace:') : '\nStack trace:';
+        const stackTrace = this.colors ? chalk.gray(error.stack) : error.stack;
+        console.error(stackPrefix);
+        console.error(stackTrace);
       }
 
       // Show cause if available
-      if (error.cause && this.options.verbose) {
-        console.error(chalk.gray('\nCaused by:'));
+      if (error.cause && this.verbose) {
+        const causePrefix = this.colors ? chalk.gray('\nCaused by:') : '\nCaused by:';
+        console.error(causePrefix);
         if (error.cause instanceof Error) {
-          console.error(chalk.gray(error.cause.message));
+          const causeMsg = this.colors ? chalk.gray(error.cause.message) : error.cause.message;
+          console.error(causeMsg);
           if (error.cause.stack) {
-            console.error(chalk.gray(error.cause.stack));
+            const causeStack = this.colors ? chalk.gray(error.cause.stack) : error.cause.stack;
+            console.error(causeStack);
           }
         } else {
-          console.error(chalk.gray(String(error.cause)));
+          const causeStr = this.colors ? chalk.gray(String(error.cause)) : String(error.cause);
+          console.error(causeStr);
         }
       }
     } else {
       this.error(error.message, additionalContext);
-      if (this.options.verbose && error.stack) {
-        console.error(chalk.gray('\nStack trace:'));
-        console.error(chalk.gray(error.stack));
+      if (this.verbose && error.stack) {
+        const stackPrefix = this.colors ? chalk.gray('\nStack trace:') : '\nStack trace:';
+        const stackTrace = this.colors ? chalk.gray(error.stack) : error.stack;
+        console.error(stackPrefix);
+        console.error(stackTrace);
       }
     }
-  }
-
-  info(message: string, context?: Record<string, any>): void {
-    this.log('info', message, context);
-  }
-
-  warn(message: string, context?: Record<string, any>): void {
-    this.log('warn', message, context);
-  }
-
-  error(message: string, context?: Record<string, any>): void {
-    this.log('error', message, context);
-  }
-
-  debug(message: string, context?: Record<string, any>): void {
-    this.log('debug', message, context);
-  }
-
-  success(message: string, context?: Record<string, any>): void {
-    this.log('success', message, context);
   }
 
   /**
    * Create a section header for better output organization
    */
   section(title: string): void {
-    if (this.options.quiet) return;
+    if (this.quiet) return;
     
     const line = '─'.repeat(50);
-    console.log(chalk.blue(`\n${line}`));
-    console.log(chalk.blue.bold(`  ${title}`));
-    console.log(chalk.blue(`${line}\n`));
+    if (this.colors) {
+      console.log(chalk.blue(`\n${line}`));
+      console.log(chalk.blue.bold(`  ${title}`));
+      console.log(chalk.blue(`${line}\n`));
+    } else {
+      console.log(`\n${line}`);
+      console.log(`  ${title}`);
+      console.log(`${line}\n`);
+    }
   }
 
   /**
    * Log a simple message without formatting (useful for progress indicators)
    */
   plain(message: string): void {
-    if (this.options.quiet) return;
+    if (this.quiet) return;
     console.log(message);
   }
 }
 
-export const logger = Logger.getInstance();
+// Export singleton instance
+export const logger = new JekyllLogger();

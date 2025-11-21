@@ -364,6 +364,7 @@ export class Renderer {
       const arr = [...array]; // Create a copy to avoid mutating original
       
       if (count !== undefined) {
+        if (count <= 0) return arr;
         return arr.slice(0, -count);
       }
       
@@ -381,7 +382,8 @@ export class Renderer {
       const arr = [...array]; // Create a copy to avoid mutating original
       
       if (count !== undefined) {
-        return arr.slice(count);
+        const normalizedCount = Math.max(0, count);
+        return arr.slice(normalizedCount);
       }
       
       arr.shift();

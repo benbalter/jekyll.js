@@ -277,6 +277,20 @@ describe('Renderer', () => {
         expect(result).toBe('a,b');
       });
 
+      it('should support pop filter with count 0', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ items | pop: 0 | join: "," }}';
+        const result = await renderer.render(template, { items: ['a', 'b', 'c'] });
+        expect(result).toBe('a,b,c');
+      });
+
+      it('should support pop filter with negative count', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ items | pop: -1 | join: "," }}';
+        const result = await renderer.render(template, { items: ['a', 'b', 'c'] });
+        expect(result).toBe('a,b,c');
+      });
+
       it('should support push filter', async () => {
         const renderer = new Renderer(site);
         const template = '{{ items | push: "d" | join: "," }}';
@@ -296,6 +310,13 @@ describe('Renderer', () => {
         const template = '{{ items | shift: 2 | join: "," }}';
         const result = await renderer.render(template, { items: ['a', 'b', 'c', 'd'] });
         expect(result).toBe('c,d');
+      });
+
+      it('should support shift filter with negative count', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ items | shift: -1 | join: "," }}';
+        const result = await renderer.render(template, { items: ['a', 'b', 'c'] });
+        expect(result).toBe('a,b,c');
       });
 
       it('should support unshift filter', async () => {

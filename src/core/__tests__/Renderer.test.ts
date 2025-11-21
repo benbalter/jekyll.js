@@ -702,4 +702,167 @@ Content`
       await expect(renderer.renderDocument(doc)).rejects.toThrow('Circular layout reference detected');
     });
   });
+
+  describe('Jekyll tags', () => {
+    beforeEach(() => {
+      site = new Site(testDir);
+    });
+
+    it('should support raw tag (liquidjs built-in)', async () => {
+      const renderer = new Renderer(site);
+      const template = '{% raw %}{{ this should not be processed }}{% endraw %}';
+      const result = await renderer.render(template, {});
+      expect(result).toBe('{{ this should not be processed }}');
+    });
+
+    it('should support include_relative tag', async () => {
+      // Create a test file to include
+      const includeDir = join(testDir, 'includes-test');
+      mkdirSync(includeDir, { recursive: true });
+      writeFileSync(
+        join(includeDir, 'relative-include.md'),
+        'This is relative content: {{ message }}'
+      );
+
+      // Create main page that uses include_relative
+      const pagePath = join(includeDir, 'page.md');
+      writeFileSync(
+        pagePath,
+        `---
+title: Test Page
+---
+Main content
+{% include_relative relative-include.md %}`
+      );
+
+      await site.read();
+
+      const doc = new Document(pagePath, testDir, DocumentType.PAGE);
+      const renderer = new Renderer(site);
+      
+      // Render with context
+      const context = {
+        page: {
+          ...doc.data,
+          path: doc.relativePath,
+        },
+        site: {
+          source: testDir,
+        },
+        message: 'Hello World',
+      };
+      
+      const result = await renderer.render(doc.content, context);
+      expect(result).toContain('Main content');
+      expect(result).toContain('This is relative content: Hello World');
+    });
+
+    it('should prevent directory traversal in include_relative tag', async () => {
+      // Create a file outside the test directory that should not be accessible
+      const outsideDir = join(testDir, '../outside');
+      mkdirSync(outsideDir, { recursive: true });
+      writeFileSync(join(outsideDir, 'secret.txt'), 'Secret content');
+
+      // Create a page that tries to use directory traversal
+      const pagePath = join(testDir, 'malicious.md');
+      writeFileSync(
+        pagePath,
+        `---
+title: Malicious Page
+---
+{% include_relative ../outside/secret.txt %}`
+      );
+
+      await site.read();
+
+      const doc = new Document(pagePath, testDir, DocumentType.PAGE);
+      const renderer = new Renderer(site);
+      
+      const context = {
+        page: {
+          ...doc.data,
+          path: doc.relativePath,
+        },
+        site: {
+          source: testDir,
+        },
+      };
+      
+      // Should throw an error about path being outside source directory
+      await expect(renderer.render(doc.content, context)).rejects.toThrow(
+        /resolves outside the site source directory/
+      );
+
+      // Clean up
+      rmSync(outsideDir, { recursive: true, force: true });
+    });
+
+    it('should provide specific error when include_relative file is not found', async () => {
+      // Create a page that tries to include a non-existent file
+      const pagePath = join(testDir, 'notfound.md');
+      writeFileSync(
+        pagePath,
+        `---
+title: Not Found Test
+---
+{% include_relative nonexistent.md %}`
+      );
+
+      await site.read();
+
+      const doc = new Document(pagePath, testDir, DocumentType.PAGE);
+      const renderer = new Renderer(site);
+      
+      const context = {
+        page: {
+          ...doc.data,
+          path: doc.relativePath,
+        },
+        site: {
+          source: testDir,
+        },
+      };
+      
+      // Should throw a specific "File not found" error
+      await expect(renderer.render(doc.content, context)).rejects.toThrow(
+        /File not found: 'nonexistent\.md'/
+      );
+    });
+
+    it('should provide specific error when include_relative path is a directory', async () => {
+      // Create a directory instead of a file
+      const dirPath = join(testDir, 'somedir');
+      mkdirSync(dirPath, { recursive: true });
+
+      // Create a page that tries to include the directory
+      const pagePath = join(testDir, 'dirtest.md');
+      writeFileSync(
+        pagePath,
+        `---
+title: Directory Test
+---
+{% include_relative somedir %}`
+      );
+
+      await site.read();
+
+      const doc = new Document(pagePath, testDir, DocumentType.PAGE);
+      const renderer = new Renderer(site);
+      
+      const context = {
+        page: {
+          ...doc.data,
+          path: doc.relativePath,
+        },
+        site: {
+          source: testDir,
+        },
+      };
+      
+      // Should throw a specific error about it not being a file
+      await expect(renderer.render(doc.content, context)).rejects.toThrow(
+        /Path is not a file: 'somedir'/
+      );
+    });
+  });
 });

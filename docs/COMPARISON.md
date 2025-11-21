@@ -64,8 +64,8 @@ Side-by-side comparison of jekyll.js (TypeScript) and Jekyll.rb (Ruby) features.
 | Liquid syntax | ✅ | ✅ | ✅ Full support |
 | Jekyll filters (basic) | ✅ | ✅ | ✅ Date, URL, array, string |
 | Jekyll filters (advanced) | ✅ | 🟡 | 🟡 Some missing |
-| Jekyll tags (basic) | ✅ | ✅ | ✅ include, highlight |
-| Jekyll tags (advanced) | ✅ | 🔴 | 🔴 raw, include_relative |
+| Jekyll tags (basic) | ✅ | ✅ | ✅ include, highlight, raw |
+| Jekyll tags (advanced) | ✅ | ✅ | ✅ include_relative |
 | Layout inheritance | ✅ | ✅ | ✅ Nested layouts |
 | Front matter defaults | ✅ | 🔴 | 🔴 v0.2.0 planned |
 

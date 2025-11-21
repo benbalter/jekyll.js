@@ -43,7 +43,6 @@ interface SlugifyOptions {
 export class Renderer {
   private liquid: Liquid;
   private site: Site;
-  private md: MarkdownIt;
 
   /**
    * Create a new Renderer instance
@@ -52,13 +51,6 @@ export class Renderer {
    */
   constructor(site: Site, options: RendererOptions = {}) {
     this.site = site;
-
-    // Initialize markdown-it for markdown rendering
-    this.md = new MarkdownIt({
-      html: true,
-      linkify: true,
-      typographer: true,
-    });
 
     // Initialize liquidjs with Jekyll-compatible settings
     this.liquid = new Liquid({

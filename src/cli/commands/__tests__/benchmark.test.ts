@@ -161,14 +161,14 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
     // Calculate comparison
     const difference = durationTs - durationRuby;
     const percentageDiff = durationRuby !== 0 
-      ? ((difference / durationRuby) * 100).toFixed(2)
-      : '0.00';
+      ? (difference / durationRuby) * 100
+      : 0;
 
     console.log('\n📈 Comparison:');
     if (durationTs < durationRuby) {
-      console.log(`   Jekyll TS is ${Math.abs(difference)}ms (${Math.abs(parseFloat(percentageDiff))}%) faster`);
+      console.log(`   Jekyll TS is ${Math.abs(difference)}ms (${Math.abs(percentageDiff).toFixed(2)}%) faster`);
     } else {
-      console.log(`   Jekyll TS is ${difference}ms (${percentageDiff}%) slower`);
+      console.log(`   Jekyll TS is ${difference}ms (${percentageDiff.toFixed(2)}%) slower`);
     }
 
     // Verify both outputs were created

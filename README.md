@@ -131,25 +131,40 @@ npm run lint:fix  # Auto-fix issues
 jekyll.js/
 ├── src/
 │   ├── cli/          # CLI command implementations
-│   │   ├── commands/ # Individual command handlers
+│   │   ├── commands/ # Individual command handlers (new, build, serve)
 │   │   └── index.ts  # Main CLI entry point
-│   ├── core/         # Core build engine (coming soon)
+│   ├── core/         # Core build engine
+│   │   ├── Builder.ts   # Site build orchestration
+│   │   ├── Document.ts  # Document representation
+│   │   ├── Renderer.ts  # Liquid template rendering
+│   │   ├── Site.ts      # Site management
+│   │   └── markdown.ts  # Markdown processing
+│   ├── config/       # Configuration parsing
+│   │   └── Config.ts # _config.yml parser and validator
+│   ├── plugins/      # Built-in plugins
+│   │   ├── seo-tag.ts  # SEO meta tags
+│   │   ├── sitemap.ts  # Sitemap generation
+│   │   └── feed.ts     # RSS/Atom feed
 │   ├── utils/        # Utility functions
 │   └── index.ts      # Library entry point
 ├── dist/             # Compiled JavaScript output
-└── tests/            # Test files
+└── test-fixtures/    # Test Jekyll sites
 ```
 
 ## Roadmap
 
 - [x] Project scaffolding and CLI commands
-- [ ] Configuration parsing (`_config.yml`)
-- [ ] Liquid template rendering
-- [ ] Page and post processing
-- [ ] Collections support
+- [x] Configuration parsing (`_config.yml`)
+- [x] Liquid template rendering
+- [x] Page and post processing
+- [x] Collections support
+- [x] Markdown processing (using Remark)
+- [x] Plugin system
+- [x] Built-in plugins (SEO, sitemap, feed)
 - [ ] Development server with live reload
-- [ ] Plugin system
-- [ ] Built-in plugins (SEO, sitemap, feed)
+- [ ] Watch mode for builds
+- [ ] Pagination support
+- [ ] Advanced Jekyll features (data files, themes)
 
 ## Compatibility
 
@@ -158,13 +173,28 @@ This project aims to be compatible with Jekyll 4.x. While the goal is 100% compa
 ### Supported Features
 
 - ✅ CLI commands (`new`, `build`, `serve`)
-- 🚧 Configuration parsing (planned)
-- 🚧 Liquid templates (planned)
-- 🚧 Pages and posts (planned)
+- ✅ Configuration parsing (`_config.yml`)
+- ✅ Liquid templates with Jekyll-specific tags and filters
+- ✅ Pages and posts
+- ✅ Collections
+- ✅ Layouts and includes
+- ✅ Front matter (YAML)
+- ✅ Markdown processing (using Remark with GFM support)
+- ✅ Permalinks and URL generation
+- ✅ Built-in plugins:
+  - `jekyll-seo-tag` - SEO meta tags and JSON-LD
+  - `jekyll-sitemap` - XML sitemap generation
+  - `jekyll-feed` - Atom feed generation
+- ✅ Draft and future post filtering
 
 ### Not Yet Supported
 
 - Ruby-based Jekyll plugins (will require TypeScript reimplementation)
+- Development server with live reload (coming soon)
+- Watch mode for builds
+- Pagination
+- Data files
+- Themes
 - Some advanced Jekyll features
 
 ## Contributing

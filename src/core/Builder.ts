@@ -461,8 +461,11 @@ export class Builder {
 
   /**
    * Find all SASS/SCSS files in the site (excluding _sass directory)
+   * @param dir Directory to search
+   * @param files Accumulator for found files
+   * @param isRoot Whether this is the root source directory
    */
-  private findSassFiles(dir: string, files: string[] = []): string[] {
+  private findSassFiles(dir: string, files: string[] = [], isRoot: boolean = true): string[] {
     if (!existsSync(dir)) {
       return files;
     }
@@ -480,13 +483,15 @@ export class Builder {
       const stats = statSync(fullPath);
 
       if (stats.isDirectory()) {
-        // Skip Jekyll special directories at root level (including _sass)
-        if (this.isJekyllDirectory(entry) && dirname(fullPath) === this.site.source) {
+        // Skip Jekyll special directories (underscore-prefixed) only at root level
+        // This prevents processing _sass, _layouts, _includes, etc. at the root,
+        // but allows processing nested directories like css/_nested
+        if (isRoot && this.isJekyllDirectory(entry)) {
           continue;
         }
 
-        // Recurse into directory
-        this.findSassFiles(fullPath, files);
+        // Recurse into directory (no longer at root level)
+        this.findSassFiles(fullPath, files, false);
       } else if (stats.isFile()) {
         const ext = extname(fullPath).toLowerCase();
         if (['.scss', '.sass'].includes(ext)) {

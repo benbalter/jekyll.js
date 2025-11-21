@@ -1,6 +1,7 @@
 import { compileString, Exception, OutputStyle } from 'sass';
 import { readFileSync, existsSync } from 'fs';
 import { join, dirname, resolve, relative } from 'path';
+import { fileURLToPath } from 'url';
 import { logger } from '../utils/logger';
 import { JekyllConfig } from '../config';
 import { FileSystemError } from '../utils/errors';
@@ -116,7 +117,8 @@ export class SassProcessor {
             return null;
           },
           load: (canonicalUrl: URL) => {
-            const filePath = canonicalUrl.pathname;
+            // Convert URL pathname to file path, handling Windows paths correctly
+            const filePath = fileURLToPath(canonicalUrl);
             try {
               const contents = readFileSync(filePath, 'utf-8');
               const syntax = filePath.endsWith('.sass') ? 'indented' : 'scss';

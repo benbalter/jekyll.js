@@ -2,9 +2,9 @@ import { Liquid } from 'liquidjs';
 import { Site } from './Site';
 import { Document } from './Document';
 import { logger } from '../utils/logger';
+import { processMarkdown } from './markdown';
 import slugifyLib from 'slugify';
 import { format, parseISO, formatISO, formatRFC7231, isValid } from 'date-fns';
-import MarkdownIt from 'markdown-it';
 
 /**
  * Renderer configuration options
@@ -43,7 +43,6 @@ interface SlugifyOptions {
 export class Renderer {
   private liquid: Liquid;
   private site: Site;
-  private md: MarkdownIt;
 
   /**
    * Create a new Renderer instance
@@ -52,13 +51,6 @@ export class Renderer {
    */
   constructor(site: Site, options: RendererOptions = {}) {
     this.site = site;
-
-    // Initialize markdown-it for markdown rendering
-    this.md = new MarkdownIt({
-      html: true,
-      linkify: true,
-      typographer: true,
-    });
 
     // Initialize liquidjs with Jekyll-compatible settings
     this.liquid = new Liquid({
@@ -260,10 +252,14 @@ export class Renderer {
     });
 
     // String filters
-    this.liquid.registerFilter('markdownify', (input: string) => {
+    this.liquid.registerFilter('markdownify', async (input: string) => {
       if (!input) return '';
-      // Use markdown-it library to convert markdown to HTML
-      return this.md.render(String(input));
+      try {
+        return await processMarkdown(String(input));
+      } catch (error) {
+        logger.warn(`markdownify filter failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        return input;
+      }
     });
 
     this.liquid.registerFilter('smartify', (input: string) => {
@@ -421,8 +417,22 @@ export class Renderer {
       },
     };
 
-    // First render the document content
+    // First render the document content (processes Liquid tags)
     let content = await this.render(document.content, context);
+    
+    // If document is markdown, convert to HTML
+    const isMarkdown = ['.md', '.markdown'].includes(document.extname.toLowerCase());
+    if (isMarkdown) {
+      try {
+        content = await processMarkdown(content);
+      } catch (err) {
+        logger.error(
+          `Error processing markdown for document '${document.relativePath}': ${err instanceof Error ? err.message : String(err)}`
+        );
+        // Fallback: return original content (unprocessed)
+        // Optionally, could set content = "" or a helpful error HTML
+      }
+    }
     
     // Update context with rendered content
     context.page.content = content;

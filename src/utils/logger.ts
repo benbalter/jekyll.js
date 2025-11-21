@@ -149,11 +149,20 @@ class Logger {
       .map(([key, value]) => {
         let formattedValue: string;
         try {
-          formattedValue = typeof value === 'object' 
-            ? JSON.stringify(value, null, 2)
-            : String(value);
+          if (typeof value === 'object' && value !== null) {
+            const seen = new WeakSet();
+            formattedValue = JSON.stringify(value, function replacer(k, v) {
+              if (typeof v === 'object' && v !== null) {
+                if (seen.has(v)) return '[Circular]';
+                seen.add(v);
+              }
+              return v;
+            }, 2);
+          } else {
+            formattedValue = String(value);
+          }
         } catch (error) {
-          // Handle circular references or other stringify errors
+          // Handle other stringify errors
           formattedValue = '[Complex Object]';
         }
         return chalk.gray(`  ${key}: ${formattedValue}`);

@@ -7,7 +7,7 @@ import { processMarkdown } from './markdown';
 import slugifyLib from 'slugify';
 import { format, parseISO, formatISO, formatRFC7231, isValid } from 'date-fns';
 import { dirname, join, resolve, normalize, relative } from 'path';
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync, statSync } from 'fs';
 
 /**
  * Renderer configuration options
@@ -411,8 +411,36 @@ export class Renderer {
             throw new Error(`include_relative: Path '${this.includePath}' resolves outside the site source directory`);
           }
           
+          // Check file existence and readability before attempting to read
+          if (!existsSync(absolutePath)) {
+            throw new Error(`include_relative: File not found: '${this.includePath}'`);
+          }
+          
+          // Check if it's a file and not a directory
+          try {
+            const stats = statSync(absolutePath);
+            if (!stats.isFile()) {
+              throw new Error(`include_relative: Path is not a file: '${this.includePath}'`);
+            }
+          } catch (statError) {
+            // If statSync fails, it's likely a permission issue
+            if ((statError as NodeJS.ErrnoException).code === 'EACCES') {
+              throw new Error(`include_relative: Permission denied: '${this.includePath}'`);
+            }
+            throw statError;
+          }
+          
           // Read and render the file
-          const content = readFileSync(absolutePath, 'utf-8');
+          let content: string;
+          try {
+            content = readFileSync(absolutePath, 'utf-8');
+          } catch (readError) {
+            // Provide specific error for read failures
+            if ((readError as NodeJS.ErrnoException).code === 'EACCES') {
+              throw new Error(`include_relative: Permission denied reading file: '${this.includePath}'`);
+            }
+            throw new Error(`include_relative: Failed to read file '${this.includePath}': ${readError instanceof Error ? readError.message : 'Unknown error'}`);
+          }
           
           // Render the included content with the current context
           // Note: Jekyll's include_relative has full access to the current context
@@ -420,6 +448,11 @@ export class Renderer {
           const html = await this.liquid.parseAndRender(content, ctx);
           emitter.write(html);
         } catch (error) {
+          // Re-throw our specific error messages without wrapping them
+          if (error instanceof Error && error.message.startsWith('include_relative:')) {
+            throw error;
+          }
+          // For other errors (like Liquid rendering errors), wrap them
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';
           throw new Error(`include_relative: Failed to include '${this.includePath}': ${errorMessage}`);
         }

@@ -595,5 +595,73 @@ title: Malicious Page
       // Clean up
       rmSync(outsideDir, { recursive: true, force: true });
     });
+
+    it('should provide specific error when include_relative file is not found', async () => {
+      // Create a page that tries to include a non-existent file
+      const pagePath = join(testDir, 'notfound.md');
+      writeFileSync(
+        pagePath,
+        `---
+title: Not Found Test
+---
+{% include_relative nonexistent.md %}`
+      );
+
+      await site.read();
+
+      const doc = new Document(pagePath, testDir, DocumentType.PAGE);
+      const renderer = new Renderer(site);
+      
+      const context = {
+        page: {
+          ...doc.data,
+          path: doc.relativePath,
+        },
+        site: {
+          source: testDir,
+        },
+      };
+      
+      // Should throw a specific "File not found" error
+      await expect(renderer.render(doc.content, context)).rejects.toThrow(
+        /File not found: 'nonexistent\.md'/
+      );
+    });
+
+    it('should provide specific error when include_relative path is a directory', async () => {
+      // Create a directory instead of a file
+      const dirPath = join(testDir, 'somedir');
+      mkdirSync(dirPath, { recursive: true });
+
+      // Create a page that tries to include the directory
+      const pagePath = join(testDir, 'dirtest.md');
+      writeFileSync(
+        pagePath,
+        `---
+title: Directory Test
+---
+{% include_relative somedir %}`
+      );
+
+      await site.read();
+
+      const doc = new Document(pagePath, testDir, DocumentType.PAGE);
+      const renderer = new Renderer(site);
+      
+      const context = {
+        page: {
+          ...doc.data,
+          path: doc.relativePath,
+        },
+        site: {
+          source: testDir,
+        },
+      };
+      
+      // Should throw a specific error about it not being a file
+      await expect(renderer.render(doc.content, context)).rejects.toThrow(
+        /Path is not a file: 'somedir'/
+      );
+    });
   });
 });

@@ -2,6 +2,7 @@ import { existsSync, readdirSync, statSync, readFileSync } from 'fs';
 import { join, resolve, extname, dirname, basename } from 'path';
 import { Document, DocumentType } from './Document';
 import { JekyllConfig, loadConfig } from '../config';
+import { ThemeManager } from './ThemeManager';
 import yaml from 'js-yaml';
 
 /**
@@ -59,6 +60,9 @@ export class Site {
   /** Static files (non-Jekyll files) */
   public readonly staticFiles: string[] = [];
 
+  /** Theme manager for handling theme files */
+  public readonly themeManager: ThemeManager;
+  
   /** Data files from _data directory */
   public data: Record<string, any> = {};
 
@@ -92,6 +96,9 @@ export class Site {
       include: config.include || [],
     };
     this.destination = resolve(this.config.destination as string);
+    
+    // Initialize theme manager
+    this.themeManager = new ThemeManager(this.source, this.config);
   }
 
   /**
@@ -118,35 +125,49 @@ export class Site {
   }
 
   /**
-   * Read all layouts from _layouts directory
+   * Read all layouts from _layouts directory (site and theme)
+   * Site layouts take precedence over theme layouts
    */
   private readLayouts(): void {
-    const layoutsDir = join(this.source, '_layouts');
-    if (!existsSync(layoutsDir)) {
-      return;
-    }
-
-    const files = this.walkDirectory(layoutsDir);
-    for (const file of files) {
-      const doc = new Document(file, this.source, DocumentType.LAYOUT);
-      this.layouts.set(doc.basename, doc);
+    // Get all layout directories (site first, then theme)
+    const layoutDirs = this.themeManager.getLayoutDirectories();
+    
+    // Read layouts from all directories
+    // Site layouts (first in array) will be processed first and added to the map.
+    // Theme layouts will only be added if not already present (override mechanism).
+    for (const layoutsDir of layoutDirs) {
+      const files = this.walkDirectory(layoutsDir);
+      for (const file of files) {
+        const doc = new Document(file, this.source, DocumentType.LAYOUT);
+        // Site layouts take precedence, so only add if not already present
+        if (!this.layouts.has(doc.basename)) {
+          this.layouts.set(doc.basename, doc);
+        }
+      }
     }
   }
 
   /**
-   * Read all includes from _includes directory
+   * Read all includes from _includes directory (site and theme)
+   * Site includes take precedence over theme includes
    */
   private readIncludes(): void {
-    const includesDir = join(this.source, '_includes');
-    if (!existsSync(includesDir)) {
-      return;
-    }
-
-    const files = this.walkDirectory(includesDir);
-    for (const file of files) {
-      const doc = new Document(file, this.source, DocumentType.INCLUDE);
-      const relativePath = file.substring(includesDir.length + 1);
-      this.includes.set(relativePath, doc);
+    // Get all include directories (site first, then theme)
+    const includeDirs = this.themeManager.getIncludeDirectories();
+    
+    // Read includes from all directories
+    // Site includes (first in array) will be processed first and added to the map.
+    // Theme includes will only be added if not already present (override mechanism).
+    for (const includesDir of includeDirs) {
+      const files = this.walkDirectory(includesDir);
+      for (const file of files) {
+        const doc = new Document(file, this.source, DocumentType.INCLUDE);
+        const relativePath = file.substring(includesDir.length + 1);
+        // Site includes take precedence, so only add if not already present
+        if (!this.includes.has(relativePath)) {
+          this.includes.set(relativePath, doc);
+        }
+      }
     }
   }
 

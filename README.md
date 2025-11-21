@@ -88,6 +88,45 @@ Available options:
 - `--future` - Publish posts with a future date
 - `--verbose` - Print verbose output
 
+### Using Themes
+
+Jekyll.js supports npm-based themes that provide layouts, includes, and assets. To use a theme:
+
+1. Install the theme package:
+
+```bash
+npm install jekyll-theme-minimal
+```
+
+2. Add the theme to your `_config.yml`:
+
+```yaml
+theme: jekyll-theme-minimal
+```
+
+3. Build your site:
+
+```bash
+jekyll-ts build
+```
+
+**Theme File Override:**
+- Site files always take precedence over theme files
+- Create `_layouts/default.html` in your site to override the theme's default layout
+- Create `_includes/header.html` to override the theme's header include
+
+**Theme Structure:**
+A theme package should have the following structure:
+
+```
+jekyll-theme-name/
+├── _layouts/       # Layout files
+├── _includes/      # Include files
+├── _sass/          # Sass partials
+├── assets/         # CSS, JS, images
+└── package.json
+```
+
 ## Development
 
 ### Setup
@@ -201,6 +240,7 @@ jekyll.js/
 - [x] Plugin system
 - [x] Built-in plugins (SEO, sitemap, feed)
 - [x] Development server with live reload
+- [x] Theme support (npm package-based)
 
 ### Next Version (v0.2.0 - Phase 1)
 
@@ -231,6 +271,7 @@ This project aims to be compatible with Jekyll 4.x. While the goal is 100% compa
   - `jekyll-sitemap` - XML sitemap generation
   - `jekyll-feed` - Atom feed generation
 - ✅ Draft and future post filtering
+- ✅ Theme support (npm package-based themes)
 
 ### Planned Features
 
@@ -244,7 +285,6 @@ See [ROADMAP.md](./docs/ROADMAP.md) for complete timeline.
 
 **Medium Priority** (v0.3.0):
 - Pagination
-- Theme support
 - Incremental builds
 - Asset pipeline improvements
 

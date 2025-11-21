@@ -52,6 +52,9 @@ export interface JekyllConfig {
   paginate_path?: string;
   timezone?: string;
   
+  // Theme
+  theme?: string;
+  
   // Processing
   safe?: boolean;
   exclude?: string[];

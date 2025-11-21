@@ -14,11 +14,11 @@ export interface RendererOptions {
   /** Root directory for includes */
   root?: string;
   
-  /** Layout directory */
-  layoutsDir?: string;
+  /** Layout directory (or array of directories) */
+  layoutsDir?: string | string[];
   
-  /** Includes directory */
-  includesDir?: string;
+  /** Includes directory (or array of directories) */
+  includesDir?: string | string[];
   
   /** Enable strict mode for variables */
   strictVariables?: boolean;

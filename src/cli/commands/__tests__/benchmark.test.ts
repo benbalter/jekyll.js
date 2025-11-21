@@ -55,6 +55,10 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
 
   /**
    * Helper function to benchmark a build command
+   * @param command - The command to execute (e.g., 'node', 'jekyll')
+   * @param args - Array of command-line arguments
+   * @param cwd - Current working directory for the command
+   * @returns Promise that resolves with the build duration in milliseconds
    */
   const benchmarkBuild = (command: string, args: string[], cwd: string): Promise<number> => {
     return new Promise((resolve, reject) => {
@@ -139,7 +143,7 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
 
     // Calculate comparison
     const difference = durationTs - durationRuby;
-    const percentageDiff = durationRuby > 0 
+    const percentageDiff = durationRuby !== 0 
       ? ((difference / durationRuby) * 100).toFixed(2)
       : '0.00';
 

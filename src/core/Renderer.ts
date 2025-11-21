@@ -417,17 +417,20 @@ export class Renderer {
           }
           
           // Check if it's a file and not a directory
+          let stats;
           try {
-            const stats = statSync(absolutePath);
-            if (!stats.isFile()) {
-              throw new Error(`include_relative: Path is not a file: '${this.includePath}'`);
-            }
+            stats = statSync(absolutePath);
           } catch (statError) {
-            // If statSync fails, it's likely a permission issue
+            // Handle permission errors on stat
             if ((statError as NodeJS.ErrnoException).code === 'EACCES') {
               throw new Error(`include_relative: Permission denied: '${this.includePath}'`);
             }
-            throw statError;
+            // Re-throw other stat errors
+            throw new Error(`include_relative: Failed to access file '${this.includePath}': ${statError instanceof Error ? statError.message : 'Unknown error'}`);
+          }
+          
+          if (!stats.isFile()) {
+            throw new Error(`include_relative: Path is not a file: '${this.includePath}'`);
           }
           
           // Read and render the file

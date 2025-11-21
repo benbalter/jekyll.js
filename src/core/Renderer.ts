@@ -6,6 +6,8 @@ import { TemplateError, parseErrorLocation } from '../utils/errors';
 import { processMarkdown } from './markdown';
 import slugifyLib from 'slugify';
 import { format, parseISO, formatISO, formatRFC7231, isValid } from 'date-fns';
+import { dirname, join, resolve, normalize, relative } from 'path';
+import { readFileSync, existsSync, statSync } from 'fs';
 
 /**
  * Renderer configuration options
@@ -364,6 +366,99 @@ export class Renderer {
       render: function (_ctx: any) {
         // Simplified - would need to resolve post URLs from site
         return `/${this.postName}`;
+      },
+    });
+
+    // include_relative tag - includes file relative to current file
+    this.liquid.registerTag('include_relative', {
+      parse(token: any) {
+        // Parse the file path from arguments
+        // Support both quoted and unquoted paths
+        const args = token.args.trim();
+        const match = args.match(/^["']?([^"'\s]+)["']?/);
+        if (!match) {
+          throw new Error('include_relative tag requires a file path argument');
+        }
+        // Store the raw path - validation happens during render
+        this.includePath = match[1];
+      },
+      render: async function (ctx: any, emitter: any) {
+        try {
+          // Get the current page path from context
+          const page = ctx.environments?.page || ctx.page || ctx.scopes?.[0]?.page;
+          if (!page || !page.path) {
+            throw new Error('include_relative: current page path not found in context');
+          }
+
+          // Get the site source path
+          const site = ctx.environments?.site || ctx.site || ctx.scopes?.[0]?.site;
+          const sourcePath = site?.source || '.';
+          const absoluteSourcePath = resolve(sourcePath);
+          
+          // Resolve the include path relative to the current page's directory
+          const pagePath = page.path;
+          const pageDir = dirname(pagePath);
+          const relativePath = normalize(join(pageDir, this.includePath));
+          
+          // Resolve to absolute path
+          const absolutePath = normalize(resolve(absoluteSourcePath, relativePath));
+          
+          // Security check: Ensure the resolved path is within the site source directory
+          // This prevents directory traversal attacks
+          // path.relative() returns a path starting with '..' if the target is outside the base
+          const relativeToSource = relative(absoluteSourcePath, absolutePath);
+          if (relativeToSource.startsWith('..')) {
+            throw new Error(`include_relative: Path '${this.includePath}' resolves outside the site source directory`);
+          }
+          
+          // Check file existence and readability before attempting to read
+          if (!existsSync(absolutePath)) {
+            throw new Error(`include_relative: File not found: '${this.includePath}'`);
+          }
+          
+          // Check if it's a file and not a directory
+          let stats;
+          try {
+            stats = statSync(absolutePath);
+          } catch (statError) {
+            // Handle permission errors on stat
+            if ((statError as NodeJS.ErrnoException).code === 'EACCES') {
+              throw new Error(`include_relative: Permission denied: '${this.includePath}'`);
+            }
+            // Re-throw other stat errors
+            throw new Error(`include_relative: Failed to access file '${this.includePath}': ${statError instanceof Error ? statError.message : 'Unknown error'}`);
+          }
+          
+          if (!stats.isFile()) {
+            throw new Error(`include_relative: Path is not a file: '${this.includePath}'`);
+          }
+          
+          // Read and render the file
+          let content: string;
+          try {
+            content = readFileSync(absolutePath, 'utf-8');
+          } catch (readError) {
+            // Provide specific error for read failures
+            if ((readError as NodeJS.ErrnoException).code === 'EACCES') {
+              throw new Error(`include_relative: Permission denied reading file: '${this.includePath}'`);
+            }
+            throw new Error(`include_relative: Failed to read file '${this.includePath}': ${readError instanceof Error ? readError.message : 'Unknown error'}`);
+          }
+          
+          // Render the included content with the current context
+          // Note: Jekyll's include_relative has full access to the current context
+          // This is consistent with Jekyll's behavior where included files can access all variables
+          const html = await this.liquid.parseAndRender(content, ctx);
+          emitter.write(html);
+        } catch (error) {
+          // Re-throw our specific error messages without wrapping them
+          if (error instanceof Error && error.message.startsWith('include_relative:')) {
+            throw error;
+          }
+          // For other errors (like Liquid rendering errors), wrap them
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          throw new Error(`include_relative: Failed to include '${this.includePath}': ${errorMessage}`);
+        }
       },
     });
   }

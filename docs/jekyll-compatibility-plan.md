@@ -362,14 +362,16 @@ These features would improve compatibility but are not critical for most sites:
 
 ### 9. Additional Liquid Tags
 
-**Current Status**: Basic tags implemented  
+**Current Status**: ✅ Basic and advanced tags implemented  
 **Priority**: Medium  
 **Complexity**: Medium
 
+**Implemented Tags**:
+- [x] `{% raw %}` - Disable Liquid processing (built into liquidjs)
+- [x] `{% include_relative %}` - Include relative to current file
+- [x] `{% comment %}` - Multi-line comments (built into liquidjs)
+
 **Missing Tags**:
-- [ ] `{% raw %}` - Disable Liquid processing
-- [ ] `{% comment %}` - Multi-line comments (may be built-in)
-- [ ] `{% include_relative %}` - Include relative to current file
 - [ ] Custom block tags support
 
 **Implementation**: Register tags with liquidjs engine.

@@ -185,6 +185,12 @@ jekyll.js/
 
 ## Roadmap
 
+> 📋 For detailed feature roadmap and implementation plans, see:
+> - [**ROADMAP.md**](./docs/ROADMAP.md) - Development timeline and release schedule
+> - [**Jekyll Compatibility Plan**](./docs/jekyll-compatibility-plan.md) - Comprehensive feature specifications
+
+### Current Status (v0.1.0)
+
 - [x] Project scaffolding and CLI commands
 - [x] Configuration parsing (`_config.yml`)
 - [x] Liquid template rendering
@@ -193,10 +199,15 @@ jekyll.js/
 - [x] Markdown processing (using Remark)
 - [x] Plugin system
 - [x] Built-in plugins (SEO, sitemap, feed)
-- [ ] Development server with live reload
+- [x] Development server with live reload
+
+### Next Version (v0.2.0 - Phase 1)
+
+- [ ] Data files (`_data` directory)
 - [ ] Watch mode for builds
-- [ ] Pagination support
-- [ ] Advanced Jekyll features (data files, themes)
+- [ ] SASS/SCSS processing
+- [ ] Front matter defaults
+- [ ] Additional Liquid filters
 
 ## Compatibility
 
@@ -219,15 +230,29 @@ This project aims to be compatible with Jekyll 4.x. While the goal is 100% compa
   - `jekyll-feed` - Atom feed generation
 - ✅ Draft and future post filtering
 
-### Not Yet Supported
+### Planned Features
 
-- Ruby-based Jekyll plugins (will require TypeScript reimplementation)
-- Development server with live reload (coming soon)
+See [ROADMAP.md](./docs/ROADMAP.md) for complete timeline.
+
+**High Priority** (v0.2.0):
+- Data files (`_data` directory)
 - Watch mode for builds
+- SASS/SCSS processing
+- Front matter defaults
+
+**Medium Priority** (v0.3.0):
 - Pagination
-- Data files
-- Themes
-- Some advanced Jekyll features
+- Theme support
+- Incremental builds
+- Asset pipeline improvements
+
+**Future** (v1.0.0+):
+- Custom plugin system
+- Advanced configuration options
+- Performance optimizations
+- Ecosystem building
+
+> **Note**: Ruby-based Jekyll plugins are not directly supported and require TypeScript reimplementation. See the [Compatibility Plan](./docs/jekyll-compatibility-plan.md) for details.
 
 ## Contributing
 

@@ -426,8 +426,9 @@ export class Builder {
         const parsed = matter(fileContent);
         
         // Only process files with front matter (Jekyll convention)
-        // Check if front matter delimiters (---) are present
-        if (!parsed.matter && parsed.matter !== '') {
+        // If content equals original content, no front matter delimiters were present
+        const hasFrontMatter = parsed.content !== fileContent;
+        if (!hasFrontMatter) {
           logger.debug(`Skipping ${relative(this.site.source, file)} (no front matter)`);
           continue;
         }

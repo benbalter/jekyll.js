@@ -96,10 +96,8 @@ export class Document {
       this.content = parsed.content;
     } catch (error) {
       if (error instanceof Error) {
-        // Check if it's a YAML parsing error
-        if (error.message.includes('can not read') || 
-            error.message.includes('duplicated mapping key') ||
-            error.message.includes('unexpected')) {
+        // Check if it's a YAML parsing error (from js-yaml via gray-matter)
+        if ((error as any).name === 'YAMLException') {
           throw new FrontMatterError(
             `Failed to parse front matter: ${error.message}`,
             {

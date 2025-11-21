@@ -6,6 +6,9 @@ import { TemplateError, parseErrorLocation } from '../utils/errors';
 import { processMarkdown } from './markdown';
 import slugifyLib from 'slugify';
 import { format, parseISO, formatISO, formatRFC7231, isValid } from 'date-fns';
+import striptags from 'striptags';
+import { dirname, join, resolve, normalize, relative } from 'path';
+import { readFileSync, existsSync, statSync } from 'fs';
 
 /**
  * Renderer configuration options
@@ -313,6 +316,137 @@ export class Renderer {
     this.liquid.registerFilter('inspect', (input: any) => {
       return JSON.stringify(input, null, 2);
     });
+
+    // Array manipulation filters
+    this.liquid.registerFilter('sort', (array: any[], property?: string) => {
+      if (!Array.isArray(array)) return array;
+      const arr = [...array]; // Create a copy to avoid mutating original
+      
+      if (property) {
+        // Sort by property
+        return arr.sort((a, b) => {
+          const aVal = a?.[property];
+          const bVal = b?.[property];
+          if (aVal === bVal) return 0;
+          if (aVal == null) return 1;
+          if (bVal == null) return -1;
+          return aVal > bVal ? 1 : -1;
+        });
+      }
+      
+      // Default sort
+      return arr.sort();
+    });
+
+    this.liquid.registerFilter('uniq', (array: any[]) => {
+      if (!Array.isArray(array)) return array;
+      return Array.from(new Set(array));
+    });
+
+    this.liquid.registerFilter('sample', (array: any[], count?: number) => {
+      if (!Array.isArray(array) || array.length === 0) return count ? [] : null;
+      
+      if (count !== undefined) {
+        // Return multiple samples using Fisher-Yates shuffle
+        const numSamples = Math.min(Math.max(0, count), array.length);
+        const shuffled = [...array];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        return shuffled.slice(0, numSamples);
+      }
+      
+      // Return single random item
+      return array[Math.floor(Math.random() * array.length)];
+    });
+
+    this.liquid.registerFilter('pop', (array: any[], count?: number) => {
+      if (!Array.isArray(array)) return array;
+      const arr = [...array]; // Create a copy to avoid mutating original
+      
+      if (count !== undefined) {
+        if (count <= 0) return arr;
+        return arr.slice(0, -count);
+      }
+      
+      arr.pop();
+      return arr;
+    });
+
+    this.liquid.registerFilter('push', (array: any[], item: any) => {
+      if (!Array.isArray(array)) return [item];
+      return [...array, item];
+    });
+
+    this.liquid.registerFilter('shift', (array: any[], count?: number) => {
+      if (!Array.isArray(array)) return array;
+      const arr = [...array]; // Create a copy to avoid mutating original
+      
+      if (count !== undefined) {
+        const normalizedCount = Math.max(0, count);
+        return arr.slice(normalizedCount);
+      }
+      
+      arr.shift();
+      return arr;
+    });
+
+    this.liquid.registerFilter('unshift', (array: any[], item: any) => {
+      if (!Array.isArray(array)) return [item];
+      return [item, ...array];
+    });
+
+    // Additional string filters
+    this.liquid.registerFilter('normalize_whitespace', (input: string) => {
+      if (!input) return '';
+      return String(input).replace(/\s+/g, ' ').trim();
+    });
+
+    this.liquid.registerFilter('newline_to_br', (input: string) => {
+      if (!input) return '';
+      return String(input).replace(/\n/g, '<br>\n');
+    });
+
+    this.liquid.registerFilter('strip_html', (input: string) => {
+      if (!input) return '';
+      // Use striptags library for proper HTML parsing and removal
+      // Handles edge cases: self-closing tags, nested tags, malformed HTML, 
+      // HTML comments, and preserves HTML entities properly
+      return striptags(String(input));
+    });
+
+    this.liquid.registerFilter('strip_newlines', (input: string) => {
+      if (!input) return '';
+      return String(input).replace(/\n/g, '');
+    });
+
+    // Number/Math filters
+    this.liquid.registerFilter('to_integer', (input: any) => {
+      const num = parseInt(String(input), 10);
+      return isNaN(num) ? 0 : num;
+    });
+
+    this.liquid.registerFilter('abs', (input: number) => {
+      const num = Number(input);
+      return isNaN(num) ? 0 : Math.abs(num);
+    });
+
+    this.liquid.registerFilter('at_least', (input: number, min: number) => {
+      const num = Number(input);
+      const minimum = Number(min);
+      if (isNaN(num)) return minimum;
+      if (isNaN(minimum)) return num;
+      return Math.max(num, minimum);
+    });
+
+    this.liquid.registerFilter('at_most', (input: number, max: number) => {
+      const num = Number(input);
+      const maximum = Number(max);
+      if (isNaN(num)) return maximum;
+      if (isNaN(maximum)) return num;
+      return Math.min(num, maximum);
+    });
   }
 
   /**
@@ -364,6 +498,99 @@ export class Renderer {
       render: function (_ctx: any) {
         // Simplified - would need to resolve post URLs from site
         return `/${this.postName}`;
+      },
+    });
+
+    // include_relative tag - includes file relative to current file
+    this.liquid.registerTag('include_relative', {
+      parse(token: any) {
+        // Parse the file path from arguments
+        // Support both quoted and unquoted paths
+        const args = token.args.trim();
+        const match = args.match(/^["']?([^"'\s]+)["']?/);
+        if (!match) {
+          throw new Error('include_relative tag requires a file path argument');
+        }
+        // Store the raw path - validation happens during render
+        this.includePath = match[1];
+      },
+      render: async function (ctx: any, emitter: any) {
+        try {
+          // Get the current page path from context
+          const page = ctx.environments?.page || ctx.page || ctx.scopes?.[0]?.page;
+          if (!page || !page.path) {
+            throw new Error('include_relative: current page path not found in context');
+          }
+
+          // Get the site source path
+          const site = ctx.environments?.site || ctx.site || ctx.scopes?.[0]?.site;
+          const sourcePath = site?.source || '.';
+          const absoluteSourcePath = resolve(sourcePath);
+          
+          // Resolve the include path relative to the current page's directory
+          const pagePath = page.path;
+          const pageDir = dirname(pagePath);
+          const relativePath = normalize(join(pageDir, this.includePath));
+          
+          // Resolve to absolute path
+          const absolutePath = normalize(resolve(absoluteSourcePath, relativePath));
+          
+          // Security check: Ensure the resolved path is within the site source directory
+          // This prevents directory traversal attacks
+          // path.relative() returns a path starting with '..' if the target is outside the base
+          const relativeToSource = relative(absoluteSourcePath, absolutePath);
+          if (relativeToSource.startsWith('..')) {
+            throw new Error(`include_relative: Path '${this.includePath}' resolves outside the site source directory`);
+          }
+          
+          // Check file existence and readability before attempting to read
+          if (!existsSync(absolutePath)) {
+            throw new Error(`include_relative: File not found: '${this.includePath}'`);
+          }
+          
+          // Check if it's a file and not a directory
+          let stats;
+          try {
+            stats = statSync(absolutePath);
+          } catch (statError) {
+            // Handle permission errors on stat
+            if ((statError as NodeJS.ErrnoException).code === 'EACCES') {
+              throw new Error(`include_relative: Permission denied: '${this.includePath}'`);
+            }
+            // Re-throw other stat errors
+            throw new Error(`include_relative: Failed to access file '${this.includePath}': ${statError instanceof Error ? statError.message : 'Unknown error'}`);
+          }
+          
+          if (!stats.isFile()) {
+            throw new Error(`include_relative: Path is not a file: '${this.includePath}'`);
+          }
+          
+          // Read and render the file
+          let content: string;
+          try {
+            content = readFileSync(absolutePath, 'utf-8');
+          } catch (readError) {
+            // Provide specific error for read failures
+            if ((readError as NodeJS.ErrnoException).code === 'EACCES') {
+              throw new Error(`include_relative: Permission denied reading file: '${this.includePath}'`);
+            }
+            throw new Error(`include_relative: Failed to read file '${this.includePath}': ${readError instanceof Error ? readError.message : 'Unknown error'}`);
+          }
+          
+          // Render the included content with the current context
+          // Note: Jekyll's include_relative has full access to the current context
+          // This is consistent with Jekyll's behavior where included files can access all variables
+          const html = await this.liquid.parseAndRender(content, ctx);
+          emitter.write(html);
+        } catch (error) {
+          // Re-throw our specific error messages without wrapping them
+          if (error instanceof Error && error.message.startsWith('include_relative:')) {
+            throw error;
+          }
+          // For other errors (like Liquid rendering errors), wrap them
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          throw new Error(`include_relative: Failed to include '${this.includePath}': ${errorMessage}`);
+        }
       },
     });
   }

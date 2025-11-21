@@ -59,8 +59,15 @@ Available options:
 - `--config <file>` - Custom configuration file (default: `_config.yml`)
 - `--drafts` - Process and render draft posts
 - `--future` - Publish posts with a future date
-- `-w, --watch` - Watch for changes and rebuild
+- `-w, --watch` - Watch for changes and rebuild automatically
 - `--verbose` - Print verbose output
+
+**Watch Mode:**
+When the `--watch` flag is enabled, jekyll-ts will monitor your source files for changes and automatically rebuild your site when files are modified, added, or deleted. This is useful for development workflows.
+
+```bash
+jekyll-ts build --watch
+```
 
 ### Serve Your Site Locally
 
@@ -245,7 +252,7 @@ jekyll.js/
 ### Next Version (v0.2.0 - Phase 1)
 
 - [x] Data files (`_data` directory)
-- [ ] Watch mode for builds
+- [x] Watch mode for builds
 - [ ] SASS/SCSS processing
 - [ ] Front matter defaults
 - [ ] Additional Liquid filters
@@ -272,6 +279,7 @@ This project aims to be compatible with Jekyll 4.x. While the goal is 100% compa
   - `jekyll-feed` - Atom feed generation
 - ✅ Draft and future post filtering
 - ✅ Theme support (npm package-based themes)
+- ✅ Watch mode for automatic rebuilds
 
 ### Planned Features
 
@@ -279,7 +287,7 @@ See [ROADMAP.md](./docs/ROADMAP.md) for complete timeline.
 
 **High Priority** (v0.2.0):
 - Data files (`_data` directory)
-- Watch mode for builds
+- Watch mode for builds (completed)
 - SASS/SCSS processing
 - Front matter defaults
 

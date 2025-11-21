@@ -15,3 +15,4 @@ export {
   wrapError,
   parseErrorLocation,
 } from './errors';
+export { FileWatcher, type WatcherOptions } from './watcher';

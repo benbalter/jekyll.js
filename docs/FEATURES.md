@@ -53,7 +53,7 @@ Quick reference for feature implementation status in jekyll.js compared to Jekyl
 | Jekyll Filters (Basic) | ✅ | v0.1.0 | Date, URL, array, string filters |
 | Jekyll Filters (Advanced) | 🟡 | v0.2.0 | Some filters missing |
 | Jekyll Tags (Basic) | ✅ | v0.1.0 | `include`, `highlight`, `link` |
-| Jekyll Tags (Advanced) | 🟡 | v0.3.0 | `raw`, `include_relative` missing |
+| Jekyll Tags (Advanced) | ✅ | v0.1.0 | `raw`, `include_relative`, `comment` |
 | Layout Inheritance | ✅ | v0.1.0 | Nested layouts work |
 | Front Matter Defaults | 🔴 | v0.2.0 | Path/type-based defaults |
 
@@ -210,12 +210,13 @@ Quick reference for feature implementation status in jekyll.js compared to Jekyl
 - `{% highlight %}` - Syntax highlighting markup
 - `{% link %}` - Link to pages (basic)
 - `{% post_url %}` - Link to posts (basic)
+- `{% raw %}` - Disable Liquid processing (built into liquidjs)
+- `{% include_relative %}` - Include relative to current file
+- `{% comment %}` - Multi-line comments (built into liquidjs)
 
 ### 🔴 Planned (v0.3.0+)
 
-- `{% raw %}` - Disable Liquid processing
-- `{% include_relative %}` - Include relative to current file
-- `{% comment %}` - Multi-line comments (may be built-in)
+- Custom block tag support for plugins
 
 ---
 

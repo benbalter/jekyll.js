@@ -2,7 +2,7 @@ import { Site } from './Site';
 import { Renderer } from './Renderer';
 import { Document, DocumentType } from './Document';
 import { logger } from '../utils/logger';
-import { BuildError, FileSystemError } from '../utils/errors';
+import { BuildError, FileSystemError, JekyllError } from '../utils/errors';
 import { mkdirSync, writeFileSync, existsSync, readdirSync, statSync, copyFileSync } from 'fs';
 import { join, dirname, extname, basename, relative } from 'path';
 import { rmSync } from 'fs';
@@ -109,6 +109,11 @@ export class Builder {
 
       logger.success(`Site built successfully to ${this.site.destination}`);
     } catch (error) {
+      // Re-throw specific errors as-is, or log and exit
+      if (error instanceof JekyllError) {
+        throw error; // Already has proper context
+      }
+      // Only wrap unknown errors
       throw new BuildError('Build failed', {
         cause: error instanceof Error ? error : undefined,
       });

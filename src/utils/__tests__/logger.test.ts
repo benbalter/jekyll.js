@@ -12,6 +12,9 @@ describe('Logger', () => {
   let consoleWarnSpy: jest.SpyInstance;
 
   beforeEach(() => {
+    // Ensure DEBUG env var doesn't interfere
+    delete process.env.DEBUG;
+    
     // Reset logger configuration
     logger.configure({
       verbose: false,

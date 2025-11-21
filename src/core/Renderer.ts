@@ -457,12 +457,13 @@ export class Renderer {
       content = await this.render(document.content, context);
     } catch (error) {
       if (error instanceof TemplateError) {
-        // Add document file information to template error
+        // Preserve the original error by re-throwing it with updated file context
         throw new TemplateError(error.message, {
           file: document.relativePath,
           line: error.line,
           column: error.column,
-          cause: error.cause,
+          templateName: error.templateName,
+          cause: error, // Chain the original error
         });
       }
       throw error;
@@ -494,15 +495,15 @@ export class Renderer {
           content = await this.renderWithLayout(content, layout, context);
         } catch (error) {
           if (error instanceof TemplateError) {
-            // The error already has layout context, just add document info
+            // Preserve the original error by re-throwing it with updated context
             throw new TemplateError(
               `Error rendering document with layout '${document.layout}': ${error.message}`,
               {
                 file: document.relativePath,
                 line: error.line,
                 column: error.column,
-                templateName: document.layout,
-                cause: error.cause,
+                templateName: error.templateName || document.layout,
+                cause: error, // Chain the original error
               }
             );
           }
@@ -553,14 +554,15 @@ export class Renderer {
       rendered = await this.render(layout.content, context);
     } catch (error) {
       if (error instanceof TemplateError) {
+        // Preserve the original error by re-throwing it with layout context
         throw new TemplateError(
           error.message,
           {
             file: layout.relativePath,
             line: error.line,
             column: error.column,
-            templateName: layout.basename,
-            cause: error.cause,
+            templateName: error.templateName || layout.basename,
+            cause: error, // Chain the original error
           }
         );
       }

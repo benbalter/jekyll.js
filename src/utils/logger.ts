@@ -151,7 +151,7 @@ class Logger {
         try {
           if (typeof value === 'object' && value !== null) {
             const seen = new WeakSet();
-            formattedValue = JSON.stringify(value, function replacer(k, v) {
+            formattedValue = JSON.stringify(value, function replacer(_k, v) {
               if (typeof v === 'object' && v !== null) {
                 if (seen.has(v)) return '[Circular]';
                 seen.add(v);

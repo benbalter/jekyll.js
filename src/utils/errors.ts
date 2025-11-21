@@ -230,7 +230,9 @@ export function parseErrorLocation(errorMessage: string): {
     };
   }
 
-  const colonMatch = errorMessage.match(/(\d+):(\d+)/);
+  // More specific pattern to avoid matching timestamps or URLs
+  // Require either start of string, whitespace, or "at"/"position" prefix
+  const colonMatch = errorMessage.match(/(?:^|[\s,]|at\s|position\s)(\d+):(\d+)\b/);
   if (colonMatch && colonMatch[1] && colonMatch[2]) {
     return {
       line: parseInt(colonMatch[1], 10),

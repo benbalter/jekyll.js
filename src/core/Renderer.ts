@@ -1,6 +1,7 @@
 import { Liquid } from 'liquidjs';
 import { Site } from './Site';
 import { Document } from './Document';
+import { Paginator } from './Paginator';
 import { logger } from '../utils/logger';
 import { TemplateError, parseErrorLocation } from '../utils/errors';
 import { processMarkdown } from './markdown';
@@ -753,7 +754,7 @@ export class Renderer {
    * @param paginator Paginator object with pagination data
    * @returns Rendered HTML string
    */
-  async renderDocumentWithPaginator(document: Document, paginator: any): Promise<string> {
+  async renderDocumentWithPaginator(document: Document, paginator: Paginator): Promise<string> {
     // Create context with document data, site data, and paginator
     const siteData = this.site.toJSON();
     const context = {

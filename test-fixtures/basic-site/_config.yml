@@ -12,6 +12,20 @@ collections:
 markdown: kramdown
 permalink: /:categories/:year/:month/:day/:title.html
 
+# Front matter defaults
+defaults:
+  - scope:
+      path: ""
+      type: "posts"
+    values:
+      layout: "post"
+      author: "Test Author"
+  - scope:
+      path: ""
+      type: "recipes"
+    values:
+      category: "cooking"
+
 # Exclude directories
 exclude:
   - node_modules

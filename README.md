@@ -253,8 +253,8 @@ jekyll.js/
 
 - [x] Data files (`_data` directory)
 - [x] Watch mode for builds
+- [x] Front matter defaults
 - [ ] SASS/SCSS processing
-- [ ] Front matter defaults
 - [ ] Additional Liquid filters
 
 ## Compatibility
@@ -271,6 +271,7 @@ This project aims to be compatible with Jekyll 4.x. While the goal is 100% compa
 - ✅ Layouts and includes
 - ✅ Data files (`_data` directory) - YAML and JSON support
 - ✅ Front matter (YAML)
+- ✅ Front matter defaults - Set default front matter values for files based on path and type
 - ✅ Markdown processing (using Remark with GFM support)
 - ✅ Permalinks and URL generation
 - ✅ Built-in plugins:
@@ -286,10 +287,10 @@ This project aims to be compatible with Jekyll 4.x. While the goal is 100% compa
 See [ROADMAP.md](./docs/ROADMAP.md) for complete timeline.
 
 **High Priority** (v0.2.0):
-- Data files (`_data` directory)
-- Watch mode for builds (completed)
+- Data files (`_data` directory) - completed
+- Watch mode for builds - completed
+- Front matter defaults - completed
 - SASS/SCSS processing
-- Front matter defaults
 
 **Medium Priority** (v0.3.0):
 - Pagination

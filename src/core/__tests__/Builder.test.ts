@@ -481,4 +481,105 @@ About page`
       expect(existsSync(join(destDir, 'about.html'))).toBe(true);
     });
   });
+
+  describe('incremental builds', () => {
+    it('should skip rebuild when no changes detected', async () => {
+      writeFileSync(
+        join(testSiteDir, 'index.md'),
+        `---
+title: Home
+---
+# Welcome`
+      );
+
+      const site = new Site(testSiteDir);
+      const builder = new Builder(site, { incremental: true });
+      
+      // First build
+      await builder.build();
+      expect(existsSync(join(destDir, 'index.html'))).toBe(true);
+      
+      // Second build with no changes
+      const site2 = new Site(testSiteDir);
+      const builder2 = new Builder(site2, { incremental: true });
+      await builder2.build();
+      
+      // Should still work
+      expect(existsSync(join(destDir, 'index.html'))).toBe(true);
+    });
+
+    it('should rebuild changed files only', async () => {
+      writeFileSync(
+        join(testSiteDir, 'page1.md'),
+        `---
+title: Page 1
+---
+Content 1`
+      );
+      
+      writeFileSync(
+        join(testSiteDir, 'page2.md'),
+        `---
+title: Page 2
+---
+Content 2`
+      );
+
+      const site = new Site(testSiteDir);
+      const builder = new Builder(site, { incremental: true });
+      
+      // First build
+      await builder.build();
+      expect(existsSync(join(destDir, 'page1.html'))).toBe(true);
+      expect(existsSync(join(destDir, 'page2.html'))).toBe(true);
+      
+      // Wait a bit for file system
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Modify only page1
+      writeFileSync(
+        join(testSiteDir, 'page1.md'),
+        `---
+title: Page 1 Updated
+---
+Updated content`
+      );
+      
+      // Second build with incremental
+      const site2 = new Site(testSiteDir);
+      const builder2 = new Builder(site2, { incremental: true });
+      await builder2.build();
+      
+      // Both pages should still exist
+      expect(existsSync(join(destDir, 'page1.html'))).toBe(true);
+      expect(existsSync(join(destDir, 'page2.html'))).toBe(true);
+      
+      // Page1 should have updated content
+      const page1Content = readFileSync(join(destDir, 'page1.html'), 'utf-8');
+      expect(page1Content).toContain('Updated content');
+    });
+
+    it('should not clean destination when incremental is enabled', async () => {
+      // Create a file in destination
+      mkdirSync(destDir, { recursive: true });
+      writeFileSync(join(destDir, 'existing-file.txt'), 'existing content');
+
+      writeFileSync(
+        join(testSiteDir, 'index.md'),
+        `---
+title: Home
+---
+Content`
+      );
+
+      const site = new Site(testSiteDir);
+      const builder = new Builder(site, { incremental: true, clean: true });
+      await builder.build();
+
+      // Existing file should still be there (clean is skipped in incremental mode)
+      expect(existsSync(join(destDir, 'existing-file.txt'))).toBe(true);
+      // New file should also exist
+      expect(existsSync(join(destDir, 'index.html'))).toBe(true);
+    });
+  });
 });

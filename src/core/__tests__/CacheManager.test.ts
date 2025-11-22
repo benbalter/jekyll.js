@@ -1,5 +1,5 @@
 import { CacheManager } from '../CacheManager';
-import { mkdirSync, writeFileSync, rmSync, statSync, existsSync } from 'fs';
+import { mkdirSync, writeFileSync, rmSync } from 'fs';
 import { join } from 'path';
 
 describe('CacheManager', () => {
@@ -58,7 +58,7 @@ describe('CacheManager', () => {
       expect(cache.hasChanged(testFile, 'test.md')).toBe(false);
     });
 
-    it('should return true for modified files', () => {
+    it('should return true for modified files', (done) => {
       const cache = new CacheManager(testDir);
       writeFileSync(testFile, 'initial content', 'utf-8');
       
@@ -69,7 +69,8 @@ describe('CacheManager', () => {
       setTimeout(() => {
         writeFileSync(testFile, 'modified content', 'utf-8');
         expect(cache.hasChanged(testFile, 'test.md')).toBe(true);
-      }, 10);
+        done();
+      }, 100);
     });
   });
 
@@ -157,7 +158,7 @@ describe('CacheManager', () => {
       expect(cache.hasDependencyChanges('test.md', testDir)).toBe(false);
     });
 
-    it('should detect changed dependencies', () => {
+    it('should detect changed dependencies', (done) => {
       const cache = new CacheManager(testDir);
       const layoutFile = join(testDir, 'layout.html');
       
@@ -172,7 +173,8 @@ describe('CacheManager', () => {
       setTimeout(() => {
         writeFileSync(layoutFile, 'modified layout', 'utf-8');
         expect(cache.hasDependencyChanges('test.md', testDir)).toBe(true);
-      }, 10);
+        done();
+      }, 100);
     });
   });
 

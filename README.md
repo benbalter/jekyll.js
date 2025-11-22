@@ -60,10 +60,18 @@ Available options:
 - `--drafts` - Process and render draft posts
 - `--future` - Publish posts with a future date
 - `-w, --watch` - Watch for changes and rebuild automatically
+- `-I, --incremental` - Enable incremental build (only rebuild changed files)
 - `--verbose` - Print verbose output
 
 **Watch Mode:**
 When the `--watch` flag is enabled, jekyll-ts will monitor your source files for changes and automatically rebuild your site when files are modified, added, or deleted. This is useful for development workflows.
+
+**Incremental Builds:**
+When the `--incremental` flag is enabled, jekyll-ts will only rebuild files that have changed since the last build, significantly improving build performance for large sites. The build cache is stored in `.jekyll-cache/` directory.
+
+```bash
+jekyll-ts build --incremental
+```
 
 ```bash
 jekyll-ts build --watch
@@ -248,11 +256,13 @@ jekyll.js/
 - [x] Built-in plugins (SEO, sitemap, feed)
 - [x] Development server with live reload
 - [x] Theme support (npm package-based)
+- [x] Incremental builds
 
 ### Next Version (v0.2.0 - Phase 1)
 
 - [x] Data files (`_data` directory)
 - [x] Watch mode for builds
+- [x] Incremental builds
 - [ ] SASS/SCSS processing
 - [ ] Front matter defaults
 - [ ] Additional Liquid filters
@@ -280,20 +290,18 @@ This project aims to be compatible with Jekyll 4.x. While the goal is 100% compa
 - ✅ Draft and future post filtering
 - ✅ Theme support (npm package-based themes)
 - ✅ Watch mode for automatic rebuilds
+- ✅ Incremental builds
 
 ### Planned Features
 
 See [ROADMAP.md](./docs/ROADMAP.md) for complete timeline.
 
 **High Priority** (v0.2.0):
-- Data files (`_data` directory)
-- Watch mode for builds (completed)
 - SASS/SCSS processing
 - Front matter defaults
 
 **Medium Priority** (v0.3.0):
 - Pagination
-- Incremental builds
 - Asset pipeline improvements
 
 **Future** (v1.0.0+):

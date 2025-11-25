@@ -652,12 +652,13 @@ export class Renderer {
   /**
    * Render a document with its content and layout
    * @param document Document to render
+   * @param additionalContext Optional additional context to merge (e.g., paginator)
    * @returns Rendered HTML output
    */
-  async renderDocument(document: Document): Promise<string> {
+  async renderDocument(document: Document, additionalContext?: Record<string, unknown>): Promise<string> {
     // Create context with document data and site data
     const siteData = this.site.toJSON();
-    const context = {
+    const context: Record<string, unknown> = {
       page: {
         ...document.data,
         title: document.title,
@@ -678,6 +679,7 @@ export class Renderer {
         source: siteData.source,
         destination: siteData.destination,
       },
+      ...additionalContext,
     };
 
     // First render the document content (processes Liquid tags)
@@ -714,7 +716,7 @@ export class Renderer {
     }
     
     // Update context with rendered content
-    context.page.content = content;
+    (context.page as Record<string, unknown>).content = content;
 
     // If document has a layout, render with layout
     if (document.layout) {
@@ -755,29 +757,8 @@ export class Renderer {
    * @returns Rendered HTML string
    */
   async renderDocumentWithPaginator(document: Document, paginator: Paginator): Promise<string> {
-    // Create context with document data, site data, and paginator
-    const siteData = this.site.toJSON();
-    const context = {
-      page: {
-        ...document.data,
-        title: document.title,
-        date: document.date,
-        url: document.url,
-        path: document.relativePath,
-        content: document.content,
-        categories: document.categories,
-        tags: document.tags,
-      },
-      site: {
-        ...siteData.config,
-        config: siteData.config,
-        data: siteData.data,
-        pages: siteData.pages,
-        posts: siteData.posts,
-        collections: siteData.collections,
-        source: siteData.source,
-        destination: siteData.destination,
-      },
+    // Transform paginator posts to include computed properties
+    const paginatorContext = {
       paginator: {
         ...paginator,
         posts: paginator.posts.map((post: Document) => ({
@@ -793,68 +774,7 @@ export class Renderer {
       },
     };
 
-    // First render the document content (processes Liquid tags)
-    let content: string;
-    try {
-      content = await this.render(document.content, context);
-    } catch (error) {
-      if (error instanceof TemplateError) {
-        throw new TemplateError(error.message, {
-          file: document.relativePath,
-          line: error.line,
-          column: error.column,
-          templateName: error.templateName,
-          cause: error,
-        });
-      }
-      throw error;
-    }
-    
-    // If document is markdown, convert to HTML
-    const isMarkdown = ['.md', '.markdown'].includes(document.extname.toLowerCase());
-    if (isMarkdown) {
-      try {
-        content = await processMarkdown(content);
-      } catch (err) {
-        logger.warn(
-          `Failed to process markdown for '${document.relativePath}': ${err instanceof Error ? err.message : String(err)}. Document will be rendered with Liquid-processed content only.`,
-          { file: document.relativePath }
-        );
-      }
-    }
-    
-    // Update context with rendered content
-    context.page.content = content;
-
-    // If document has a layout, render with layout
-    if (document.layout) {
-      const layout = this.site.getLayout(document.layout);
-      if (layout) {
-        try {
-          content = await this.renderWithLayout(content, layout, context);
-        } catch (error) {
-          if (error instanceof TemplateError) {
-            throw new TemplateError(
-              `Error rendering document with layout '${document.layout}': ${error.message}`,
-              {
-                file: document.relativePath,
-                line: error.line,
-                column: error.column,
-                templateName: error.templateName || document.layout,
-                cause: error,
-              }
-            );
-          }
-          throw error;
-        }
-      } else {
-        logger.warn(
-          `Layout '${document.layout}' not found for document '${document.relativePath}'. The document will be rendered without a layout.`
-        );
-      }
-    }
-
-    return content;
+    return this.renderDocument(document, paginatorContext);
   }
 
   /**

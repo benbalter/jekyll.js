@@ -281,23 +281,28 @@ export class Builder {
   }
 
   /**
-   * Render all posts
+   * Get filtered posts based on draft and future post options
+   * @returns Filtered array of posts
    */
-  private async renderPosts(): Promise<void> {
-    // Filter posts based on options
-    const posts = this.site.posts.filter((post) => {
+  private getFilteredPosts(): Document[] {
+    return this.site.posts.filter((post) => {
       // Filter unpublished posts unless showDrafts is enabled
       if (!post.published && !this.options.showDrafts) {
         return false;
       }
-
       // Filter future posts unless showFuture is enabled
       if (!this.options.showFuture && post.date && post.date > new Date()) {
         return false;
       }
-
       return true;
     });
+  }
+
+  /**
+   * Render all posts
+   */
+  private async renderPosts(): Promise<void> {
+    const posts = this.getFilteredPosts();
 
     logger.info(`Rendering ${posts.length} posts...`);
 
@@ -316,16 +321,8 @@ export class Builder {
       return;
     }
 
-    // Filter posts for pagination (same filtering as renderPosts)
-    const posts = this.site.posts.filter((post) => {
-      if (!post.published && !this.options.showDrafts) {
-        return false;
-      }
-      if (!this.options.showFuture && post.date && post.date > new Date()) {
-        return false;
-      }
-      return true;
-    });
+    // Get filtered posts for pagination
+    const posts = this.getFilteredPosts();
 
     // Generate pagination data
     const paginators = generatePagination(posts, this.site.config);

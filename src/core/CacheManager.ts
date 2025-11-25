@@ -1,6 +1,5 @@
-import { existsSync, readFileSync, writeFileSync, mkdirSync, statSync } from 'fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync, statSync, renameSync, unlinkSync } from 'fs';
 import { join, dirname } from 'path';
-import { createHash } from 'crypto';
 
 /**
  * Metadata for a cached file
@@ -10,8 +9,6 @@ export interface FileCacheEntry {
   path: string;
   /** Last modification time */
   mtime: number;
-  /** Content hash (MD5) */
-  hash: string;
   /** Dependencies (files that affect this file's output) */
   dependencies: string[];
 }
@@ -24,6 +21,8 @@ export interface CacheMetadata {
   version: string;
   /** Last build timestamp */
   lastBuild: number;
+  /** Config file modification time (triggers full rebuild when changed) */
+  configMtime: number;
   /** Cached files */
   files: Record<string, FileCacheEntry>;
 }
@@ -35,15 +34,47 @@ export interface CacheMetadata {
 export class CacheManager {
   private metadata: CacheMetadata;
   private cacheFile: string;
-  private readonly version = '1.0.0';
+  private sourceDir: string;
+  private readonly version = '1.1.0';
+  private configChanged: boolean = false;
 
   /**
    * Create a new CacheManager
    * @param cacheDir Directory to store cache metadata
    */
   constructor(cacheDir: string) {
+    this.sourceDir = cacheDir;
     this.cacheFile = join(cacheDir, '.jekyll-cache', 'incremental.json');
     this.metadata = this.loadCache();
+    this.checkConfigChange();
+  }
+
+  /**
+   * Check if config file has changed and invalidate cache if so
+   */
+  private checkConfigChange(): void {
+    const configPath = join(this.sourceDir, '_config.yml');
+    if (existsSync(configPath)) {
+      try {
+        const stats = statSync(configPath);
+        // Use epsilon comparison for mtime
+        if (this.metadata.configMtime > 0 && Math.abs(stats.mtimeMs - this.metadata.configMtime) > 1) {
+          // Config changed - clear cache and mark for full rebuild
+          this.configChanged = true;
+          this.metadata.files = {};
+        }
+        this.metadata.configMtime = stats.mtimeMs;
+      } catch {
+        // If we can't stat the config, just continue
+      }
+    }
+  }
+
+  /**
+   * Check if a full rebuild is required due to config changes
+   */
+  requiresFullRebuild(): boolean {
+    return this.configChanged;
   }
 
   /**
@@ -64,7 +95,7 @@ export class CacheManager {
       }
 
       return cache;
-    } catch (error) {
+    } catch {
       // If cache is corrupted, start fresh
       return this.createEmptyCache();
     }
@@ -77,12 +108,13 @@ export class CacheManager {
     return {
       version: this.version,
       lastBuild: 0,
+      configMtime: 0,
       files: {},
     };
   }
 
   /**
-   * Save cache to disk
+   * Save cache to disk using atomic write (write to temp file, then rename)
    */
   save(): void {
     try {
@@ -95,9 +127,22 @@ export class CacheManager {
       // Update last build time
       this.metadata.lastBuild = Date.now();
 
-      // Write cache file
-      writeFileSync(this.cacheFile, JSON.stringify(this.metadata, null, 2), 'utf-8');
+      // Write to temp file first (atomic write)
+      const tempFile = this.cacheFile + '.tmp';
+      writeFileSync(tempFile, JSON.stringify(this.metadata, null, 2), 'utf-8');
+      
+      // Rename temp file to actual cache file (atomic operation)
+      renameSync(tempFile, this.cacheFile);
     } catch (error) {
+      // Clean up temp file if it exists
+      try {
+        const tempFile = this.cacheFile + '.tmp';
+        if (existsSync(tempFile)) {
+          unlinkSync(tempFile);
+        }
+      } catch {
+        // Ignore cleanup errors
+      }
       // Don't fail the build if cache can't be saved
       console.warn('Warning: Failed to save build cache:', error instanceof Error ? error.message : String(error));
     }
@@ -125,31 +170,15 @@ export class CacheManager {
     try {
       const stats = statSync(filePath);
       
-      // Check modification time first (fast check)
-      if (stats.mtimeMs !== cached.mtime) {
+      // Use epsilon comparison to avoid false positives due to timestamp precision
+      if (Math.abs(stats.mtimeMs - cached.mtime) > 1) {
         return true;
       }
 
-      // If mtime matches, assume content hasn't changed
-      // (calculating hash is expensive and mtime should be sufficient)
       return false;
-    } catch (error) {
+    } catch {
       // If we can't stat the file, consider it changed
       return true;
-    }
-  }
-
-  /**
-   * Calculate hash of file content
-   * @param filePath Absolute path to file
-   * @returns MD5 hash of content
-   */
-  private calculateHash(filePath: string): string {
-    try {
-      const content = readFileSync(filePath, 'utf-8');
-      return createHash('md5').update(content).digest('hex');
-    } catch (error) {
-      return '';
     }
   }
 
@@ -162,12 +191,10 @@ export class CacheManager {
   updateFile(filePath: string, relativePath: string, dependencies: string[] = []): void {
     try {
       const stats = statSync(filePath);
-      const hash = this.calculateHash(filePath);
 
       this.metadata.files[relativePath] = {
         path: relativePath,
         mtime: stats.mtimeMs,
-        hash,
         dependencies,
       };
     } catch (error) {
@@ -207,6 +234,13 @@ export class CacheManager {
     }
 
     return false;
+  }
+
+  /**
+   * Get all cached file paths
+   */
+  getCachedFiles(): string[] {
+    return Object.keys(this.metadata.files);
   }
 
   /**

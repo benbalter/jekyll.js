@@ -2,6 +2,7 @@ import { readFileSync, statSync } from 'fs';
 import { basename, extname, relative } from 'path';
 import matter from 'gray-matter';
 import { FrontMatterError, FileSystemError } from '../utils/errors';
+import { JekyllConfig, applyFrontMatterDefaults } from '../config';
 
 /**
  * Document type enum
@@ -62,12 +63,14 @@ export class Document {
    * @param sourcePath Source directory path for calculating relative paths
    * @param type Type of document
    * @param collection Optional collection name
+   * @param config Optional site configuration for applying front matter defaults
    */
   constructor(
     path: string,
     sourcePath: string,
     type: DocumentType,
-    collection?: string
+    collection?: string,
+    config?: JekyllConfig
   ) {
     this.path = path;
     this.relativePath = relative(sourcePath, path);
@@ -92,7 +95,24 @@ export class Document {
       const fileContent = readFileSync(path, 'utf-8');
       const parsed = matter(fileContent);
 
-      this.data = parsed.data;
+      // Apply front matter defaults if config is provided
+      if (config) {
+        // Determine the document type string for matching
+        let docTypeStr: string = type;
+        if (type === DocumentType.COLLECTION && collection) {
+          docTypeStr = collection; // Use collection name for collection documents
+        }
+        
+        this.data = applyFrontMatterDefaults(
+          this.relativePath,
+          docTypeStr,
+          parsed.data,
+          config
+        );
+      } else {
+        this.data = parsed.data;
+      }
+      
       this.content = parsed.content;
     } catch (error) {
       if (error instanceof Error) {

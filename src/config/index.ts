@@ -11,6 +11,7 @@ export {
   mergeWithDefaults,
   validateConfig,
   printValidation,
+  applyFrontMatterDefaults,
 } from './Config';
 
 // Export modern validation with Zod

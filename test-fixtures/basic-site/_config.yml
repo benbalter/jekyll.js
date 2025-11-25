@@ -26,6 +26,11 @@ defaults:
     values:
       category: "cooking"
 
+# SASS/SCSS settings
+sass:
+  style: compressed
+  sass_dir: _sass
+
 # Exclude directories
 exclude:
   - node_modules

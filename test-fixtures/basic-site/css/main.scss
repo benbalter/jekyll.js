@@ -1,0 +1,22 @@
+---
+# Only Sass files with front matter will be processed by Jekyll
+---
+
+@import "variables";
+@import "base";
+
+// Additional styles
+.header {
+  background-color: $primary-color;
+  color: white;
+  padding: 1rem;
+  margin-bottom: 2rem;
+}
+
+.footer {
+  background-color: $secondary-color;
+  color: white;
+  padding: 1rem;
+  margin-top: 2rem;
+  text-align: center;
+}

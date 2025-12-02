@@ -2,12 +2,14 @@ import { Site } from './Site';
 import { Renderer } from './Renderer';
 import { Document, DocumentType } from './Document';
 import { generatePagination, getPaginatedFilePath } from './Paginator';
+import { SassProcessor } from './SassProcessor';
 import { logger } from '../utils/logger';
 import { BuildError, FileSystemError, JekyllError } from '../utils/errors';
-import { mkdirSync, writeFileSync, existsSync, readdirSync, statSync, copyFileSync } from 'fs';
+import { mkdirSync, writeFileSync, existsSync, readdirSync, statSync, copyFileSync, readFileSync } from 'fs';
 import { join, dirname, extname, basename, relative } from 'path';
 import { rmSync } from 'fs';
 import { registerPlugins } from '../plugins';
+import matter from 'gray-matter';
 
 /**
  * Builder options interface
@@ -32,6 +34,7 @@ export interface BuilderOptions {
 export class Builder {
   private site: Site;
   private renderer: Renderer;
+  private sassProcessor: SassProcessor;
   private options: BuilderOptions;
 
   /**
@@ -50,6 +53,13 @@ export class Builder {
       layoutsDir: layoutDirs.length > 0 ? layoutDirs : [join(site.source, site.config.layouts_dir || '_layouts')],
       includesDir: includeDirs.length > 0 ? includeDirs : [join(site.source, site.config.includes_dir || '_includes')],
     });
+    
+    // Initialize SASS processor
+    this.sassProcessor = new SassProcessor({
+      source: site.source,
+      config: site.config,
+    });
+    
     this.options = {
       showDrafts: false,
       showFuture: false,
@@ -109,6 +119,9 @@ export class Builder {
 
       // Render collections
       await this.renderCollections();
+
+      // Process SASS/SCSS files
+      this.processSassFiles();
 
       // Copy static files
       this.copyStaticFiles();
@@ -472,6 +485,104 @@ export class Builder {
   }
 
   /**
+   * Process SASS/SCSS files and compile them to CSS
+   */
+  private processSassFiles(): void {
+    const sassFiles = this.findSassFiles(this.site.source);
+
+    if (sassFiles.length === 0) {
+      return;
+    }
+
+    logger.info(`Processing ${sassFiles.length} SASS/SCSS files...`);
+
+    for (const file of sassFiles) {
+      try {
+        // Read the file
+        const fileContent = readFileSync(file, 'utf-8');
+        
+        // Parse front matter
+        const parsed = matter(fileContent);
+        
+        // Only process files with front matter (Jekyll convention)
+        // We detect front matter by comparing content to original: if gray-matter removed
+        // delimiters (---), the content will differ from the original file content.
+        // This approach correctly identifies both empty front matter (---\n---) and
+        // front matter with data, while skipping files with no delimiters at all.
+        const hasFrontMatter = fileContent.trimStart().startsWith('---');
+        if (!hasFrontMatter) {
+          logger.debug(`Skipping ${relative(this.site.source, file)} (no front matter)`);
+          continue;
+        }
+
+        // Compile SASS/SCSS
+        const css = this.sassProcessor.process(file, parsed.content);
+
+        // Determine output path (replace .scss/.sass with .css)
+        const relativePath = relative(this.site.source, file);
+        const outputPath = relativePath.replace(/\.(scss|sass)$/, '.css');
+        const destPath = join(this.site.destination, outputPath);
+
+        // Ensure directory exists
+        mkdirSync(dirname(destPath), { recursive: true });
+
+        // Write CSS file
+        writeFileSync(destPath, css, 'utf-8');
+
+        logger.debug(`Compiled: ${relativePath} → ${outputPath}`);
+      } catch (error) {
+        logger.warn(`Failed to process SASS file: ${relative(this.site.source, file)}`, {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+  }
+
+  /**
+   * Find all SASS/SCSS files in the site (excluding _sass directory)
+   * @param dir Directory to search
+   * @param files Accumulator for found files
+   * @param isRoot Whether this is the root source directory
+   */
+  private findSassFiles(dir: string, files: string[] = [], isRoot: boolean = true): string[] {
+    if (!existsSync(dir)) {
+      return files;
+    }
+
+    const entries = readdirSync(dir);
+
+    for (const entry of entries) {
+      const fullPath = join(dir, entry);
+
+      // Skip if excluded
+      if (this.shouldExclude(fullPath)) {
+        continue;
+      }
+
+      const stats = statSync(fullPath);
+
+      if (stats.isDirectory()) {
+        // Skip Jekyll special directories (underscore-prefixed) only at root level
+        // This prevents processing _sass, _layouts, _includes, etc. at the root,
+        // but allows processing nested directories like css/_nested
+        if (isRoot && this.isJekyllDirectory(entry)) {
+          continue;
+        }
+
+        // Recurse into directory (no longer at root level)
+        this.findSassFiles(fullPath, files, false);
+      } else if (stats.isFile()) {
+        const ext = extname(fullPath).toLowerCase();
+        if (['.scss', '.sass'].includes(ext)) {
+          files.push(fullPath);
+        }
+      }
+    }
+
+    return files;
+  }
+
+  /**
    * Copy static files (non-Jekyll files) to destination
    */
   private copyStaticFiles(): void {
@@ -528,10 +639,11 @@ export class Builder {
         // Recurse into directory
         this.findStaticFiles(fullPath, files);
       } else if (stats.isFile()) {
-        // Skip markdown/HTML files - they're processed as Jekyll documents, not static files
-        // All .md, .markdown, .html, and .htm files should be rendered through the document pipeline
+        // Skip markdown/HTML/SASS files - they're processed through their own pipelines
+        // All .md, .markdown, .html, .htm files should be rendered through the document pipeline
+        // All .scss, .sass files should be compiled through the SASS processor
         const ext = extname(fullPath).toLowerCase();
-        if (['.md', '.markdown', '.html', '.htm'].includes(ext)) {
+        if (['.md', '.markdown', '.html', '.htm', '.scss', '.sass'].includes(ext)) {
           continue;
         }
 

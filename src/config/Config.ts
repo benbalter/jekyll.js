@@ -9,6 +9,7 @@ import { resolve, dirname, join, relative, isAbsolute } from 'path';
 import yaml from 'js-yaml';
 import chalk from 'chalk';
 import merge from 'lodash.merge';
+import { minimatch } from 'minimatch';
 import { ConfigError } from '../utils/errors';
 
 /**
@@ -100,6 +101,13 @@ export interface JekyllConfig {
   livereload_min_delay?: number;
   livereload_max_delay?: number;
   livereload_ignore?: string[];
+  
+  // SASS/SCSS configuration
+  sass?: {
+    sass_dir?: string;
+    style?: 'nested' | 'expanded' | 'compact' | 'compressed';
+    source_comments?: boolean;
+  };
   
   // Quiet mode
   quiet?: boolean;
@@ -492,4 +500,99 @@ export function printValidation(
   if (validation.errors.length === 0 && verbose) {
     console.log(chalk.green('\n✓ Configuration is valid'));
   }
+}
+
+/**
+ * Apply front matter defaults to a document based on configuration
+ * @param relativePath Relative path of the document from source
+ * @param documentType Type of document (page, post, or collection name)
+ * @param frontMatter Existing front matter from the document
+ * @param config Site configuration containing defaults
+ * @returns Merged front matter with defaults applied
+ */
+export function applyFrontMatterDefaults(
+  relativePath: string,
+  documentType: string,
+  frontMatter: Record<string, any>,
+  config: JekyllConfig
+): Record<string, any> {
+  // If no defaults configured, return front matter as-is
+  if (!config.defaults || config.defaults.length === 0) {
+    return frontMatter;
+  }
+
+  // Start with an empty object for defaults
+  let appliedDefaults: Record<string, any> = {};
+
+  // Process each default scope in order
+  for (const defaultConfig of config.defaults) {
+    const { scope, values } = defaultConfig;
+
+    // Check if this scope matches the document
+    if (!matchesScope(relativePath, documentType, scope)) {
+      continue;
+    }
+
+    // Merge values from this scope
+    // Later scopes override earlier ones
+    appliedDefaults = { ...appliedDefaults, ...values };
+  }
+
+  // File's front matter takes precedence over defaults
+  return { ...appliedDefaults, ...frontMatter };
+}
+
+/**
+ * Check if a document matches a defaults scope
+ * @param relativePath Relative path of the document from source
+ * @param documentType Type of document (page, post, or collection name)
+ * @param scope Scope definition from defaults configuration
+ * @returns Whether the document matches the scope
+ */
+function matchesScope(
+  relativePath: string,
+  documentType: string,
+  scope: { path: string; type?: string }
+): boolean {
+  // Check type match if type is specified
+  if (scope.type !== undefined) {
+    // Map document types to scope types
+    // "posts" type matches DocumentType.POST
+    // "pages" type matches DocumentType.PAGE
+    // Collection names match DocumentType.COLLECTION with matching collection
+    const scopeType = scope.type;
+    
+    if (scopeType === 'posts' && documentType !== 'post') {
+      return false;
+    }
+    if (scopeType === 'pages' && documentType !== 'page') {
+      return false;
+    }
+    // For collections, check if documentType matches the collection name
+    // or if it's a generic "collections" type
+    if (scopeType !== 'posts' && scopeType !== 'pages') {
+      // This is a collection name
+      if (documentType !== scopeType && documentType !== 'collection') {
+        return false;
+      }
+    }
+  }
+
+  // Check path match
+  // Empty string matches all paths
+  if (scope.path === '') {
+    return true;
+  }
+
+  // Normalize path separators for cross-platform compatibility
+  const normalizedRelPath = relativePath.replace(/\\/g, '/');
+  const normalizedScopePath = scope.path.replace(/\\/g, '/');
+
+  // Use minimatch for glob pattern matching
+  // Match against the path or check if the file is within the directory
+  return (
+    minimatch(normalizedRelPath, normalizedScopePath) ||
+    minimatch(normalizedRelPath, `${normalizedScopePath}/**`) ||
+    normalizedRelPath.startsWith(normalizedScopePath + '/')
+  );
 }

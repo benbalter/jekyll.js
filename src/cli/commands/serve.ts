@@ -1,5 +1,5 @@
 import chalk from 'chalk';
-import { resolve, join, dirname } from 'path';
+import { resolve, join } from 'path';
 import { loadConfig, validateConfig, printValidation } from '../../config';
 import { Site, Builder } from '../../core';
 import { DevServer } from '../../server';
@@ -22,8 +22,13 @@ interface ServeOptions {
  */
 export async function serveCommand(options: ServeOptions): Promise<void> {
   try {
-    // Load configuration from file
-    const configPath = resolve(options.config);
+    // Resolve source directory from CLI option (defaults to '.')
+    const sourcePath = resolve(options.source);
+
+    // Resolve config path relative to source directory if it's a relative path
+    const configPath = options.config.startsWith('/')
+      ? options.config
+      : resolve(sourcePath, options.config);
     const config = loadConfig(configPath, options.verbose);
 
     // Validate configuration
@@ -35,9 +40,11 @@ export async function serveCommand(options: ServeOptions): Promise<void> {
     }
 
     // Override config with CLI options
-    const destPath = options.destination
-      ? resolve(options.destination)
-      : config.destination || join(config.source || '.', '_site');
+    // Destination path: CLI option takes precedence, then config, then default based on source
+    const destPath =
+      options.destination !== './_site'
+        ? resolve(options.destination)
+        : config.destination || join(sourcePath, '_site');
 
     // Parse port from CLI or use config
     const port = options.port ? parseInt(options.port, 10) : config.port || 4000;
@@ -54,7 +61,7 @@ export async function serveCommand(options: ServeOptions): Promise<void> {
 
     if (options.verbose) {
       console.log(chalk.blue('\nFinal configuration:'));
-      console.log('  Source:', config.source);
+      console.log('  Source:', sourcePath);
       console.log('  Destination:', destPath);
       console.log('  Config file:', configPath);
       console.log('  Server:', `http://${host}:${port}`);
@@ -65,9 +72,6 @@ export async function serveCommand(options: ServeOptions): Promise<void> {
 
     // Build the site first
     console.log(chalk.green('\nBuilding site...'));
-
-    // Determine source directory
-    const sourcePath = config.source ? resolve(config.source) : dirname(resolve(configPath));
 
     // Update config with final paths
     config.source = sourcePath;

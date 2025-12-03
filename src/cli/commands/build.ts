@@ -47,9 +47,9 @@ export async function buildCommand(options: BuildOptions): Promise<void> {
     // Override config with CLI options
     // Destination path: CLI option takes precedence, then config, then default based on source
     const destPath =
-      options.destination !== './_site'
+      options.destination !== undefined
         ? resolve(options.destination)
-        : config.destination || join(sourcePath, '_site');
+        : (config.destination ? resolve(config.destination) : join(sourcePath, '_site'));
 
     // Apply CLI flags to config
     if (options.drafts) {

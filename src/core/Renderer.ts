@@ -67,7 +67,7 @@ export class Renderer {
       extname: '.html',
       strictVariables: options.strictVariables ?? false,
       strictFilters: options.strictFilters ?? false,
-      cache: process.env.NODE_ENV === 'production',
+      cache: true, // Enable template caching for better performance
       jekyllInclude: true, // Use Jekyll-style includes
     });
 

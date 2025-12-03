@@ -19,6 +19,110 @@ export interface MarkdownOptions {
       };
 }
 
+// Cached module imports to avoid repeated dynamic imports
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let cachedModules: {
+  unified: typeof import('unified').unified;
+  remarkParse: typeof import('remark-parse').default;
+  remarkGfm: typeof import('remark-gfm').default;
+  remarkHtml: typeof import('remark-html').default;
+  remarkGemoji?: typeof import('remark-gemoji').default;
+  remarkGithub?: typeof import('remark-github').default;
+} | null = null;
+
+// Cached processors for different option combinations
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const processorCache = new Map<string, any>();
+
+/**
+ * Generate a cache key for the given options
+ */
+function getOptionsCacheKey(options: MarkdownOptions): string {
+  const emoji = options.emoji ? '1' : '0';
+  const github = options.githubMentions
+    ? typeof options.githubMentions === 'object'
+      ? JSON.stringify(options.githubMentions)
+      : '1'
+    : '0';
+  return `${emoji}:${github}`;
+}
+
+/**
+ * Load and cache the required modules
+ */
+async function loadModules(options: MarkdownOptions): Promise<typeof cachedModules> {
+  if (cachedModules === null) {
+    const [{ unified }, { default: remarkParse }, { default: remarkGfm }, { default: remarkHtml }] =
+      await Promise.all([
+        import('unified'),
+        import('remark-parse'),
+        import('remark-gfm'),
+        import('remark-html'),
+      ]);
+
+    cachedModules = {
+      unified,
+      remarkParse,
+      remarkGfm,
+      remarkHtml,
+    };
+  }
+
+  // Load optional modules if needed and not already cached
+  if (options.emoji && !cachedModules.remarkGemoji) {
+    const { default: remarkGemoji } = await import('remark-gemoji');
+    cachedModules.remarkGemoji = remarkGemoji;
+  }
+
+  if (options.githubMentions && !cachedModules.remarkGithub) {
+    const { default: remarkGithub } = await import('remark-github');
+    cachedModules.remarkGithub = remarkGithub;
+  }
+
+  return cachedModules;
+}
+
+/**
+ * Get or create a cached processor for the given options
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function getProcessor(options: MarkdownOptions): Promise<any> {
+  const cacheKey = getOptionsCacheKey(options);
+
+  if (processorCache.has(cacheKey)) {
+    return processorCache.get(cacheKey);
+  }
+
+  const modules = await loadModules(options);
+  if (!modules) {
+    throw new Error('Failed to load markdown modules');
+  }
+
+  // Build the processor pipeline
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let processor: any = modules
+    .unified()
+    .use(modules.remarkParse) // Parse markdown
+    .use(modules.remarkGfm); // GitHub Flavored Markdown support
+
+  // Add emoji support if enabled (jemoji plugin)
+  if (options.emoji && modules.remarkGemoji) {
+    processor = processor.use(modules.remarkGemoji);
+  }
+
+  // Add GitHub mentions/references support if enabled (jekyll-mentions plugin)
+  if (options.githubMentions && modules.remarkGithub) {
+    const githubOptions = typeof options.githubMentions === 'object' ? options.githubMentions : {};
+    processor = processor.use(modules.remarkGithub, githubOptions);
+  }
+
+  // Add HTML output - SECURITY: No sanitization - matches Jekyll behavior, allows raw HTML
+  processor = processor.use(modules.remarkHtml, { sanitize: false });
+
+  processorCache.set(cacheKey, processor);
+  return processor;
+}
+
 /**
  * Process markdown content to HTML using Remark
  *
@@ -47,35 +151,8 @@ export async function processMarkdown(
   content: string,
   options: MarkdownOptions = {}
 ): Promise<string> {
-  // Dynamic import to handle ESM modules
-  const { unified } = await import('unified');
-  const { default: remarkParse } = await import('remark-parse');
-  const { default: remarkGfm } = await import('remark-gfm');
-  const { default: remarkHtml } = await import('remark-html');
-
-  // Build the processor pipeline
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let processor: any = unified()
-    .use(remarkParse) // Parse markdown
-    .use(remarkGfm); // GitHub Flavored Markdown support
-
-  // Add emoji support if enabled (jemoji plugin)
-  if (options.emoji) {
-    const { default: remarkGemoji } = await import('remark-gemoji');
-    processor = processor.use(remarkGemoji);
-  }
-
-  // Add GitHub mentions/references support if enabled (jekyll-mentions plugin)
-  if (options.githubMentions) {
-    const { default: remarkGithub } = await import('remark-github');
-    const githubOptions = typeof options.githubMentions === 'object' ? options.githubMentions : {};
-    processor = processor.use(remarkGithub, githubOptions);
-  }
-
-  const result = await processor
-    .use(remarkHtml, { sanitize: false }) // SECURITY: No sanitization - matches Jekyll behavior, allows raw HTML
-    .process(content);
-
+  const processor = await getProcessor(options);
+  const result = await processor.process(content);
   return String(result);
 }
 

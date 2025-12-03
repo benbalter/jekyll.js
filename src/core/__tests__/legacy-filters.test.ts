@@ -380,7 +380,7 @@ describe('Legacy Jekyll Liquid Filters Compatibility', () => {
       ];
       const result = await renderer.render(
         '{% assign groups = items | group_by: "type" %}{{ groups.size }}',
-        { items },
+        { items }
       );
       expect(result).toBe('2');
     });
@@ -394,7 +394,7 @@ describe('Legacy Jekyll Liquid Filters Compatibility', () => {
       ];
       const result = await renderer.render(
         '{% assign groups = items | group_by: "type" %}{% for g in groups %}{{ g.name }}:{{ g.size }},{% endfor %}',
-        { items },
+        { items }
       );
       // Order may vary, but should contain both groups
       expect(result).toContain('x:2');
@@ -408,7 +408,7 @@ describe('Legacy Jekyll Liquid Filters Compatibility', () => {
       // Test with an actual array
       const result = await renderer.render(
         '{% assign filtered = items | where: "color", "red" %}{{ filtered.size }}',
-        { items: [{ color: 'red' }, { color: 'blue' }] },
+        { items: [{ color: 'red' }, { color: 'blue' }] }
       );
       expect(result).toBe('1');
     });
@@ -422,7 +422,7 @@ describe('Legacy Jekyll Liquid Filters Compatibility', () => {
       ];
       const result = await renderer.render(
         '{% assign filtered = items | where: "color", "red" %}{{ filtered.size }}',
-        { items },
+        { items }
       );
       expect(result).toBe('2');
     });
@@ -432,7 +432,7 @@ describe('Legacy Jekyll Liquid Filters Compatibility', () => {
       const items = [{ color: 'red' }, { color: '' }, { color: 'blue' }];
       const result = await renderer.render(
         '{% assign filtered = items | where: "color", "red" %}{{ filtered.size }}',
-        { items },
+        { items }
       );
       // Should find the one with color = red
       expect(result).toBe('1');
@@ -461,7 +461,7 @@ describe('Legacy Jekyll Liquid Filters Compatibility', () => {
       const items = [{ a: 3 }, { a: 1 }, { a: 2 }];
       const result = await renderer.render(
         '{% assign sorted = items | sort: "a" %}{% for item in sorted %}{{ item.a }}{% endfor %}',
-        { items },
+        { items }
       );
       expect(result).toBe('123');
     });
@@ -471,7 +471,7 @@ describe('Legacy Jekyll Liquid Filters Compatibility', () => {
       const items = [{ a: 2 }, { b: 1 }, { a: 1 }];
       const result = await renderer.render(
         '{% assign sorted = items | sort: "a" %}{% for item in sorted %}[{{ item.a | default: "nil" }}]{% endfor %}',
-        { items },
+        { items }
       );
       expect(result).toMatch(/\[nil\]/);
     });
@@ -587,7 +587,7 @@ describe('Legacy Jekyll Liquid Filters Compatibility', () => {
       const renderer = new Renderer(site);
       const result = await renderer.render(
         '{% assign samples = items | sample: 2 %}{{ samples.size }}',
-        { items: ['a', 'b', 'c', 'd'] },
+        { items: ['a', 'b', 'c', 'd'] }
       );
       expect(result).toBe('2');
     });

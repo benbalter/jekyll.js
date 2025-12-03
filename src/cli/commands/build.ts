@@ -13,6 +13,7 @@ interface BuildOptions {
   future?: boolean;
   watch?: boolean;
   verbose?: boolean;
+  incremental?: boolean;
 }
 
 /**
@@ -53,6 +54,9 @@ export async function buildCommand(options: BuildOptions): Promise<void> {
     if (options.watch) {
       config.watch = true;
     }
+    if (options.incremental) {
+      config.incremental = true;
+    }
     
     if (options.verbose) {
       logger.section('Configuration');
@@ -62,6 +66,7 @@ export async function buildCommand(options: BuildOptions): Promise<void> {
       if (config.show_drafts) console.log('  Drafts:', 'enabled');
       if (config.future) console.log('  Future:', 'enabled');
       if (config.watch) console.log('  Watch:', 'enabled');
+      if (config.incremental) console.log('  Incremental:', 'enabled');
     }
     
     // Determine source directory
@@ -80,6 +85,7 @@ export async function buildCommand(options: BuildOptions): Promise<void> {
       showFuture: options.future,
       clean: true,
       verbose: options.verbose,
+      incremental: options.incremental,
     });
     
     // Build the site

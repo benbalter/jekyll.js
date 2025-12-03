@@ -350,14 +350,12 @@ export class Builder {
 
   /**
    * Get filtered posts based on draft and future post options
+   * @param posts Optional array of posts to filter (defaults to all site posts)
    * @returns Filtered array of posts
    */
-  private async renderPosts(posts?: Document[]): Promise<void> {
-    // Filter posts based on options
+  private getFilteredPosts(posts?: Document[]): Document[] {
     const postsToFilter = posts || this.site.posts;
-    const filteredPosts = postsToFilter.filter((post) => {
-  private getFilteredPosts(): Document[] {
-    return this.site.posts.filter((post) => {
+    return postsToFilter.filter((post) => {
       // Filter unpublished posts unless showDrafts is enabled
       if (!post.published && !this.options.showDrafts) {
         return false;
@@ -372,9 +370,10 @@ export class Builder {
 
   /**
    * Render all posts
+   * @param posts Optional array of posts to render (for incremental builds)
    */
-  private async renderPosts(): Promise<void> {
-    const posts = this.getFilteredPosts();
+  private async renderPosts(posts?: Document[]): Promise<void> {
+    const filteredPosts = this.getFilteredPosts(posts);
 
     logger.info(`Rendering ${filteredPosts.length} posts...`);
 

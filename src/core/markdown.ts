@@ -86,6 +86,28 @@ function getProcessor(options: MarkdownOptions): MarkdownIt {
 }
 
 /**
+ * Apply post-processing to markdown output (emoji and mentions)
+ * @param html HTML output from markdown-it
+ * @param options Markdown processing options
+ * @returns Processed HTML
+ */
+function applyPostProcessing(html: string, options: MarkdownOptions): string {
+  let result = html;
+
+  // Process emoji if enabled (jemoji plugin compatibility)
+  if (options.emoji) {
+    result = emojify(result);
+  }
+
+  // Process GitHub mentions if enabled (jekyll-mentions plugin compatibility)
+  if (options.githubMentions) {
+    result = processGitHubMentions(result, 'https://github.com');
+  }
+
+  return result;
+}
+
+/**
  * Process markdown content to HTML using markdown-it
  *
  * @param content Markdown content to process
@@ -114,19 +136,8 @@ export async function processMarkdown(
   options: MarkdownOptions = {}
 ): Promise<string> {
   const processor = getProcessor(options);
-  let result = processor.render(content);
-
-  // Process emoji if enabled (jemoji plugin compatibility)
-  if (options.emoji) {
-    result = emojify(result);
-  }
-
-  // Process GitHub mentions if enabled (jekyll-mentions plugin compatibility)
-  if (options.githubMentions) {
-    result = processGitHubMentions(result, 'https://github.com');
-  }
-
-  return result;
+  const html = processor.render(content);
+  return applyPostProcessing(html, options);
 }
 
 /**
@@ -138,19 +149,8 @@ export async function processMarkdown(
  */
 export function processMarkdownSync(content: string, options: MarkdownOptions = {}): string {
   const processor = getProcessor(options);
-  let result = processor.render(content);
-
-  // Process emoji if enabled (jemoji plugin compatibility)
-  if (options.emoji) {
-    result = emojify(result);
-  }
-
-  // Process GitHub mentions if enabled (jekyll-mentions plugin compatibility)
-  if (options.githubMentions) {
-    result = processGitHubMentions(result, 'https://github.com');
-  }
-
-  return result;
+  const html = processor.render(content);
+  return applyPostProcessing(html, options);
 }
 
 /**

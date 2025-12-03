@@ -81,6 +81,28 @@ export class Renderer {
   }
 
   /**
+   * Ensure site data is cached and return it
+   * @returns Cached site data object
+   */
+  private ensureSiteDataCached(): Record<string, unknown> {
+    if (!this.cachedSiteData) {
+      const siteData = this.site.toJSON();
+      this.cachedSiteData = {
+        ...siteData.config, // Flatten config into site for Jekyll compatibility
+        config: siteData.config, // Also keep config for backward compatibility
+        data: siteData.data, // Add data files
+        pages: siteData.pages,
+        posts: siteData.posts,
+        static_files: siteData.static_files, // Add static files
+        collections: siteData.collections,
+        source: siteData.source,
+        destination: siteData.destination,
+      };
+    }
+    return this.cachedSiteData!;
+  }
+
+  /**
    * Helper method to parse date input consistently
    * @param date Date input (string or Date object)
    * @returns Parsed Date object, or throws error for invalid input
@@ -1198,21 +1220,8 @@ export class Renderer {
     document: Document,
     additionalContext?: Record<string, unknown>
   ): Promise<string> {
-    // Cache site data to avoid repeated serialization
-    if (!this.cachedSiteData) {
-      const siteData = this.site.toJSON();
-      this.cachedSiteData = {
-        ...siteData.config, // Flatten config into site for Jekyll compatibility
-        config: siteData.config, // Also keep config for backward compatibility
-        data: siteData.data, // Add data files
-        pages: siteData.pages,
-        posts: siteData.posts,
-        static_files: siteData.static_files, // Add static files
-        collections: siteData.collections,
-        source: siteData.source,
-        destination: siteData.destination,
-      };
-    }
+    // Get cached site data
+    const siteData = this.ensureSiteDataCached();
 
     // Create context with document data and cached site data
     const context: Record<string, unknown> = {
@@ -1226,7 +1235,7 @@ export class Renderer {
         categories: document.categories,
         tags: document.tags,
       },
-      site: this.cachedSiteData,
+      site: siteData,
       ...additionalContext,
     };
 
@@ -1446,19 +1455,6 @@ export class Renderer {
    * Call this before rendering multiple documents to avoid lazy initialization overhead.
    */
   preloadSiteData(): void {
-    if (!this.cachedSiteData) {
-      const siteData = this.site.toJSON();
-      this.cachedSiteData = {
-        ...siteData.config,
-        config: siteData.config,
-        data: siteData.data,
-        pages: siteData.pages,
-        posts: siteData.posts,
-        static_files: siteData.static_files,
-        collections: siteData.collections,
-        source: siteData.source,
-        destination: siteData.destination,
-      };
-    }
+    this.ensureSiteDataCached();
   }
 }

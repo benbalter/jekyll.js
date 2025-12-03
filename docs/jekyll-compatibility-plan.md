@@ -4,7 +4,9 @@ This document outlines the plan for achieving feature parity between jekyll.js (
 
 **Version**: 1.0  
 **Target Jekyll Version**: 4.3.x  
-**Last Updated**: 2025-11-21
+**Last Updated**: 2025-12-03
+
+> 📖 **See also**: [PARITY.md](./PARITY.md) for a user-friendly guide to parity and backwards-compatible improvements.
 
 ---
 

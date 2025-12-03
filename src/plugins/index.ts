@@ -7,6 +7,11 @@
 export { SeoTagPlugin } from './seo-tag';
 export { SitemapPlugin } from './sitemap';
 export { FeedPlugin } from './feed';
+export { JemojiPlugin, emojify, getEmoji, hasEmoji, findEmoji } from './jemoji';
+export { RedirectFromPlugin, RedirectInfo } from './redirect-from';
+export { AvatarPlugin, generateAvatarTag, getAvatarUrl } from './avatar';
+export { GitHubMetadataPlugin, GitHubMetadata, GitHubRepository } from './github-metadata';
+export { MentionsPlugin, mentionify } from './mentions';
 
 // Export modern functionality modules - these are exported separately to avoid
 // importing ESM-only dependencies (like shiki) at the top level
@@ -19,6 +24,11 @@ import { Site } from '../core/Site';
 import { SeoTagPlugin } from './seo-tag';
 import { SitemapPlugin } from './sitemap';
 import { FeedPlugin } from './feed';
+import { JemojiPlugin } from './jemoji';
+import { RedirectFromPlugin } from './redirect-from';
+import { AvatarPlugin } from './avatar';
+import { GitHubMetadataPlugin } from './github-metadata';
+import { MentionsPlugin } from './mentions';
 
 /**
  * Plugin interface that all plugins must implement
@@ -35,7 +45,16 @@ export interface Plugin {
  * Get all available built-in plugins
  */
 export function getBuiltInPlugins(): Plugin[] {
-  return [new SeoTagPlugin(), new SitemapPlugin(), new FeedPlugin()];
+  return [
+    new SeoTagPlugin(),
+    new SitemapPlugin(),
+    new FeedPlugin(),
+    new JemojiPlugin(),
+    new RedirectFromPlugin(),
+    new AvatarPlugin(),
+    new GitHubMetadataPlugin(),
+    new MentionsPlugin(),
+  ];
 }
 
 /**

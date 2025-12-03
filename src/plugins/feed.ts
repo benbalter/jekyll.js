@@ -1,9 +1,9 @@
 /**
  * Feed Plugin for Jekyll.js
- * 
+ *
  * Implements jekyll-feed functionality
  * Generates an Atom feed (feed.xml) for blog posts
- * 
+ *
  * @see https://github.com/jekyll/jekyll-feed
  */
 
@@ -45,7 +45,7 @@ export class FeedPlugin implements Plugin {
 
     // Get posts to include (only published, sorted by date)
     const posts = site.posts
-      .filter(post => post.published)
+      .filter((post) => post.published)
       .sort((a, b) => {
         const dateA = a.date?.getTime() || 0;
         const dateB = b.date?.getTime() || 0;
@@ -89,7 +89,9 @@ export class FeedPlugin implements Plugin {
     }
 
     // Generator tag
-    lines.push('  <generator uri="https://github.com/benbalter/jekyll.js" version="0.1.0">Jekyll.js</generator>');
+    lines.push(
+      '  <generator uri="https://github.com/benbalter/jekyll.js" version="0.1.0">Jekyll.js</generator>'
+    );
 
     // Add entries for each post
     for (const post of feedPosts) {
@@ -117,23 +119,25 @@ export class FeedPlugin implements Plugin {
 
     // Get post excerpt or description
     const excerpt = post.data.excerpt || post.data.description || '';
-    
+
     lines.push('  <entry>');
     lines.push(`    <title type="html">${escapeXml(postTitle)}</title>`);
-    lines.push(`    <link href="${escapeXml(postUrl)}" rel="alternate" type="text/html" title="${escapeXml(postTitle)}"/>`);
+    lines.push(
+      `    <link href="${escapeXml(postUrl)}" rel="alternate" type="text/html" title="${escapeXml(postTitle)}"/>`
+    );
     lines.push(`    <published>${new Date(postDate).toISOString()}</published>`);
-    
+
     // Use last_modified_at if available, otherwise use date
     const updatedDate = post.data.last_modified_at || postDate;
     lines.push(`    <updated>${new Date(updatedDate).toISOString()}</updated>`);
-    
+
     lines.push(`    <id>${escapeXml(postUrl)}</id>`);
-    
+
     // Content - use excerpt or full content
     if (excerpt) {
       lines.push(`    <content type="html">${escapeXml(excerpt)}</content>`);
     }
-    
+
     // Author for this entry
     if (authorName) {
       lines.push('    <author>');

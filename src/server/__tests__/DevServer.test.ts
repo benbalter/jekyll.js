@@ -31,7 +31,7 @@ describe('DevServer', () => {
       source: sourceDir,
       destination: destDir,
     });
-    
+
     builder = new Builder(site, {
       verbose: false,
     });

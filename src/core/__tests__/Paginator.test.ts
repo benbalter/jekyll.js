@@ -22,29 +22,29 @@ describe('Paginator', () => {
     it('should return empty array when pagination is disabled', () => {
       const posts: Document[] = [];
       const config: JekyllConfig = {};
-      
+
       const result = generatePagination(posts, config);
-      
+
       expect(result).toEqual([]);
     });
 
     it('should return empty array when paginate is 0', () => {
       const posts: Document[] = [];
       const config: JekyllConfig = { paginate: 0 };
-      
+
       const result = generatePagination(posts, config);
-      
+
       expect(result).toEqual([]);
     });
 
     it('should generate single page for posts within per_page limit', () => {
       // Create 5 mock posts
       const posts: Document[] = Array.from({ length: 5 }, (_, i) => createMockDocument(i));
-      
+
       const config: JekyllConfig = { paginate: 10 };
-      
+
       const result = generatePagination(posts, config);
-      
+
       expect(result).toHaveLength(1);
       expect(result[0]!).toMatchObject({
         page: 1,
@@ -62,13 +62,13 @@ describe('Paginator', () => {
     it('should generate multiple pages for posts exceeding per_page limit', () => {
       // Create 25 mock posts
       const posts: Document[] = Array.from({ length: 25 }, (_, i) => createMockDocument(i));
-      
+
       const config: JekyllConfig = { paginate: 10 };
-      
+
       const result = generatePagination(posts, config);
-      
+
       expect(result).toHaveLength(3); // 25 posts / 10 per page = 3 pages
-      
+
       // Check first page
       expect(result[0]!).toMatchObject({
         page: 1,
@@ -81,7 +81,7 @@ describe('Paginator', () => {
         next_page_path: '/page2/',
       });
       expect(result[0]!.posts).toHaveLength(10);
-      
+
       // Check middle page
       expect(result[1]!).toMatchObject({
         page: 2,
@@ -94,7 +94,7 @@ describe('Paginator', () => {
         next_page_path: '/page3/',
       });
       expect(result[1]!.posts).toHaveLength(10);
-      
+
       // Check last page
       expect(result[2]!).toMatchObject({
         page: 3,
@@ -111,14 +111,14 @@ describe('Paginator', () => {
 
     it('should respect custom paginate_path pattern', () => {
       const posts: Document[] = Array.from({ length: 15 }, (_, i) => createMockDocument(i));
-      
-      const config: JekyllConfig = { 
+
+      const config: JekyllConfig = {
         paginate: 10,
-        paginate_path: '/blog/page:num/'
+        paginate_path: '/blog/page:num/',
       };
-      
+
       const result = generatePagination(posts, config);
-      
+
       expect(result).toHaveLength(2);
       expect(result[0]!.previous_page_path).toBe(null);
       expect(result[0]!.next_page_path).toBe('/blog/page2/');
@@ -128,14 +128,14 @@ describe('Paginator', () => {
 
     it('should include baseurl in page paths', () => {
       const posts: Document[] = Array.from({ length: 15 }, (_, i) => createMockDocument(i));
-      
-      const config: JekyllConfig = { 
+
+      const config: JekyllConfig = {
         paginate: 10,
-        baseurl: '/blog'
+        baseurl: '/blog',
       };
-      
+
       const result = generatePagination(posts, config);
-      
+
       expect(result).toHaveLength(2);
       expect(result[0]!.previous_page_path).toBe(null);
       expect(result[0]!.next_page_path).toBe('/blog/page2/');
@@ -145,11 +145,11 @@ describe('Paginator', () => {
 
     it('should handle exact multiple of per_page', () => {
       const posts: Document[] = Array.from({ length: 20 }, (_, i) => createMockDocument(i));
-      
+
       const config: JekyllConfig = { paginate: 10 };
-      
+
       const result = generatePagination(posts, config);
-      
+
       expect(result).toHaveLength(2);
       expect(result[0]!.posts).toHaveLength(10);
       expect(result[1]!.posts).toHaveLength(10);
@@ -157,11 +157,11 @@ describe('Paginator', () => {
 
     it('should slice posts correctly across pages', () => {
       const posts: Document[] = Array.from({ length: 25 }, (_, i) => createMockDocument(i));
-      
+
       const config: JekyllConfig = { paginate: 10 };
-      
+
       const result = generatePagination(posts, config);
-      
+
       // Check that posts are distributed correctly
       expect((result[0]!.posts[0] as any).index).toBe(0);
       expect((result[0]!.posts[9] as any).index).toBe(9);

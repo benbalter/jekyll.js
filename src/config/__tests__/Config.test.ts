@@ -224,9 +224,7 @@ defaults:
       const merged = mergeWithDefaults(userConfig, testConfigDir);
 
       // Should not have duplicates
-      const nodeModulesCount = merged.exclude?.filter(
-        (item) => item === 'node_modules'
-      ).length;
+      const nodeModulesCount = merged.exclude?.filter((item) => item === 'node_modules').length;
       expect(nodeModulesCount).toBe(1);
       expect(merged.exclude).toContain('custom-exclude');
     });
@@ -384,9 +382,7 @@ defaults:
       const validation = validateConfig(config);
 
       // Should not have the destination warning
-      const destWarning = validation.warnings.find((w) =>
-        w.includes('Destination directory')
-      );
+      const destWarning = validation.warnings.find((w) => w.includes('Destination directory'));
       expect(destWarning).toBeUndefined();
     });
 

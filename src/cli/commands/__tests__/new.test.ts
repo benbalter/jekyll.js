@@ -54,9 +54,7 @@ describe('newCommand', () => {
     await newCommand(testPath, {});
 
     // Try to create again without force
-    await expect(newCommand(testPath, {})).rejects.toThrow(
-      /already exists/
-    );
+    await expect(newCommand(testPath, {})).rejects.toThrow(/already exists/);
   });
 
   it('should succeed if path exists with --force flag', async () => {

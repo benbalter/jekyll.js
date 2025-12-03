@@ -12,14 +12,14 @@ import { FileSystemError } from '../utils/errors';
 export interface SassProcessorOptions {
   /** Source directory */
   source: string;
-  
+
   /** Site configuration */
   config: JekyllConfig;
 }
 
 /**
  * SASS/SCSS Processor for Jekyll sites
- * 
+ *
  * Handles compilation of .scss and .sass files with front matter.
  * Supports @import from _sass directory.
  */
@@ -31,14 +31,14 @@ export class SassProcessor {
 
   constructor(options: SassProcessorOptions) {
     this.source = options.source;
-    
+
     // Get SASS configuration from site config
     const sassConfig = options.config.sass || {};
     this.sassDir = resolve(this.source, sassConfig.sass_dir || '_sass');
-    
+
     /**
      * Map Jekyll-compatible style names to Dart Sass output styles.
-     * 
+     *
      * Jekyll originally supported four styles from Ruby Sass: nested, expanded, compact, compressed.
      * Modern Dart Sass (used by this implementation) only supports two: 'expanded' and 'compressed'.
      * For compatibility with existing Jekyll configurations:
@@ -46,19 +46,19 @@ export class SassProcessor {
      * - 'compact' → 'compressed' (closest equivalent for minified output)
      */
     const styleMap: Record<string, OutputStyle> = {
-      'nested': 'expanded',      // Dart Sass doesn't support nested, use expanded
-      'expanded': 'expanded',
-      'compact': 'compressed',   // Dart Sass doesn't support compact, use compressed
-      'compressed': 'compressed',
+      nested: 'expanded', // Dart Sass doesn't support nested, use expanded
+      expanded: 'expanded',
+      compact: 'compressed', // Dart Sass doesn't support compact, use compressed
+      compressed: 'compressed',
     };
     this.style = styleMap[sassConfig.style as string] || 'expanded';
     this.sourceComments = sassConfig.source_comments === true;
   }
 
   /**
-    * Check if a file has a SASS/SCSS extension
-    * @param filePath Path to the file
-    * @returns True if file is .scss or .sass
+   * Check if a file has a SASS/SCSS extension
+   * @param filePath Path to the file
+   * @returns True if file is .scss or .sass
    */
   isSassFile(filePath: string): boolean {
     const ext = filePath.toLowerCase();
@@ -74,7 +74,7 @@ export class SassProcessor {
   process(filePath: string, content: string): string {
     try {
       const isSass = filePath.toLowerCase().endsWith('.sass');
-      
+
       // Compile the SASS/SCSS content
       const result = compileString(content, {
         syntax: isSass ? 'indented' : 'scss',
@@ -88,32 +88,32 @@ export class SassProcessor {
             if (!url.startsWith('file://')) {
               // Try to find the file in load paths
               const paths = [this.sassDir, dirname(filePath)];
-              
+
               for (const loadPath of paths) {
                 // Try with underscore prefix first (partial)
                 const partialPath = join(loadPath, `_${url}.scss`);
                 if (existsSync(partialPath)) {
                   return new URL(`file://${partialPath}`);
                 }
-                
+
                 const partialSassPath = join(loadPath, `_${url}.sass`);
                 if (existsSync(partialSassPath)) {
                   return new URL(`file://${partialSassPath}`);
                 }
-                
+
                 // Try without underscore
                 const normalPath = join(loadPath, `${url}.scss`);
                 if (existsSync(normalPath)) {
                   return new URL(`file://${normalPath}`);
                 }
-                
+
                 const normalSassPath = join(loadPath, `${url}.sass`);
                 if (existsSync(normalSassPath)) {
                   return new URL(`file://${normalSassPath}`);
                 }
               }
             }
-            
+
             return null;
           },
           load: (canonicalUrl: URL) => {
@@ -143,7 +143,7 @@ export class SassProcessor {
           column: sassError.span?.start.column,
         });
       }
-      
+
       throw new Error(
         `Failed to compile SASS file: ${error instanceof Error ? error.message : String(error)}`
       );

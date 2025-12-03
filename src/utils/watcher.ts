@@ -45,12 +45,7 @@ export class FileWatcher {
    */
   start(): void {
     this.watcher = watch(this.options.source, {
-      ignored: [
-        this.options.destination,
-        '**/node_modules/**',
-        '**/.git/**',
-        '**/.DS_Store',
-      ],
+      ignored: [this.options.destination, '**/node_modules/**', '**/.git/**', '**/.DS_Store'],
       persistent: true,
       ignoreInitial: true,
     });

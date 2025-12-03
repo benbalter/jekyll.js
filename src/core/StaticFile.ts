@@ -4,10 +4,10 @@ import { FileSystemError } from '../utils/errors';
 
 /**
  * StaticFile class represents a static file (non-Jekyll processed) in the site
- * 
+ *
  * Static files are files that don't have front matter and are copied as-is to the destination.
  * This includes images, fonts, JavaScript files, CSS files, PDFs, etc.
- * 
+ *
  * @see https://jekyllrb.com/docs/static-files/
  */
 export class StaticFile {

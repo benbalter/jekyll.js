@@ -1,16 +1,16 @@
 /**
  * Modern syntax highlighting using Shiki
- * 
+ *
  * Shiki is a modern, fast syntax highlighter powered by the same engine as VS Code.
  * It provides accurate, beautiful syntax highlighting with minimal runtime overhead.
- * 
+ *
  * Features:
  * - Uses TextMate grammars (same as VS Code)
  * - Supports 100+ languages out of the box
  * - Multiple themes available
  * - Zero runtime dependencies (pre-generated HTML)
  * - Perfect color accuracy
- * 
+ *
  * @see https://shiki.matsu.io/
  */
 
@@ -23,19 +23,19 @@ import { logger } from '../utils/logger';
 export interface SyntaxHighlightingOptions {
   /** Theme to use for highlighting (default: 'github-light') */
   theme?: BundledTheme;
-  
+
   /** Additional themes to load */
   themes?: BundledTheme[];
-  
+
   /** Languages to load (default: load on demand) */
   languages?: BundledLanguage[];
-  
+
   /** Enable line numbers */
   lineNumbers?: boolean;
-  
+
   /** Enable line highlighting */
   highlightLines?: number[];
-  
+
   /** Add language label */
   showLanguage?: boolean;
 }
@@ -49,26 +49,30 @@ let highlighterInstance: Highlighter | null = null;
  * Initialize the syntax highlighter
  * This should be called once during application startup
  */
-export async function initHighlighter(options: SyntaxHighlightingOptions = {}): Promise<Highlighter> {
+export async function initHighlighter(
+  options: SyntaxHighlightingOptions = {}
+): Promise<Highlighter> {
   if (highlighterInstance) {
     return highlighterInstance;
   }
 
   try {
     logger.debug('Initializing Shiki syntax highlighter...');
-    
+
     const theme = options.theme || 'github-light';
     const themes = options.themes || [theme];
-    
+
     highlighterInstance = await getHighlighter({
       themes: themes,
       langs: options.languages || [], // Load languages on demand if not specified
     });
-    
+
     logger.debug(`Syntax highlighter initialized with theme: ${theme}`);
     return highlighterInstance;
   } catch (error) {
-    logger.warn(`Failed to initialize syntax highlighter: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    logger.warn(
+      `Failed to initialize syntax highlighter: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
     throw error;
   }
 }
@@ -85,12 +89,12 @@ async function getOrInitHighlighter(options?: SyntaxHighlightingOptions): Promis
 
 /**
  * Highlight code with syntax highlighting
- * 
+ *
  * @param code Source code to highlight
  * @param language Programming language (e.g., 'javascript', 'python', 'typescript')
  * @param options Highlighting options
  * @returns HTML string with syntax highlighting
- * 
+ *
  * @example
  * ```typescript
  * const html = await highlightCode('const x = 1;', 'javascript');
@@ -105,24 +109,26 @@ export async function highlightCode(
   try {
     const highlighter = await getOrInitHighlighter(options);
     const theme = options.theme || 'github-light';
-    
+
     // Try to highlight with the specified language
     try {
       const html = highlighter.codeToHtml(code, {
         lang: language as BundledLanguage,
         theme: theme,
       });
-      
+
       return html;
     } catch (_langError) {
       // If language is not supported, fall back to plain text
       logger.debug(`Language '${language}' not supported, falling back to plain text`);
-      
+
       // Return plain HTML without highlighting
       return `<pre class="shiki"><code>${escapeHtml(code)}</code></pre>`;
     }
   } catch (error) {
-    logger.warn(`Failed to highlight code: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    logger.warn(
+      `Failed to highlight code: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
     // Fallback to plain HTML
     return `<pre><code class="${language}">${escapeHtml(code)}</code></pre>`;
   }
@@ -130,7 +136,7 @@ export async function highlightCode(
 
 /**
  * Check if a language is supported by Shiki
- * 
+ *
  * @param language Language identifier to check
  * @returns true if the language is supported
  */
@@ -203,7 +209,7 @@ function escapeHtml(str: string): string {
     '"': '&quot;',
     "'": '&#39;',
   };
-  
+
   return str.replace(/[&<>"']/g, (char) => htmlEscapes[char] || char);
 }
 

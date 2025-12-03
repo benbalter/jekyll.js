@@ -26,6 +26,9 @@ jobs:
       - name: Run linter
         run: npm run lint
 
+      - name: Check formatting
+        run: npm run format:check
+
   build:
     name: Build
     runs-on: ubuntu-latest

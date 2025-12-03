@@ -10,7 +10,10 @@ describe('SassProcessor', () => {
 
   beforeEach(() => {
     // Create unique test directories for each test
-    testDir = join(os.tmpdir(), 'jekyll-ts-sass-test-' + Date.now() + '-' + Math.random().toString(36).slice(2));
+    testDir = join(
+      os.tmpdir(),
+      'jekyll-ts-sass-test-' + Date.now() + '-' + Math.random().toString(36).slice(2)
+    );
     sassDir = join(testDir, '_sass');
     mkdirSync(testDir, { recursive: true });
     mkdirSync(sassDir, { recursive: true });

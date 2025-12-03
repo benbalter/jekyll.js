@@ -23,27 +23,27 @@ interface BuildOptions {
 export async function buildCommand(options: BuildOptions): Promise<void> {
   // Configure logger
   logger.setVerbose(options.verbose || false);
-  
+
   try {
     // Load configuration from file
     const configPath = resolve(options.config);
-    
+
     logger.debug('Loading configuration', { path: configPath });
     const config = loadConfig(configPath, options.verbose);
-    
+
     // Validate configuration
     const validation = validateConfig(config);
     printValidation(validation, options.verbose);
-    
+
     if (!validation.valid) {
       throw new Error('Configuration validation failed. Please fix the errors above.');
     }
-    
+
     // Override config with CLI options
-    const destPath = options.destination 
+    const destPath = options.destination
       ? resolve(options.destination)
       : config.destination || join(config.source || '.', '_site');
-    
+
     // Apply CLI flags to config
     if (options.drafts) {
       config.show_drafts = true;
@@ -57,7 +57,7 @@ export async function buildCommand(options: BuildOptions): Promise<void> {
     if (options.incremental) {
       config.incremental = true;
     }
-    
+
     if (options.verbose) {
       logger.section('Configuration');
       console.log('  Source:', config.source);
@@ -68,16 +68,14 @@ export async function buildCommand(options: BuildOptions): Promise<void> {
       if (config.watch) console.log('  Watch:', 'enabled');
       if (config.incremental) console.log('  Incremental:', 'enabled');
     }
-    
+
     // Determine source directory
-    const sourcePath = config.source 
-      ? resolve(config.source)
-      : dirname(resolve(configPath));
-    
+    const sourcePath = config.source ? resolve(config.source) : dirname(resolve(configPath));
+
     // Update config with final paths
     config.source = sourcePath;
     config.destination = destPath;
-    
+
     // Create site and builder
     const site = new Site(sourcePath, config);
     const builder = new Builder(site, {
@@ -87,13 +85,13 @@ export async function buildCommand(options: BuildOptions): Promise<void> {
       verbose: options.verbose,
       incremental: options.incremental,
     });
-    
+
     // Build the site
     await builder.build();
-    
+
     logger.success('Site built successfully!');
     console.log('  Output:', destPath);
-    
+
     if (config.watch) {
       // Start file watcher for automatic rebuilds
       const watcher = new FileWatcher({
@@ -107,7 +105,7 @@ export async function buildCommand(options: BuildOptions): Promise<void> {
 
       // Promise to keep process running until shutdown
       let resolveShutdown: (() => void) | undefined;
-      
+
       const shutdown = async () => {
         console.log(chalk.yellow('\n\nShutting down...'));
         await watcher.stop();

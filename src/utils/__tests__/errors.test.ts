@@ -17,7 +17,7 @@ import {
 describe('JekyllError', () => {
   it('should create a basic error', () => {
     const error = new JekyllError('Test error');
-    
+
     expect(error).toBeInstanceOf(Error);
     expect(error).toBeInstanceOf(JekyllError);
     expect(error.message).toBe('Test error');
@@ -30,7 +30,7 @@ describe('JekyllError', () => {
       line: 10,
       column: 5,
     });
-    
+
     expect(error.file).toBe('test.md');
     expect(error.line).toBe(10);
     expect(error.column).toBe(5);
@@ -39,7 +39,7 @@ describe('JekyllError', () => {
   it('should include cause', () => {
     const cause = new Error('Original error');
     const error = new JekyllError('Wrapped error', { cause });
-    
+
     expect(error.cause).toBe(cause);
   });
 
@@ -49,7 +49,7 @@ describe('JekyllError', () => {
       line: 10,
       column: 5,
     });
-    
+
     const formatted = error.getFormattedMessage();
     expect(formatted).toContain('test.md:10:5');
     expect(formatted).toContain('Test error');
@@ -61,7 +61,7 @@ describe('JekyllError', () => {
       file: 'test.md',
       cause,
     });
-    
+
     const formatted = error.getFormattedMessage();
     expect(formatted).toContain('Wrapped error');
     expect(formatted).toContain('Caused by: Original error');
@@ -74,7 +74,7 @@ describe('ConfigError', () => {
       file: '_config.yml',
       line: 5,
     });
-    
+
     expect(error).toBeInstanceOf(JekyllError);
     expect(error).toBeInstanceOf(ConfigError);
     expect(error.name).toBe('ConfigError');
@@ -88,7 +88,7 @@ describe('FrontMatterError', () => {
       file: 'post.md',
       line: 3,
     });
-    
+
     expect(error).toBeInstanceOf(JekyllError);
     expect(error).toBeInstanceOf(FrontMatterError);
     expect(error.name).toBe('FrontMatterError');
@@ -102,7 +102,7 @@ describe('TemplateError', () => {
       line: 15,
       templateName: 'default',
     });
-    
+
     expect(error).toBeInstanceOf(JekyllError);
     expect(error).toBeInstanceOf(TemplateError);
     expect(error.name).toBe('TemplateError');
@@ -114,7 +114,7 @@ describe('TemplateError', () => {
       file: 'layout.html',
       templateName: 'default',
     });
-    
+
     const formatted = error.getFormattedMessage();
     expect(formatted).toContain('Template: default');
     expect(formatted).toContain('layout.html');
@@ -126,7 +126,7 @@ describe('MarkdownError', () => {
     const error = new MarkdownError('Failed to parse markdown', {
       file: 'post.md',
     });
-    
+
     expect(error).toBeInstanceOf(JekyllError);
     expect(error).toBeInstanceOf(MarkdownError);
     expect(error.name).toBe('MarkdownError');
@@ -136,7 +136,7 @@ describe('MarkdownError', () => {
 describe('BuildError', () => {
   it('should create a build error', () => {
     const error = new BuildError('Build failed');
-    
+
     expect(error).toBeInstanceOf(JekyllError);
     expect(error).toBeInstanceOf(BuildError);
     expect(error.name).toBe('BuildError');
@@ -148,7 +148,7 @@ describe('FileSystemError', () => {
     const error = new FileSystemError('File not found', {
       file: '/path/to/file.txt',
     });
-    
+
     expect(error).toBeInstanceOf(JekyllError);
     expect(error).toBeInstanceOf(FileSystemError);
     expect(error.name).toBe('FileSystemError');
@@ -161,7 +161,7 @@ describe('wrapError', () => {
     const wrapped = wrapError(original, 'Wrapped message', {
       file: 'test.txt',
     });
-    
+
     expect(wrapped).toBeInstanceOf(JekyllError);
     expect(wrapped.message).toBe('Wrapped message');
     expect(wrapped.cause).toBe(original);
@@ -170,7 +170,7 @@ describe('wrapError', () => {
 
   it('should handle non-Error values', () => {
     const wrapped = wrapError('string error', 'Wrapped message');
-    
+
     expect(wrapped).toBeInstanceOf(JekyllError);
     expect(wrapped.message).toBe('Wrapped message');
     expect(wrapped.cause).toBeUndefined();
@@ -180,35 +180,35 @@ describe('wrapError', () => {
 describe('parseErrorLocation', () => {
   it('should parse "line X, column Y" format', () => {
     const result = parseErrorLocation('Error at line 10, column 5');
-    
+
     expect(result.line).toBe(10);
     expect(result.column).toBe(5);
   });
 
   it('should parse "X:Y" format', () => {
     const result = parseErrorLocation('Error at 10:5');
-    
+
     expect(result.line).toBe(10);
     expect(result.column).toBe(5);
   });
 
   it('should parse "line X" format', () => {
     const result = parseErrorLocation('Error at line 42');
-    
+
     expect(result.line).toBe(42);
     expect(result.column).toBeUndefined();
   });
 
   it('should return empty object when no location found', () => {
     const result = parseErrorLocation('Generic error message');
-    
+
     expect(result.line).toBeUndefined();
     expect(result.column).toBeUndefined();
   });
 
   it('should handle case-insensitive "line" keyword', () => {
     const result = parseErrorLocation('Error at Line 15');
-    
+
     expect(result.line).toBe(15);
   });
 });

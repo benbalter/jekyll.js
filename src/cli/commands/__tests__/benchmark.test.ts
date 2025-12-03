@@ -159,28 +159,24 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
 
     // Benchmark Ruby Jekyll
     const jekyllCommand = useBundle ? 'bundle' : 'jekyll';
-    const jekyllArgs = useBundle 
+    const jekyllArgs = useBundle
       ? ['exec', 'jekyll', 'build', '--source', fixtureDir, '--destination', destDirRuby]
       : ['build', '--source', fixtureDir, '--destination', destDirRuby];
     const jekyllCwd = useBundle ? projectRoot : fixtureDir;
-    
-    const durationRuby = await benchmarkBuild(
-      jekyllCommand,
-      jekyllArgs,
-      jekyllCwd
-    );
+
+    const durationRuby = await benchmarkBuild(jekyllCommand, jekyllArgs, jekyllCwd);
 
     console.log(`📊 Ruby Jekyll build time: ${durationRuby}ms`);
 
     // Calculate comparison
     const difference = durationTs - durationRuby;
-    const percentageDiff = durationRuby !== 0 
-      ? (difference / durationRuby) * 100
-      : 0;
+    const percentageDiff = durationRuby !== 0 ? (difference / durationRuby) * 100 : 0;
 
     console.log('\n📈 Comparison:');
     if (durationTs < durationRuby) {
-      console.log(`   Jekyll TS is ${Math.abs(difference)}ms (${Math.abs(percentageDiff).toFixed(2)}%) faster`);
+      console.log(
+        `   Jekyll TS is ${Math.abs(difference)}ms (${Math.abs(percentageDiff).toFixed(2)}%) faster`
+      );
     } else {
       console.log(`   Jekyll TS is ${difference}ms (${percentageDiff.toFixed(2)}%) slower`);
     }
@@ -221,7 +217,8 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
     const avg = durations.reduce((a, b) => a + b, 0) / durations.length;
     const min = Math.min(...durations);
     const max = Math.max(...durations);
-    const variance = durations.reduce((sum, val) => sum + Math.pow(val - avg, 2), 0) / durations.length;
+    const variance =
+      durations.reduce((sum, val) => sum + Math.pow(val - avg, 2), 0) / durations.length;
     const stdDev = Math.sqrt(variance);
 
     console.log('\n📊 Statistics:');

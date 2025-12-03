@@ -52,24 +52,23 @@ describe('Integration: Fixture Site Build', () => {
   });
 
   describe('Pages', () => {
-
     it('should render the homepage', () => {
       const indexPath = join(destDir, 'index.html');
       expect(existsSync(indexPath)).toBe(true);
 
       const content = readFileSync(indexPath, 'utf-8');
-      
+
       // Check for page title
       expect(content).toContain('Home | Basic Test Site');
-      
+
       // Check for layout structure
       expect(content).toContain('<!DOCTYPE html>');
       expect(content).toContain('<html lang="en">');
-      
+
       // Check for includes
       expect(content).toContain('Basic Test Site');
       expect(content).toContain('A fixture site for integration testing');
-      
+
       // Check for page content
       expect(content).toContain('Welcome to Basic Test Site');
       expect(content).toContain('This is a fixture site used for integration testing');
@@ -80,10 +79,10 @@ describe('Integration: Fixture Site Build', () => {
       expect(existsSync(aboutPath)).toBe(true);
 
       const content = readFileSync(aboutPath, 'utf-8');
-      
+
       // Check for page title
       expect(content).toContain('About | Basic Test Site');
-      
+
       // Check for page content
       expect(content).toContain('About This Site');
       expect(content).toContain('Custom permalinks');
@@ -97,10 +96,10 @@ describe('Integration: Fixture Site Build', () => {
       expect(existsSync(firstPostPath)).toBe(true);
 
       const content = readFileSync(firstPostPath, 'utf-8');
-      
+
       // Check for post title
       expect(content).toContain('First Post | Basic Test Site');
-      
+
       // Check for post content
       expect(content).toContain('First Post');
       expect(content).toContain('This is the first test post');
@@ -113,7 +112,7 @@ describe('Integration: Fixture Site Build', () => {
       // Check for post layout elements
       expect(content).toContain('<div class="post">');
       expect(content).toContain('<div class="post-meta">');
-      
+
       // Check for default layout elements (inherited)
       expect(content).toContain('<!DOCTYPE html>');
       expect(content).toContain('<header>');
@@ -212,7 +211,7 @@ describe('Integration: Fixture Site Build', () => {
 
       // Check for site.title
       expect(content).toContain('Basic Test Site');
-      
+
       // Check for site.description
       expect(content).toContain('A fixture site for integration testing');
     });
@@ -264,9 +263,9 @@ describe('Integration: Fixture Site Build', () => {
     it('should not include README in output', async () => {
       const site = createSiteFromConfig(configPath);
       const builder = new Builder(site);
-      
+
       await builder.build();
-      
+
       expect(existsSync(join(destDir, 'README.html'))).toBe(false);
       expect(existsSync(join(destDir, 'README.md'))).toBe(false);
     });

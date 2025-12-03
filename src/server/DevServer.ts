@@ -181,7 +181,7 @@ export class DevServer {
    */
   private notifyReload(): void {
     const message = JSON.stringify({ type: 'reload' });
-    
+
     this.clients.forEach((client) => {
       if (client.readyState === WebSocket.OPEN) {
         client.send(message);
@@ -243,10 +243,10 @@ export class DevServer {
   private resolveFilePath(url: string): string {
     // Remove query string
     const cleanUrl = url.split('?')[0] || '/';
-    
+
     // Resolve to destination directory
     const filepath = join(this.options.destination, cleanUrl);
-    
+
     return resolve(filepath);
   }
 

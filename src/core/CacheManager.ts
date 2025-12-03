@@ -1,4 +1,12 @@
-import { existsSync, readFileSync, writeFileSync, mkdirSync, statSync, renameSync, unlinkSync } from 'fs';
+import {
+  existsSync,
+  readFileSync,
+  writeFileSync,
+  mkdirSync,
+  statSync,
+  renameSync,
+  unlinkSync,
+} from 'fs';
 import { join, dirname } from 'path';
 
 /**
@@ -58,7 +66,10 @@ export class CacheManager {
       try {
         const stats = statSync(configPath);
         // Use epsilon comparison for mtime
-        if (this.metadata.configMtime > 0 && Math.abs(stats.mtimeMs - this.metadata.configMtime) > 1) {
+        if (
+          this.metadata.configMtime > 0 &&
+          Math.abs(stats.mtimeMs - this.metadata.configMtime) > 1
+        ) {
           // Config changed - clear cache and mark for full rebuild
           this.configChanged = true;
           this.metadata.files = {};
@@ -130,7 +141,7 @@ export class CacheManager {
       // Write to temp file first (atomic write)
       const tempFile = this.cacheFile + '.tmp';
       writeFileSync(tempFile, JSON.stringify(this.metadata, null, 2), 'utf-8');
-      
+
       // Rename temp file to actual cache file (atomic operation)
       renameSync(tempFile, this.cacheFile);
     } catch (error) {
@@ -144,7 +155,10 @@ export class CacheManager {
         // Ignore cleanup errors
       }
       // Don't fail the build if cache can't be saved
-      console.warn('Warning: Failed to save build cache:', error instanceof Error ? error.message : String(error));
+      console.warn(
+        'Warning: Failed to save build cache:',
+        error instanceof Error ? error.message : String(error)
+      );
     }
   }
 
@@ -156,7 +170,7 @@ export class CacheManager {
    */
   hasChanged(filePath: string, relativePath: string): boolean {
     const cached = this.metadata.files[relativePath];
-    
+
     // If not in cache, it's new
     if (!cached) {
       return true;
@@ -169,7 +183,7 @@ export class CacheManager {
 
     try {
       const stats = statSync(filePath);
-      
+
       // Use epsilon comparison to avoid false positives due to timestamp precision
       if (Math.abs(stats.mtimeMs - cached.mtime) > 1) {
         return true;
@@ -199,7 +213,10 @@ export class CacheManager {
       };
     } catch (error) {
       // Don't fail if we can't update cache for a file
-      console.warn(`Warning: Failed to update cache for ${relativePath}:`, error instanceof Error ? error.message : String(error));
+      console.warn(
+        `Warning: Failed to update cache for ${relativePath}:`,
+        error instanceof Error ? error.message : String(error)
+      );
     }
   }
 
@@ -219,7 +236,7 @@ export class CacheManager {
    */
   hasDependencyChanges(relativePath: string, sourcePath: string): boolean {
     const cached = this.metadata.files[relativePath];
-    
+
     if (!cached) {
       return false; // File not in cache, no dependencies to check
     }
@@ -227,7 +244,7 @@ export class CacheManager {
     // Check each dependency
     for (const depPath of cached.dependencies) {
       const depAbsPath = join(sourcePath, depPath);
-      
+
       if (this.hasChanged(depAbsPath, depPath)) {
         return true;
       }

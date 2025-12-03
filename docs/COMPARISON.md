@@ -7,6 +7,8 @@ Side-by-side comparison of jekyll.js (TypeScript) and Jekyll.rb (Ruby) features.
 - Jekyll.rb: v4.3.x
 
 > 📝 **Note**: This comparison reflects the current state as of the last update date below. Version numbers and feature status will evolve with each release.
+>
+> 📖 **See also**: [PARITY.md](./PARITY.md) for a detailed guide to features with full parity and backwards-compatible improvements.
 
 ---
 

@@ -99,17 +99,17 @@ describe('Renderer', () => {
 
     it('should handle invalid dates gracefully in date filters', async () => {
       const renderer = new Renderer(site);
-      
+
       // Test invalid string date
       const template1 = '{{ date | date_to_xmlschema }}';
       const result1 = await renderer.render(template1, { date: 'not-a-date' });
       expect(result1).toBe('');
-      
+
       // Test invalid object
       const template2 = '{{ date | date_to_string }}';
       const result2 = await renderer.render(template2, { date: { invalid: 'object' } });
       expect(result2).toBe('');
-      
+
       // Test null (already handled by !date check)
       const template3 = '{{ date | date_to_rfc822 }}';
       const result3 = await renderer.render(template3, { date: null });
@@ -345,7 +345,9 @@ describe('Renderer', () => {
       it('should support strip_html filter', async () => {
         const renderer = new Renderer(site);
         const template = '{{ text | strip_html }}';
-        const result = await renderer.render(template, { text: '<p>Hello <strong>world</strong></p>' });
+        const result = await renderer.render(template, {
+          text: '<p>Hello <strong>world</strong></p>',
+        });
         expect(result).toBe('Hello world');
       });
 
@@ -495,11 +497,7 @@ describe('Renderer', () => {
 
       it('should support sort_natural filter with property', async () => {
         const renderer = new Renderer(site);
-        const items = [
-          { name: 'banana' },
-          { name: 'Apple' },
-          { name: 'cherry' },
-        ];
+        const items = [{ name: 'banana' }, { name: 'Apple' }, { name: 'cherry' }];
         const template = '{% assign sorted = items | sort_natural: "name" %}{{ sorted[0].name }}';
         const result = await renderer.render(template, { items });
         expect(result.toLowerCase()).toBe('apple');
@@ -709,11 +707,7 @@ describe('Renderer', () => {
 
       it('should support map filter', async () => {
         const renderer = new Renderer(site);
-        const items = [
-          { name: 'alice' },
-          { name: 'bob' },
-          { name: 'carol' },
-        ];
+        const items = [{ name: 'alice' }, { name: 'bob' }, { name: 'carol' }];
         const template = '{{ items | map: "name" | join: ", " }}';
         const result = await renderer.render(template, { items });
         expect(result).toBe('alice, bob, carol');
@@ -1070,7 +1064,9 @@ Content`
       const doc = new Document(docPath, testDir, DocumentType.PAGE);
       const renderer = new Renderer(site);
 
-      await expect(renderer.renderDocument(doc)).rejects.toThrow('Circular layout reference detected');
+      await expect(renderer.renderDocument(doc)).rejects.toThrow(
+        'Circular layout reference detected'
+      );
     });
   });
 
@@ -1110,7 +1106,7 @@ Main content
 
       const doc = new Document(pagePath, testDir, DocumentType.PAGE);
       const renderer = new Renderer(site);
-      
+
       // Render with context
       const context = {
         page: {
@@ -1122,7 +1118,7 @@ Main content
         },
         message: 'Hello World',
       };
-      
+
       const result = await renderer.render(doc.content, context);
       expect(result).toContain('Main content');
       expect(result).toContain('This is relative content: Hello World');
@@ -1148,7 +1144,7 @@ title: Malicious Page
 
       const doc = new Document(pagePath, testDir, DocumentType.PAGE);
       const renderer = new Renderer(site);
-      
+
       const context = {
         page: {
           ...doc.data,
@@ -1158,7 +1154,7 @@ title: Malicious Page
           source: testDir,
         },
       };
-      
+
       // Should throw an error about path being outside source directory
       await expect(renderer.render(doc.content, context)).rejects.toThrow(
         /resolves outside the site source directory/
@@ -1183,7 +1179,7 @@ title: Not Found Test
 
       const doc = new Document(pagePath, testDir, DocumentType.PAGE);
       const renderer = new Renderer(site);
-      
+
       const context = {
         page: {
           ...doc.data,
@@ -1193,7 +1189,7 @@ title: Not Found Test
           source: testDir,
         },
       };
-      
+
       // Should throw a specific "File not found" error
       await expect(renderer.render(doc.content, context)).rejects.toThrow(
         /File not found: 'nonexistent\.md'/
@@ -1219,7 +1215,7 @@ title: Directory Test
 
       const doc = new Document(pagePath, testDir, DocumentType.PAGE);
       const renderer = new Renderer(site);
-      
+
       const context = {
         page: {
           ...doc.data,
@@ -1229,7 +1225,7 @@ title: Directory Test
           source: testDir,
         },
       };
-      
+
       // Should throw a specific error about it not being a file
       await expect(renderer.render(doc.content, context)).rejects.toThrow(
         /Path is not a file: 'somedir'/
@@ -1304,7 +1300,8 @@ title: Directory Test
       it('should extract heading levels correctly', async () => {
         const renderer = new Renderer(site);
         const html = '<h2>Level 2</h2><h3>Level 3</h3><h4>Level 4</h4>';
-        const template = '{% assign tocItems = content | toc %}{{ tocItems[0].level }}-{{ tocItems[1].level }}-{{ tocItems[2].level }}';
+        const template =
+          '{% assign tocItems = content | toc %}{{ tocItems[0].level }}-{{ tocItems[1].level }}-{{ tocItems[2].level }}';
         const result = await renderer.render(template, { content: html });
         expect(result).toBe('2-3-4');
       });
@@ -1312,7 +1309,8 @@ title: Directory Test
       it('should extract heading text', async () => {
         const renderer = new Renderer(site);
         const html = '<h2>Introduction</h2><h3>Overview</h3>';
-        const template = '{% assign tocItems = content | toc %}{{ tocItems[0].text }}-{{ tocItems[1].text }}';
+        const template =
+          '{% assign tocItems = content | toc %}{{ tocItems[0].text }}-{{ tocItems[1].text }}';
         const result = await renderer.render(template, { content: html });
         expect(result).toBe('Introduction-Overview');
       });
@@ -1336,7 +1334,8 @@ title: Directory Test
       it('should handle headings with nested HTML tags', async () => {
         const renderer = new Renderer(site);
         const html = '<h2>Hello <em>World</em></h2><h3>Code: <code>example</code></h3>';
-        const template = '{% assign tocItems = content | toc %}{{ tocItems[0].text }}-{{ tocItems[1].text }}';
+        const template =
+          '{% assign tocItems = content | toc %}{{ tocItems[0].text }}-{{ tocItems[1].text }}';
         const result = await renderer.render(template, { content: html });
         expect(result).toBe('Hello World-Code: example');
       });

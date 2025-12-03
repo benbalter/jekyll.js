@@ -1,12 +1,12 @@
 /**
  * Logger utility using Winston for structured logging
- * 
+ *
  * Winston provides battle-tested, feature-rich logging with:
  * - Multiple log levels (error, warn, info, debug, etc.)
  * - Multiple transports (console, file, http, etc.)
  * - Flexible formatting
  * - Production-ready error handling
- * 
+ *
  * This wrapper adds Jekyll-specific features on top of Winston.
  */
 
@@ -27,7 +27,7 @@ class JekyllLogger {
     // Create Winston logger with custom formatting
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const self = this; // Needed to access JekyllLogger instance from Winston callbacks
-    
+
     this.winstonLogger = winston.createLogger({
       level: 'info',
       format: winston.format.combine(
@@ -45,7 +45,7 @@ class JekyllLogger {
               if (formatted && typeof formatted === 'object') {
                 // Get the formatted message
                 const msg = (formatted as any)[Symbol.for('message')] || (formatted as any).message;
-                
+
                 // Use console.log for info/debug/success, console.error for error, console.warn for warn
                 const level = info[Symbol.for('level')] || info.level;
                 if (level === 'error') {
@@ -62,26 +62,30 @@ class JekyllLogger {
           format: winston.format.printf((info) => {
             const ts = self.verbose ? `[${info.timestamp}] ` : '';
             let formattedMessage = `${ts}${info.message}`;
-            
+
             // Add context in verbose mode
             if (self.verbose) {
               // Filter out Winston internal fields
               const metadata: Record<string, any> = {};
               const excludeKeys = ['timestamp', 'level', 'message', 'splat'];
-              
+
               for (const [key, value] of Object.entries(info)) {
-                if (!excludeKeys.includes(key) && typeof key === 'string' && !key.startsWith('Symbol')) {
+                if (
+                  !excludeKeys.includes(key) &&
+                  typeof key === 'string' &&
+                  !key.startsWith('Symbol')
+                ) {
                   metadata[key] = value;
                 }
               }
-              
+
               if (Object.keys(metadata).length > 0) {
                 formattedMessage += '\n' + self.formatContext(metadata);
               }
             }
-            
+
             return formattedMessage;
-          })
+          }),
         }),
       ],
     });
@@ -101,13 +105,17 @@ class JekyllLogger {
         try {
           if (typeof value === 'object' && value !== null) {
             const seen = new WeakSet();
-            formattedValue = JSON.stringify(value, function replacer(_k, v) {
-              if (typeof v === 'object' && v !== null) {
-                if (seen.has(v)) return '[Circular]';
-                seen.add(v);
-              }
-              return v;
-            }, 2);
+            formattedValue = JSON.stringify(
+              value,
+              function replacer(_k, v) {
+                if (typeof v === 'object' && v !== null) {
+                  if (seen.has(v)) return '[Circular]';
+                  seen.add(v);
+                }
+                return v;
+              },
+              2
+            );
           } else {
             formattedValue = String(value);
           }
@@ -148,7 +156,7 @@ class JekyllLogger {
    */
   setQuiet(quiet: boolean): void {
     this.quiet = quiet;
-    this.winstonLogger.level = quiet ? 'error' : (this.verbose ? 'debug' : 'info');
+    this.winstonLogger.level = quiet ? 'error' : this.verbose ? 'debug' : 'info';
   }
 
   /**
@@ -258,7 +266,7 @@ class JekyllLogger {
    */
   section(title: string): void {
     if (this.quiet) return;
-    
+
     const line = '─'.repeat(50);
     if (this.colors) {
       console.log(chalk.blue(`\n${line}`));

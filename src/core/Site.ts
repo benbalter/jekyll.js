@@ -9,9 +9,9 @@ import yaml from 'js-yaml';
 
 /**
  * Site configuration interface
- * @deprecated Since v0.1.0. Use JekyllConfig from '../config' instead. 
+ * @deprecated Since v0.1.0. Use JekyllConfig from '../config' instead.
  * SiteConfig is now just an alias to JekyllConfig with no functional differences.
- * This alias will be removed in v1.0.0. 
+ * This alias will be removed in v1.0.0.
  * Migration: import { JekyllConfig } from '../config' or from the main index
  */
 export type SiteConfig = JekyllConfig;
@@ -64,7 +64,7 @@ export class Site {
 
   /** Theme manager for handling theme files */
   public readonly themeManager: ThemeManager;
-  
+
   /** Data files from _data directory */
   public data: Record<string, any> = {};
 
@@ -75,7 +75,7 @@ export class Site {
    */
   constructor(source: string, config: SiteConfig = {}) {
     this.source = resolve(source);
-    
+
     // Merge default excludes with user-provided excludes
     const defaultExcludes = [
       '_site',
@@ -85,10 +85,7 @@ export class Site {
       'node_modules',
       'vendor',
     ];
-    const mergedExcludes = [
-      ...defaultExcludes,
-      ...(config.exclude || []),
-    ];
+    const mergedExcludes = [...defaultExcludes, ...(config.exclude || [])];
 
     this.config = {
       ...config,
@@ -98,7 +95,7 @@ export class Site {
       include: config.include || [],
     };
     this.destination = resolve(this.config.destination as string);
-    
+
     // Initialize theme manager
     this.themeManager = new ThemeManager(this.source, this.config);
   }
@@ -136,7 +133,7 @@ export class Site {
   private readLayouts(): void {
     // Get all layout directories (site first, then theme)
     const layoutDirs = this.themeManager.getLayoutDirectories();
-    
+
     // Read layouts from all directories
     // Site layouts (first in array) will be processed first and added to the map.
     // Theme layouts will only be added if not already present (override mechanism).
@@ -159,7 +156,7 @@ export class Site {
   private readIncludes(): void {
     // Get all include directories (site first, then theme)
     const includeDirs = this.themeManager.getIncludeDirectories();
-    
+
     // Read includes from all directories
     // Site includes (first in array) will be processed first and added to the map.
     // Theme includes will only be added if not already present (override mechanism).
@@ -260,11 +257,12 @@ export class Site {
       }
     } catch (error) {
       // Log error but don't fail the build
-      console.warn(`Warning: Failed to parse data file ${filePath}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.warn(
+        `Warning: Failed to parse data file ${filePath}: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
       return null;
     }
   }
-
 
   /**
    * Read all posts from _posts directory
@@ -331,7 +329,7 @@ export class Site {
    */
   private readPages(): void {
     const files = this.walkDirectory(this.source, true);
-    
+
     for (const file of files) {
       if (this.isMarkdownOrHtml(file) && !this.isSpecialDirectory(file)) {
         const doc = new Document(file, this.source, DocumentType.PAGE, undefined, this.config);
@@ -346,24 +344,24 @@ export class Site {
    */
   private readStaticFiles(): void {
     const files = this.walkDirectory(this.source, true);
-    
+
     for (const file of files) {
       // Skip markdown, HTML, and SASS files - they're processed by Jekyll
       if (this.isMarkdownOrHtml(file)) {
         continue;
       }
-      
+
       // Skip SASS/SCSS files - they're processed by the SASS processor
       const ext = extname(file).toLowerCase();
       if (['.scss', '.sass'].includes(ext)) {
         continue;
       }
-      
+
       // Skip files in special directories (underscore-prefixed)
       if (this.isSpecialDirectory(file)) {
         continue;
       }
-      
+
       // This is a static file
       try {
         const staticFile = new StaticFile(file, this.source);
@@ -404,11 +402,7 @@ export class Site {
         // For shallow walks, skip underscore directories except at root
         const rootDir = resolve(this.config.source ?? process.cwd());
         const currentDir = resolve(dir);
-        if (
-          shallow &&
-          entry.startsWith('_') &&
-          currentDir !== rootDir
-        ) {
+        if (shallow && entry.startsWith('_') && currentDir !== rootDir) {
           continue;
         }
 
@@ -528,16 +522,10 @@ export class Site {
         ])
       ),
       layouts: Object.fromEntries(
-        Array.from(this.layouts.entries()).map(([name, doc]) => [
-          name,
-          doc.toJSON(),
-        ])
+        Array.from(this.layouts.entries()).map(([name, doc]) => [name, doc.toJSON()])
       ),
       includes: Object.fromEntries(
-        Array.from(this.includes.entries()).map(([name, doc]) => [
-          name,
-          doc.toJSON(),
-        ])
+        Array.from(this.includes.entries()).map(([name, doc]) => [name, doc.toJSON()])
       ),
     };
   }

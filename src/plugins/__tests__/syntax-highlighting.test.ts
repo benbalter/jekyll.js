@@ -37,7 +37,7 @@ describe('Syntax Highlighting', () => {
     it('should highlight JavaScript code', async () => {
       const code = 'const x = 1;';
       const html = await highlightCode(code, 'javascript');
-      
+
       expect(html).toContain('shiki');
       expect(html).toContain('const');
     });
@@ -45,7 +45,7 @@ describe('Syntax Highlighting', () => {
     it('should highlight TypeScript code', async () => {
       const code = 'const x: number = 1;';
       const html = await highlightCode(code, 'typescript');
-      
+
       expect(html).toContain('shiki');
       expect(html).toContain('number');
     });
@@ -53,7 +53,7 @@ describe('Syntax Highlighting', () => {
     it('should handle unsupported languages gracefully', async () => {
       const code = 'some code';
       const html = await highlightCode(code, 'unsupported-lang');
-      
+
       expect(html).toContain('<pre');
       expect(html).toContain('some code');
     });
@@ -61,7 +61,7 @@ describe('Syntax Highlighting', () => {
     it('should escape HTML in code', async () => {
       const code = '<script>alert("xss")</script>';
       const html = await highlightCode(code, 'unsupported-lang');
-      
+
       expect(html).not.toContain('<script>');
       expect(html).toContain('&lt;script&gt;');
     });
@@ -71,7 +71,7 @@ describe('Syntax Highlighting', () => {
       const html = await highlightCode(code, 'javascript', {
         theme: 'github-dark',
       });
-      
+
       expect(html).toContain('shiki');
     });
   });

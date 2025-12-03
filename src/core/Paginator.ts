@@ -14,28 +14,28 @@ import { JekyllConfig } from '../config';
 export interface Paginator {
   /** Posts on the current page */
   posts: Document[];
-  
+
   /** Total number of posts across all pages */
   total_posts: number;
-  
+
   /** Total number of pages */
   total_pages: number;
-  
+
   /** Current page number (1-indexed) */
   page: number;
-  
+
   /** Number of posts per page */
   per_page: number;
-  
+
   /** Previous page number (null if on first page) */
   previous_page: number | null;
-  
+
   /** Next page number (null if on last page) */
   next_page: number | null;
-  
+
   /** Path to previous page (null if on first page) */
   previous_page_path: string | null;
-  
+
   /** Path to next page (null if on last page) */
   next_page_path: string | null;
 }
@@ -46,39 +46,34 @@ export interface Paginator {
  * @param config Jekyll configuration
  * @returns Array of paginator objects, one per page
  */
-export function generatePagination(
-  posts: Document[],
-  config: JekyllConfig
-): Paginator[] {
+export function generatePagination(posts: Document[], config: JekyllConfig): Paginator[] {
   // Check if pagination is enabled
   const perPage = config.paginate;
   if (!perPage || perPage <= 0) {
     return [];
   }
-  
+
   // Calculate total pages
   const totalPosts = posts.length;
   const totalPages = Math.ceil(totalPosts / perPage);
-  
+
   // Get pagination path pattern (default: /page:num/)
   const paginatePath = config.paginate_path || '/page:num/';
-  
+
   // Generate paginator for each page
   const paginators: Paginator[] = [];
-  
+
   for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
     const startIdx = (pageNum - 1) * perPage;
     const endIdx = Math.min(startIdx + perPage, totalPosts);
     const pagePosts = posts.slice(startIdx, endIdx);
-    
+
     // Generate page paths
-    const previousPath = pageNum > 1 
-      ? generatePagePath(pageNum - 1, paginatePath, config.baseurl)
-      : null;
-    const nextPath = pageNum < totalPages 
-      ? generatePagePath(pageNum + 1, paginatePath, config.baseurl)
-      : null;
-    
+    const previousPath =
+      pageNum > 1 ? generatePagePath(pageNum - 1, paginatePath, config.baseurl) : null;
+    const nextPath =
+      pageNum < totalPages ? generatePagePath(pageNum + 1, paginatePath, config.baseurl) : null;
+
     paginators.push({
       posts: pagePosts,
       total_posts: totalPosts,
@@ -91,7 +86,7 @@ export function generatePagination(
       next_page_path: nextPath,
     });
   }
-  
+
   return paginators;
 }
 
@@ -102,21 +97,17 @@ export function generatePagination(
  * @param baseurl Base URL from config
  * @returns Generated path for the page
  */
-function generatePagePath(
-  pageNum: number,
-  paginatePath: string,
-  baseurl?: string
-): string {
+function generatePagePath(pageNum: number, paginatePath: string, baseurl?: string): string {
   const base = baseurl || '';
-  
+
   // First page goes to root (/) or baseurl
   if (pageNum === 1) {
     return base + '/';
   }
-  
+
   // Replace :num placeholder with page number
   const path = paginatePath.replace(':num', String(pageNum));
-  
+
   // Ensure path starts with / and ends with /
   let normalizedPath = path;
   if (!normalizedPath.startsWith('/')) {
@@ -125,7 +116,7 @@ function generatePagePath(
   if (!normalizedPath.endsWith('/')) {
     normalizedPath = normalizedPath + '/';
   }
-  
+
   return base + normalizedPath;
 }
 
@@ -135,32 +126,29 @@ function generatePagePath(
  * @param paginatePath Pagination path pattern from config
  * @returns File path relative to destination directory
  */
-export function getPaginatedFilePath(
-  pageNum: number,
-  paginatePath: string
-): string {
+export function getPaginatedFilePath(pageNum: number, paginatePath: string): string {
   // First page goes to index.html
   if (pageNum === 1) {
     return 'index.html';
   }
-  
+
   // Replace :num placeholder with page number
   let path = paginatePath.replace(':num', String(pageNum));
-  
+
   // Remove leading slash if present
   if (path.startsWith('/')) {
     path = path.substring(1);
   }
-  
+
   // Remove trailing slash if present
   if (path.endsWith('/')) {
     path = path.substring(0, path.length - 1);
   }
-  
+
   // Ensure it ends with /index.html
   if (path.endsWith('.html') || path.endsWith('.htm')) {
     return path;
   }
-  
+
   return path + '/index.html';
 }

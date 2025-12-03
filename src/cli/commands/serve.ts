@@ -25,24 +25,24 @@ export async function serveCommand(options: ServeOptions): Promise<void> {
     // Load configuration from file
     const configPath = resolve(options.config);
     const config = loadConfig(configPath, options.verbose);
-    
+
     // Validate configuration
     const validation = validateConfig(config);
     printValidation(validation, options.verbose);
-    
+
     if (!validation.valid) {
       throw new Error('Configuration validation failed. Please fix the errors above.');
     }
-    
+
     // Override config with CLI options
-    const destPath = options.destination 
+    const destPath = options.destination
       ? resolve(options.destination)
       : config.destination || join(config.source || '.', '_site');
-    
+
     // Parse port from CLI or use config
-    const port = options.port ? parseInt(options.port, 10) : (config.port || 4000);
+    const port = options.port ? parseInt(options.port, 10) : config.port || 4000;
     const host = options.host || config.host || 'localhost';
-    
+
     // Apply CLI flags to config
     if (options.drafts) {
       config.show_drafts = true;
@@ -51,7 +51,7 @@ export async function serveCommand(options: ServeOptions): Promise<void> {
       config.future = true;
     }
     config.livereload = options.livereload;
-    
+
     if (options.verbose) {
       console.log(chalk.blue('\nFinal configuration:'));
       console.log('  Source:', config.source);
@@ -65,16 +65,14 @@ export async function serveCommand(options: ServeOptions): Promise<void> {
 
     // Build the site first
     console.log(chalk.green('\nBuilding site...'));
-    
+
     // Determine source directory
-    const sourcePath = config.source 
-      ? resolve(config.source)
-      : dirname(resolve(configPath));
-    
+    const sourcePath = config.source ? resolve(config.source) : dirname(resolve(configPath));
+
     // Update config with final paths
     config.source = sourcePath;
     config.destination = destPath;
-    
+
     // Create site and builder
     const site = new Site(sourcePath, config);
     const builder = new Builder(site, {
@@ -83,16 +81,16 @@ export async function serveCommand(options: ServeOptions): Promise<void> {
       clean: true,
       verbose: options.verbose,
     });
-    
+
     // Build the site
     await builder.build();
-    
+
     console.log(chalk.green('✓'), 'Site built successfully!');
     console.log('  Output:', destPath);
-    
+
     // Start the development server
     console.log(chalk.green('\nStarting server...'));
-    
+
     const server = new DevServer({
       port,
       host,
@@ -103,16 +101,16 @@ export async function serveCommand(options: ServeOptions): Promise<void> {
       builder,
       verbose: options.verbose,
     });
-    
+
     await server.start();
-    
+
     // Handle graceful shutdown
     const shutdown = async () => {
       console.log(chalk.yellow('\n\nShutting down...'));
       await server.stop();
       process.exit(0);
     };
-    
+
     process.on('SIGINT', shutdown);
     process.on('SIGTERM', shutdown);
   } catch (error) {

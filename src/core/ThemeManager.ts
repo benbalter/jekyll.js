@@ -1,13 +1,13 @@
 /**
  * ThemeManager handles loading and resolving theme files
- * 
+ *
  * Themes in Jekyll.js are npm packages that provide:
  * - Layouts (_layouts/)
  * - Includes (_includes/)
  * - Sass stylesheets (_sass/, assets/)
  * - Static assets (CSS, JavaScript, images)
  * - Configuration defaults
- * 
+ *
  * Theme files can be overridden by site files.
  */
 
@@ -22,19 +22,19 @@ import { logger } from '../utils/logger';
 export interface ThemeConfig {
   /** Theme name (npm package name or local path) */
   name: string;
-  
+
   /** Resolved theme root directory */
   root: string;
-  
+
   /** Theme layouts directory */
   layoutsDir: string;
-  
+
   /** Theme includes directory */
   includesDir: string;
-  
+
   /** Theme sass directory */
   sassDir: string;
-  
+
   /** Theme assets directory */
   assetsDir: string;
 }
@@ -46,7 +46,7 @@ export class ThemeManager {
   private config: JekyllConfig;
   private sourceDir: string;
   private theme: ThemeConfig | null = null;
-  
+
   /**
    * Create a new ThemeManager
    * @param sourceDir Site source directory
@@ -55,13 +55,13 @@ export class ThemeManager {
   constructor(sourceDir: string, config: JekyllConfig) {
     this.sourceDir = resolve(sourceDir);
     this.config = config;
-    
+
     // Load theme if configured
     if (config.theme) {
       this.theme = this.loadTheme(config.theme);
     }
   }
-  
+
   /**
    * Load theme from npm package or local directory
    * @param themeName Theme name (npm package or local path)
@@ -69,17 +69,17 @@ export class ThemeManager {
    */
   private loadTheme(themeName: string): ThemeConfig | null {
     logger.debug(`Loading theme: ${themeName}`);
-    
+
     // Try to resolve theme from node_modules
     const themeRoot = this.resolveThemeRoot(themeName);
-    
+
     if (!themeRoot) {
       logger.warn(`Theme '${themeName}' not found. Continuing without theme.`);
       return null;
     }
-    
+
     logger.info(`Using theme: ${themeName} (${themeRoot})`);
-    
+
     return {
       name: themeName,
       root: themeRoot,
@@ -89,7 +89,7 @@ export class ThemeManager {
       assetsDir: join(themeRoot, 'assets'),
     };
   }
-  
+
   /**
    * Resolve theme root directory
    * @param themeName Theme name
@@ -104,21 +104,21 @@ export class ThemeManager {
         return themeInNodeModules;
       }
     }
-    
+
     // Try as relative path
     const relativePath = resolve(this.sourceDir, themeName);
     if (existsSync(relativePath) && statSync(relativePath).isDirectory()) {
       return relativePath;
     }
-    
+
     // Try as absolute path
     if (existsSync(themeName) && statSync(themeName).isDirectory()) {
       return resolve(themeName);
     }
-    
+
     return null;
   }
-  
+
   /**
    * Find node_modules directory by walking up the directory tree
    * @param startDir Starting directory
@@ -126,7 +126,7 @@ export class ThemeManager {
    */
   private findNodeModules(startDir: string): string | null {
     let currentDir = startDir;
-    
+
     // Walk up the directory tree
     while (currentDir !== dirname(currentDir)) {
       const nodeModulesPath = join(currentDir, 'node_modules');
@@ -135,10 +135,10 @@ export class ThemeManager {
       }
       currentDir = dirname(currentDir);
     }
-    
+
     return null;
   }
-  
+
   /**
    * Check if theme is configured
    * @returns Whether theme is configured
@@ -146,7 +146,7 @@ export class ThemeManager {
   public hasTheme(): boolean {
     return this.theme !== null;
   }
-  
+
   /**
    * Get theme configuration
    * @returns Theme configuration or null if no theme
@@ -154,7 +154,7 @@ export class ThemeManager {
   public getTheme(): ThemeConfig | null {
     return this.theme;
   }
-  
+
   /**
    * Resolve a layout file path
    * Site layouts take precedence over theme layouts
@@ -168,7 +168,7 @@ export class ThemeManager {
     if (siteLayoutPath) {
       return siteLayoutPath;
     }
-    
+
     // Check theme layouts
     if (this.theme) {
       const themeLayoutPath = this.findFileWithExtensions(this.theme.layoutsDir, layoutName);
@@ -176,10 +176,10 @@ export class ThemeManager {
         return themeLayoutPath;
       }
     }
-    
+
     return null;
   }
-  
+
   /**
    * Resolve an include file path
    * Site includes take precedence over theme includes
@@ -193,7 +193,7 @@ export class ThemeManager {
     if (existsSync(siteIncludePath) && statSync(siteIncludePath).isFile()) {
       return siteIncludePath;
     }
-    
+
     // Check theme includes
     if (this.theme) {
       const themeIncludePath = join(this.theme.includesDir, includePath);
@@ -201,52 +201,52 @@ export class ThemeManager {
         return themeIncludePath;
       }
     }
-    
+
     return null;
   }
-  
+
   /**
    * Get all layout directories (site first, then theme)
    * @returns Array of layout directory paths
    */
   public getLayoutDirectories(): string[] {
     const dirs: string[] = [];
-    
+
     // Add site layouts directory
     const siteLayoutsDir = join(this.sourceDir, this.config.layouts_dir || '_layouts');
     if (existsSync(siteLayoutsDir)) {
       dirs.push(siteLayoutsDir);
     }
-    
+
     // Add theme layouts directory
     if (this.theme && existsSync(this.theme.layoutsDir)) {
       dirs.push(this.theme.layoutsDir);
     }
-    
+
     return dirs;
   }
-  
+
   /**
    * Get all include directories (site first, then theme)
    * @returns Array of include directory paths
    */
   public getIncludeDirectories(): string[] {
     const dirs: string[] = [];
-    
+
     // Add site includes directory
     const siteIncludesDir = join(this.sourceDir, this.config.includes_dir || '_includes');
     if (existsSync(siteIncludesDir)) {
       dirs.push(siteIncludesDir);
     }
-    
+
     // Add theme includes directory
     if (this.theme && existsSync(this.theme.includesDir)) {
       dirs.push(this.theme.includesDir);
     }
-    
+
     return dirs;
   }
-  
+
   /**
    * Get theme assets directory
    * @returns Theme assets directory or null if no theme
@@ -257,7 +257,7 @@ export class ThemeManager {
     }
     return null;
   }
-  
+
   /**
    * Get theme sass directory
    * @returns Theme sass directory or null if no theme
@@ -268,7 +268,7 @@ export class ThemeManager {
     }
     return null;
   }
-  
+
   /**
    * Find a file with common Jekyll extensions
    * @param dir Directory to search
@@ -279,17 +279,17 @@ export class ThemeManager {
     if (!existsSync(dir)) {
       return null;
     }
-    
+
     // Common Jekyll file extensions
     const extensions = ['', '.html', '.md', '.markdown'];
-    
+
     for (const ext of extensions) {
       const filePath = join(dir, basename + ext);
       if (existsSync(filePath) && statSync(filePath).isFile()) {
         return filePath;
       }
     }
-    
+
     return null;
   }
 }

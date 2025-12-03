@@ -33,7 +33,7 @@ describe('SeoTagPlugin', () => {
     site = new Site(testSiteDir, config);
     renderer = new Renderer(site);
     plugin = new SeoTagPlugin();
-    
+
     // Register the plugin
     plugin.register(renderer, site);
   });
@@ -138,8 +138,12 @@ describe('SeoTagPlugin', () => {
       },
     });
 
-    expect(result).toContain('<meta property="og:image" content="https://example.com/assets/test-image.jpg">');
-    expect(result).toContain('<meta name="twitter:image" content="https://example.com/assets/test-image.jpg">');
+    expect(result).toContain(
+      '<meta property="og:image" content="https://example.com/assets/test-image.jpg">'
+    );
+    expect(result).toContain(
+      '<meta name="twitter:image" content="https://example.com/assets/test-image.jpg">'
+    );
     expect(result).toContain('<meta name="twitter:card" content="summary_large_image">');
   });
 

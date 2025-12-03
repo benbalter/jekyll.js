@@ -1,6 +1,6 @@
 /**
  * Plugin system for Jekyll.js
- * 
+ *
  * This module exports all built-in plugins and provides a registration mechanism
  */
 
@@ -26,7 +26,7 @@ import { FeedPlugin } from './feed';
 export interface Plugin {
   /** Plugin name (e.g., 'jekyll-seo-tag') */
   name: string;
-  
+
   /** Register the plugin with the renderer */
   register(renderer: Renderer, site: Site): void;
 }
@@ -35,11 +35,7 @@ export interface Plugin {
  * Get all available built-in plugins
  */
 export function getBuiltInPlugins(): Plugin[] {
-  return [
-    new SeoTagPlugin(),
-    new SitemapPlugin(),
-    new FeedPlugin(),
-  ];
+  return [new SeoTagPlugin(), new SitemapPlugin(), new FeedPlugin()];
 }
 
 /**
@@ -50,7 +46,7 @@ export function getBuiltInPlugins(): Plugin[] {
 export function registerPlugins(renderer: Renderer, site: Site): void {
   const configuredPlugins = site.config.plugins || [];
   const allPlugins = getBuiltInPlugins();
-  
+
   for (const plugin of allPlugins) {
     // Only register if the plugin is listed in config or if no plugins are configured
     if (configuredPlugins.length === 0 || configuredPlugins.includes(plugin.name)) {

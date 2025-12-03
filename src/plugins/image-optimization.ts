@@ -1,16 +1,16 @@
 /**
  * Modern image optimization using Sharp
- * 
+ *
  * Sharp is a high-performance Node.js image processing library.
  * It provides fast, efficient image manipulation and optimization.
- * 
+ *
  * Features:
  * - Resize, crop, and transform images
  * - Convert between formats (JPEG, PNG, WebP, AVIF)
  * - Optimize file sizes
  * - Generate responsive images
  * - Extract metadata
- * 
+ *
  * @see https://sharp.pixelplumbing.com/
  */
 
@@ -31,31 +31,31 @@ export type ImageFormat = 'jpeg' | 'png' | 'webp' | 'avif' | 'gif' | 'tiff';
 export interface ImageOptimizationOptions {
   /** Target format (default: keep original) */
   format?: ImageFormat;
-  
+
   /** Quality (1-100, default: 80) */
   quality?: number;
-  
+
   /** Width in pixels */
   width?: number;
-  
+
   /** Height in pixels */
   height?: number;
-  
+
   /** Fit mode (default: 'inside') */
   fit?: 'cover' | 'contain' | 'fill' | 'inside' | 'outside';
-  
+
   /** Enable progressive/interlaced output */
   progressive?: boolean;
-  
+
   /** Strip metadata (default: true) */
   stripMetadata?: boolean;
-  
+
   /** Generate WebP version alongside original */
   generateWebP?: boolean;
-  
+
   /** Generate AVIF version alongside original */
   generateAVIF?: boolean;
-  
+
   /** Generate responsive sizes */
   responsiveSizes?: number[];
 }
@@ -82,28 +82,28 @@ export interface ImageMetadata {
 export interface OptimizationResult {
   /** Original file size in bytes */
   originalSize: number;
-  
+
   /** Optimized file size in bytes */
   optimizedSize: number;
-  
+
   /** Size reduction percentage */
   reduction: number;
-  
+
   /** Output file path */
   outputPath: string;
-  
+
   /** Additional generated files (WebP, AVIF, responsive sizes) */
   additionalFiles?: string[];
 }
 
 /**
  * Optimize an image file
- * 
+ *
  * @param inputPath Path to input image
  * @param outputPath Path to output image
  * @param options Optimization options
  * @returns Optimization result with size statistics
- * 
+ *
  * @example
  * ```typescript
  * const result = await optimizeImage('input.jpg', 'output.jpg', {
@@ -121,19 +121,19 @@ export async function optimizeImage(
 ): Promise<OptimizationResult> {
   try {
     logger.debug(`Optimizing image: ${inputPath}`);
-    
+
     // Read input file
     const inputBuffer = await readFile(inputPath);
     const originalSize = inputBuffer.length;
-    
+
     // Create sharp instance
     let image: Sharp = sharp(inputBuffer);
-    
+
     // Strip metadata if requested
     if (options.stripMetadata !== false) {
       image = image.rotate(); // Auto-rotate based on EXIF, then strip
     }
-    
+
     // Resize if dimensions specified
     if (options.width || options.height) {
       const resizeOptions: ResizeOptions = {
@@ -144,11 +144,11 @@ export async function optimizeImage(
       };
       image = image.resize(resizeOptions);
     }
-    
+
     // Convert format if specified
     const targetFormat = options.format || getFormatFromPath(inputPath);
     const quality = options.quality || 80;
-    
+
     switch (targetFormat) {
       case 'jpeg':
         image = image.jpeg({ quality, progressive: options.progressive !== false });
@@ -169,22 +169,22 @@ export async function optimizeImage(
         image = image.tiff({ quality });
         break;
     }
-    
+
     // Ensure output directory exists
     const outputDir = dirname(outputPath);
     if (!existsSync(outputDir)) {
       await mkdir(outputDir, { recursive: true });
     }
-    
+
     // Write optimized image
     const outputBuffer = await image.toBuffer();
     await writeFile(outputPath, outputBuffer);
-    
+
     const optimizedSize = outputBuffer.length;
     const reduction = ((originalSize - optimizedSize) / originalSize) * 100;
-    
+
     const additionalFiles: string[] = [];
-    
+
     // Generate WebP version if requested
     if (options.generateWebP && targetFormat !== 'webp') {
       const webpPath = changeExtension(outputPath, '.webp');
@@ -195,7 +195,7 @@ export async function optimizeImage(
       additionalFiles.push(webpPath);
       logger.debug(`Generated WebP version: ${webpPath}`);
     }
-    
+
     // Generate AVIF version if requested
     if (options.generateAVIF && targetFormat !== 'avif') {
       const avifPath = changeExtension(outputPath, '.avif');
@@ -206,7 +206,7 @@ export async function optimizeImage(
       additionalFiles.push(avifPath);
       logger.debug(`Generated AVIF version: ${avifPath}`);
     }
-    
+
     // Generate responsive sizes if requested
     if (options.responsiveSizes && options.responsiveSizes.length > 0) {
       for (const width of options.responsiveSizes) {
@@ -218,9 +218,11 @@ export async function optimizeImage(
         logger.debug(`Generated responsive size ${width}px: ${responsivePath}`);
       }
     }
-    
-    logger.debug(`Image optimized: ${inputPath} → ${outputPath} (reduced by ${reduction.toFixed(1)}%)`);
-    
+
+    logger.debug(
+      `Image optimized: ${inputPath} → ${outputPath} (reduced by ${reduction.toFixed(1)}%)`
+    );
+
     return {
       originalSize,
       optimizedSize,
@@ -229,14 +231,16 @@ export async function optimizeImage(
       additionalFiles: additionalFiles.length > 0 ? additionalFiles : undefined,
     };
   } catch (error) {
-    logger.warn(`Failed to optimize image ${inputPath}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    logger.warn(
+      `Failed to optimize image ${inputPath}: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
     throw error;
   }
 }
 
 /**
  * Get metadata from an image file
- * 
+ *
  * @param imagePath Path to image file
  * @returns Image metadata
  */
@@ -244,10 +248,10 @@ export async function getImageMetadata(imagePath: string): Promise<ImageMetadata
   try {
     const image = sharp(imagePath);
     const metadata = await image.metadata();
-    
+
     // Get file size from metadata
     const size = metadata.size || 0;
-    
+
     return {
       format: metadata.format,
       width: metadata.width,
@@ -261,14 +265,16 @@ export async function getImageMetadata(imagePath: string): Promise<ImageMetadata
       size: size,
     };
   } catch (error) {
-    logger.warn(`Failed to read image metadata from ${imagePath}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    logger.warn(
+      `Failed to read image metadata from ${imagePath}: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
     throw error;
   }
 }
 
 /**
  * Check if a file is an image that can be processed by Sharp
- * 
+ *
  * @param filePath Path to check
  * @returns true if the file is a supported image format
  */
@@ -323,7 +329,7 @@ function addSizeToFilename(filePath: string, width: number): string {
 
 /**
  * Batch optimize multiple images
- * 
+ *
  * @param images Array of [inputPath, outputPath] pairs
  * @param options Optimization options
  * @returns Array of optimization results
@@ -333,15 +339,17 @@ export async function optimizeImageBatch(
   options: ImageOptimizationOptions = {}
 ): Promise<OptimizationResult[]> {
   const results: OptimizationResult[] = [];
-  
+
   for (const [inputPath, outputPath] of images) {
     try {
       const result = await optimizeImage(inputPath, outputPath, options);
       results.push(result);
     } catch (error) {
-      logger.warn(`Failed to optimize ${inputPath}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      logger.warn(
+        `Failed to optimize ${inputPath}: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
-  
+
   return results;
 }

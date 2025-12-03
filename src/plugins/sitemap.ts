@@ -1,9 +1,9 @@
 /**
  * Sitemap Plugin for Jekyll.js
- * 
+ *
  * Implements jekyll-sitemap functionality
  * Generates a sitemap.xml file for search engines
- * 
+ *
  * @see https://github.com/jekyll/jekyll-sitemap
  */
 
@@ -75,16 +75,17 @@ export class SitemapPlugin implements Plugin {
     for (const doc of documents) {
       const url = doc.url || '';
       const fullUrl = `${siteUrl}${url}`;
-      
+
       // Get lastmod date
       const lastmod = doc.data.last_modified_at || doc.date;
       const lastmodStr = lastmod ? new Date(lastmod).toISOString().split('T')[0] : '';
 
       // Get change frequency and priority from front matter or defaults
       const changefreq = doc.data.sitemap?.changefreq || getDefaultChangefreq(doc);
-      const priority = doc.data.sitemap?.priority !== undefined 
-        ? doc.data.sitemap.priority 
-        : getDefaultPriority(doc);
+      const priority =
+        doc.data.sitemap?.priority !== undefined
+          ? doc.data.sitemap.priority
+          : getDefaultPriority(doc);
 
       lines.push('  <url>');
       lines.push(`    <loc>${escapeXml(fullUrl)}</loc>`);
@@ -143,17 +144,17 @@ function getDefaultChangefreq(doc: Document): string {
  */
 function getDefaultPriority(doc: Document): number {
   const url = doc.url || '';
-  
+
   // Homepage gets highest priority
   if (url === '/' || url === '/index.html') {
     return 1.0;
   }
-  
+
   // Posts get medium priority
   if (doc.type === 'post') {
     return 0.6;
   }
-  
+
   // Other pages get medium-high priority
   return 0.8;
 }

@@ -79,14 +79,8 @@ collections:
   describe('read method', () => {
     it('should read pages from the site directory', async () => {
       // Create test pages
-      writeFileSync(
-        join(testSiteDir, 'index.md'),
-        '---\ntitle: Home\n---\nHome page'
-      );
-      writeFileSync(
-        join(testSiteDir, 'about.md'),
-        '---\ntitle: About\n---\nAbout page'
-      );
+      writeFileSync(join(testSiteDir, 'index.md'), '---\ntitle: Home\n---\nHome page');
+      writeFileSync(join(testSiteDir, 'about.md'), '---\ntitle: About\n---\nAbout page');
 
       const site = new Site(testSiteDir);
       await site.read();
@@ -164,10 +158,7 @@ collections:
         join(recipesDir, 'chocolate-chip.md'),
         '---\ntitle: Chocolate Chip Cookies\n---\nRecipe'
       );
-      writeFileSync(
-        join(recipesDir, 'apple-pie.md'),
-        '---\ntitle: Apple Pie\n---\nRecipe'
-      );
+      writeFileSync(join(recipesDir, 'apple-pie.md'), '---\ntitle: Apple Pie\n---\nRecipe');
 
       const config: SiteConfig = {
         collections: {
@@ -182,7 +173,7 @@ collections:
 
       expect(site.collections.size).toBe(1);
       expect(site.collections.has('recipes')).toBe(true);
-      
+
       const recipes = site.collections.get('recipes');
       expect(recipes).toHaveLength(2);
       expect(recipes?.[0]?.type).toBe(DocumentType.COLLECTION);
@@ -192,7 +183,7 @@ collections:
     it('should not include files from excluded directories', async () => {
       // Create some pages and an excluded directory
       writeFileSync(join(testSiteDir, 'index.md'), '---\ntitle: Home\n---\nHome');
-      
+
       const nodeModulesDir = join(testSiteDir, 'node_modules');
       mkdirSync(nodeModulesDir);
       writeFileSync(join(nodeModulesDir, 'test.md'), 'Should not be included');
@@ -225,16 +216,10 @@ collections:
       mkdirSync(dataDir);
 
       // YAML data file
-      writeFileSync(
-        join(dataDir, 'members.yml'),
-        'name: Alice\nrole: Developer'
-      );
+      writeFileSync(join(dataDir, 'members.yml'), 'name: Alice\nrole: Developer');
 
       // JSON data file
-      writeFileSync(
-        join(dataDir, 'settings.json'),
-        '{"theme": "dark", "lang": "en"}'
-      );
+      writeFileSync(join(dataDir, 'settings.json'), '{"theme": "dark", "lang": "en"}');
 
       const site = new Site(testSiteDir);
       await site.read();
@@ -250,10 +235,7 @@ collections:
       const teamDir = join(dataDir, 'team');
       mkdirSync(teamDir, { recursive: true });
 
-      writeFileSync(
-        join(teamDir, 'developers.yml'),
-        'lead: Alice\nmembers:\n  - Bob\n  - Carol'
-      );
+      writeFileSync(join(teamDir, 'developers.yml'), 'lead: Alice\nmembers:\n  - Bob\n  - Carol');
 
       const site = new Site(testSiteDir);
       await site.read();
@@ -270,15 +252,15 @@ collections:
 
       // Invalid YAML
       writeFileSync(join(dataDir, 'invalid.yml'), '{ invalid yaml content [');
-      
+
       // Valid JSON for comparison
       writeFileSync(join(dataDir, 'valid.json'), '{"key": "value"}');
 
       const site = new Site(testSiteDir);
-      
+
       // Should not throw, just warn
       await expect(site.read()).resolves.not.toThrow();
-      
+
       // Valid data should still be loaded
       expect(site.data.valid).toEqual({ key: 'value' });
       // Invalid data should not be loaded
@@ -290,10 +272,7 @@ collections:
       const customDataDir = join(testSiteDir, 'custom_data');
       mkdirSync(customDataDir);
 
-      writeFileSync(
-        join(customDataDir, 'info.yml'),
-        'name: Custom'
-      );
+      writeFileSync(join(customDataDir, 'info.yml'), 'name: Custom');
 
       const config: SiteConfig = {
         data_dir: 'custom_data',
@@ -458,7 +437,7 @@ collections:
       await site.read();
 
       expect(site.static_files.length).toBe(2);
-      const names = site.static_files.map(sf => sf.name);
+      const names = site.static_files.map((sf) => sf.name);
       expect(names).toContain('style.css');
       expect(names).toContain('script.js');
     });
@@ -469,7 +448,7 @@ collections:
       const site = new Site(testSiteDir);
       await site.read();
 
-      const favicon = site.static_files.find(sf => sf.name === 'favicon.ico');
+      const favicon = site.static_files.find((sf) => sf.name === 'favicon.ico');
       expect(favicon).toBeDefined();
       expect(favicon?.basename).toBe('favicon');
       expect(favicon?.extname).toBe('.ico');
@@ -486,7 +465,7 @@ collections:
       const site = new Site(testSiteDir);
       await site.read();
 
-      const icon = site.static_files.find(sf => sf.name === 'icon.png');
+      const icon = site.static_files.find((sf) => sf.name === 'icon.png');
       expect(icon).toBeDefined();
       expect(icon?.relativePath).toBe('assets/images/icons/icon.png');
       expect(icon?.url).toBe('/assets/images/icons/icon.png');
@@ -496,7 +475,7 @@ collections:
       const nodeModulesDir = join(testSiteDir, 'node_modules');
       mkdirSync(nodeModulesDir);
       writeFileSync(join(nodeModulesDir, 'package.json'), '{}');
-      
+
       writeFileSync(join(testSiteDir, 'app.js'), 'console.log("hello");');
 
       const site = new Site(testSiteDir);
@@ -510,18 +489,15 @@ collections:
     it('should not include files from underscore-prefixed directories', async () => {
       const postsDir = join(testSiteDir, '_posts');
       mkdirSync(postsDir);
-      writeFileSync(
-        join(postsDir, '2024-01-01-post.md'),
-        '---\ntitle: Post\n---\nContent'
-      );
-      
+      writeFileSync(join(postsDir, '2024-01-01-post.md'), '---\ntitle: Post\n---\nContent');
+
       writeFileSync(join(testSiteDir, 'style.css'), 'body { margin: 0; }');
 
       const site = new Site(testSiteDir);
       await site.read();
 
       // Only style.css should be in static_files
-      const staticFileNames = site.static_files.map(sf => sf.name);
+      const staticFileNames = site.static_files.map((sf) => sf.name);
       expect(staticFileNames).toContain('style.css');
       expect(staticFileNames).not.toContain('2024-01-01-post.md');
     });

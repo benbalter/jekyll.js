@@ -1,0 +1,17 @@
+---
+layout: default
+title: Home
+---
+# Welcome
+
+{% for post in site.posts limit:5 %}
+- [{{ post.title }}]({{ post.url }})
+{% endfor %}
+
+## Data Access
+
+Members count: {{ site.data.members | size }}
+
+{% for member in site.data.members %}
+- {{ member.name }}: {{ member.role }}
+{% endfor %}

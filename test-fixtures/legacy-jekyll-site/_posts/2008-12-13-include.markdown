@@ -1,0 +1,7 @@
+---
+layout: default
+title: Include Test
+---
+Before include
+{% include include.html %}
+After include

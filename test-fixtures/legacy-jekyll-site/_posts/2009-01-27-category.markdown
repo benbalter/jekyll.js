@@ -1,0 +1,6 @@
+---
+layout: default
+title: Category Test
+category: foo
+---
+Post with single category.

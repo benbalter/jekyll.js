@@ -23,6 +23,8 @@ export interface BuildTimings {
   operations: TimedOperation[];
   /** Total build duration */
   totalDuration: number;
+  /** Get operations sorted by duration (most costly first) */
+  getMostCostlyOperations: () => TimedOperation[];
 }
 
 /**
@@ -46,6 +48,12 @@ export class PerformanceTimer {
    * @param name Name of the operation
    */
   startOperation(name: string): void {
+    if (this.currentOperation) {
+      console.warn(
+        `[PerformanceTimer] startOperation('${name}') called while '${this.currentOperation.name}' is still active. ` +
+          `The previous operation will be lost. This may indicate a bug in timing instrumentation.`
+      );
+    }
     this.currentOperation = {
       name,
       startTime: Date.now(),
@@ -65,6 +73,11 @@ export class PerformanceTimer {
         details,
       });
       this.currentOperation = null;
+    } else {
+      console.warn(
+        '[PerformanceTimer] endOperation called without a matching startOperation. ' +
+          'This may indicate a bug in timing instrumentation.'
+      );
     }
   }
 
@@ -114,13 +127,15 @@ export class PerformanceTimer {
 
   /**
    * Get the build timing statistics
-   * @returns Build timing statistics
+   * @returns Build timing statistics with getMostCostlyOperations method
    */
   getTimings(): BuildTimings {
     const totalDuration = Date.now() - this.startTime;
+    const operations = [...this.operations];
     return {
-      operations: [...this.operations],
+      operations,
       totalDuration,
+      getMostCostlyOperations: () => [...operations].sort((a, b) => b.duration - a.duration),
     };
   }
 
@@ -141,8 +156,3 @@ export class PerformanceTimer {
     this.currentOperation = null;
   }
 }
-
-/**
- * Global performance timer instance
- */
-export const performanceTimer = new PerformanceTimer();

@@ -232,8 +232,8 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
 
     const timings = await runTimedBuild();
 
-    // Sort operations by duration (most costly first)
-    const sortedOps = [...timings.operations].sort((a, b) => b.duration - a.duration);
+    // Get operations sorted by duration (most costly first)
+    const sortedOps = timings.getMostCostlyOperations();
 
     // Print total duration
     console.log('');

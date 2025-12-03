@@ -6,10 +6,29 @@ import { SassProcessor } from './SassProcessor';
 import { logger } from '../utils/logger';
 import { BuildError, FileSystemError, JekyllError } from '../utils/errors';
 import { mkdirSync, writeFileSync, existsSync, readdirSync, statSync, copyFileSync, readFileSync } from 'fs';
-import { join, dirname, extname, basename, relative } from 'path';
+import { join, dirname, extname, basename, relative, sep } from 'path';
 import { rmSync } from 'fs';
 import { registerPlugins } from '../plugins';
 import matter from 'gray-matter';
+
+/**
+ * Normalize path separators to forward slashes for consistent comparison
+ * @param path Path to normalize
+ * @returns Path with forward slashes
+ */
+function normalizePath(path: string): string {
+  return path.split(sep).join('/');
+}
+
+/**
+ * Check if a path matches or is inside a keep pattern
+ * @param path Path to check (forward-slash normalized)
+ * @param pattern Keep pattern to match against (forward-slash normalized)
+ * @returns True if path matches or is inside the pattern
+ */
+function pathMatchesOrInside(path: string, pattern: string): boolean {
+  return path === pattern || path.startsWith(pattern + '/');
+}
 
 /**
  * Builder options interface
@@ -187,24 +206,24 @@ export class Builder {
       return;
     }
 
+    // Normalize keep patterns to use forward slashes
+    const normalizedKeepFiles = keepFiles.map(normalizePath);
+
     const entries = readdirSync(dir);
 
     for (const entry of entries) {
       const fullPath = join(dir, entry);
       const relPath = relativePath ? join(relativePath, entry) : entry;
+      const normalizedRelPath = normalizePath(relPath);
       
       // Check if this path should be kept
-      const shouldKeep = keepFiles.some((keepPattern) => {
-        // Exact match
-        if (relPath === keepPattern) {
-          return true;
-        }
-        // relPath is inside a kept directory
-        if (relPath.startsWith(keepPattern + '/') || relPath.startsWith(keepPattern + '\\')) {
+      const shouldKeep = normalizedKeepFiles.some((keepPattern) => {
+        // Path matches or is inside a kept directory
+        if (pathMatchesOrInside(normalizedRelPath, keepPattern)) {
           return true;
         }
         // keepPattern is inside relPath (so relPath dir contains a keep file)
-        if (keepPattern.startsWith(relPath + '/') || keepPattern.startsWith(relPath + '\\')) {
+        if (pathMatchesOrInside(keepPattern, normalizedRelPath)) {
           return true;
         }
         return false;
@@ -212,8 +231,8 @@ export class Builder {
 
       if (shouldKeep) {
         // Check if this is a directory that contains something to keep
-        const containsKeptFile = keepFiles.some((keepPattern) =>
-          keepPattern.startsWith(relPath + '/') || keepPattern.startsWith(relPath + '\\')
+        const containsKeptFile = normalizedKeepFiles.some((keepPattern) =>
+          pathMatchesOrInside(keepPattern, normalizedRelPath) && keepPattern !== normalizedRelPath
         );
         
         if (containsKeptFile && statSync(fullPath).isDirectory()) {

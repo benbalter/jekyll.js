@@ -216,6 +216,8 @@ The project is successful when:
 - **Watch**: `npm run dev` - Build in watch mode for development
 - **Lint**: `npm run lint` - Run ESLint on source files
 - **Lint Fix**: `npm run lint:fix` - Auto-fix linting issues where possible
+- **Format**: `npm run format` - Format all TypeScript files with Prettier
+- **Format Check**: `npm run format:check` - Check if files are formatted correctly
 - **Test**: `npm test` - Run all tests with Jest
 - **Test Watch**: `npm run test:watch` - Run tests in watch mode
 
@@ -230,11 +232,14 @@ The project is successful when:
 1. **Linting**: All code must pass ESLint checks (`npm run lint`)
    - Fix warnings about `any` types where possible
    - Use strict TypeScript types
-2. **Testing**: All tests must pass (`npm test`)
+2. **Formatting**: All code must be formatted with Prettier (`npm run format`)
+   - Always run `npm run format` before committing
+   - Check formatting with `npm run format:check`
+3. **Testing**: All tests must pass (`npm test`)
    - Write tests for new features
    - Update tests when modifying existing functionality
-3. **Building**: Code must compile without errors (`npm run build`)
-4. **Type Safety**: Use TypeScript strict mode, avoid `any` types when possible
+4. **Building**: Code must compile without errors (`npm run build`)
+5. **Type Safety**: Use TypeScript strict mode, avoid `any` types when possible
 
 ### Code Style
 - Follow existing code patterns in the repository
@@ -266,6 +271,7 @@ Every PR should meet these criteria:
 
 2. **Code Quality**
    - ✅ Passes all linting checks (`npm run lint`)
+   - ✅ Code is formatted with Prettier (`npm run format`)
    - ✅ All tests pass (`npm test`)
    - ✅ Builds successfully (`npm run build`)
    - ✅ No new TypeScript errors introduced
@@ -308,16 +314,17 @@ Every PR should meet these criteria:
 1. Make focused, surgical changes
 2. Follow existing patterns in the codebase
 3. Write or update tests alongside code changes
-4. Run `npm run lint` and `npm test` frequently
+4. Run `npm run lint`, `npm run format`, and `npm test` frequently
 5. Build with `npm run build` to catch TypeScript errors
 
 ### Before Submitting
 1. Run full test suite: `npm test`
 2. Run linter: `npm run lint`
-3. Build the project: `npm run build`
-4. Verify changes work as expected
-5. Review your changes for unnecessary modifications
-6. Update documentation if needed
+3. Format code: `npm run format`
+4. Build the project: `npm run build`
+5. Verify changes work as expected
+6. Review your changes for unnecessary modifications
+7. Update documentation if needed
 
 ### Debugging Failed Tests or Builds
 - Read error messages carefully

@@ -1,0 +1,42 @@
+title: Legacy Test Site
+description: A test site for Jekyll compatibility testing
+url: https://example.com
+baseurl: ""
+
+# Collections
+collections:
+  methods:
+    output: true
+    permalink: /methods/:name.html
+
+# Build settings
+markdown: kramdown
+permalink: /:categories/:year/:month/:day/:title.html
+
+# Front matter defaults
+defaults:
+  - scope:
+      path: ""
+      type: "posts"
+    values:
+      layout: "default"
+      author: "Test Author"
+  - scope:
+      path: ""
+      type: "methods"
+    values:
+      layout: "simple"
+
+# SASS/SCSS settings
+sass:
+  style: compressed
+  sass_dir: _sass
+
+# Exclude directories
+exclude:
+  - node_modules
+  - README.md
+  - vendor
+
+# Data directory
+data_dir: _data

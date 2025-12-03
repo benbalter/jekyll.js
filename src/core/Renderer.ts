@@ -481,12 +481,14 @@ export class Renderer {
       return array.find((item) => item?.[property] === value) || null;
     });
 
-    // find_exp - Find first element matching expression (basic implementation)
-    this.liquid.registerFilter('find_exp', (array: any[], _variable: string, _expression: string) => {
+    // find_exp - Find first element matching expression
+    // NOTE: Expression evaluation is not yet fully implemented.
+    // This filter will log a warning and return the first element that matches basic truthiness.
+    this.liquid.registerFilter('find_exp', (array: any[], variable: string, expression: string) => {
       if (!Array.isArray(array)) return null;
-      // TODO: Implement full expression evaluation
-      // For now, this is a placeholder that returns first item
-      logger.warn('find_exp filter has limited support - returning first item');
+      // Log a warning that full expression evaluation is not supported
+      logger.warn(`find_exp filter: Full expression evaluation not supported. Expression '${expression}' on variable '${variable}' will not be evaluated. Consider using the 'find' filter instead.`);
+      // Return first item as a fallback - users should use 'find' filter for property matching
       return array.length > 0 ? array[0] : null;
     });
 
@@ -562,7 +564,7 @@ export class Renderer {
       const a = Number(input);
       const b = Number(operand);
       if (isNaN(a) || isNaN(b) || b === 0) return 0;
-      // Jekyll uses floor division for integers
+      // Jekyll always uses floor division, returning an integer result
       return Math.floor(a / b);
     });
 
@@ -607,7 +609,8 @@ export class Renderer {
     this.liquid.registerFilter('capitalize', (input: string) => {
       if (!input) return '';
       const str = String(input);
-      return str.charAt(0).toUpperCase() + str.slice(1);
+      // Jekyll's capitalize converts entire string to lowercase, then capitalizes first letter
+      return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
     });
 
     this.liquid.registerFilter('strip', (input: string) => {
@@ -723,14 +726,17 @@ export class Renderer {
     });
 
     // default filter - return default value if input is nil or empty
+    // Note: In Jekyll, `false` is a valid value and should NOT trigger the default
     this.liquid.registerFilter('default', (input: any, defaultValue: any = '') => {
-      if (input == null || input === '' || input === false) {
+      // Only nil (null/undefined) and empty string should use default
+      if (input == null || input === '') {
         return defaultValue;
       }
       if (Array.isArray(input) && input.length === 0) {
         return defaultValue;
       }
-      if (typeof input === 'object' && Object.keys(input).length === 0) {
+      // Empty hash/object also uses default, but not false or 0
+      if (typeof input === 'object' && !Array.isArray(input) && Object.keys(input).length === 0) {
         return defaultValue;
       }
       return input;
@@ -767,7 +773,9 @@ export class Renderer {
 
     let result = strftime;
     for (const [pattern, replacement] of Object.entries(conversions)) {
-      result = result.replace(new RegExp(pattern.replace('%', '\\%'), 'g'), replacement);
+      // Escape the pattern for regex - only % needs escaping in this context
+      const escapedPattern = pattern.replace(/%/g, '\\%');
+      result = result.replace(new RegExp(escapedPattern, 'g'), replacement);
     }
     return result;
   }

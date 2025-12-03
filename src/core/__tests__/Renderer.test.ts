@@ -576,7 +576,8 @@ describe('Renderer', () => {
       it('should support capitalize filter', async () => {
         const renderer = new Renderer(site);
         const template = '{{ text | capitalize }}';
-        const result = await renderer.render(template, { text: 'hello' });
+        // Jekyll capitalize lowercases the rest of the string
+        const result = await renderer.render(template, { text: 'hELLO' });
         expect(result).toBe('Hello');
       });
 
@@ -744,6 +745,20 @@ describe('Renderer', () => {
         const template = '{{ value | default: "N/A" }}';
         const result = await renderer.render(template, { value: '' });
         expect(result).toBe('N/A');
+      });
+
+      it('should support default filter with false (should NOT use default)', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ value | default: "N/A" }}';
+        const result = await renderer.render(template, { value: false });
+        expect(result).toBe('false');
+      });
+
+      it('should support default filter with zero (should NOT use default)', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ value | default: "N/A" }}';
+        const result = await renderer.render(template, { value: 0 });
+        expect(result).toBe('0');
       });
     });
   });

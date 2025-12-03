@@ -13,3 +13,6 @@ export { ThemeManager, ThemeConfig } from './ThemeManager';
 export { CacheManager } from './CacheManager';
 export { Paginator } from './Paginator';
 export { SassProcessor, SassProcessorOptions } from './SassProcessor';
+
+// Re-export BuildTimings from utils for convenience
+export { BuildTimings, TimedOperation } from '../utils/timer';

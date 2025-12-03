@@ -143,6 +143,8 @@ export class Builder {
         
         if (totalToRender === 0) {
           logger.success('No changes detected, skipping build');
+          // Save cache in case it was newly initialized or loaded from old version
+          this.cacheManager.save();
           return;
         }
         
@@ -161,14 +163,16 @@ export class Builder {
       // Process SASS/SCSS files
       this.processSassFiles();
 
-      // Process SASS/SCSS files
-      this.processSassFiles();
-
       // Copy static files
       this.copyStaticFiles();
 
       // Generate plugin output files (sitemap, feed, etc.)
-      this.generatePluginFiles();
+      // In incremental mode, only regenerate if documents were rebuilt
+      const totalRendered = pagesToRender.length + postsToRender.length + 
+        Array.from(collectionsToRender.values()).reduce((sum, docs) => sum + docs.length, 0);
+      if (!this.options.incremental || totalRendered > 0) {
+        this.generatePluginFiles();
+      }
 
       // Save cache if incremental mode is enabled
       if (this.options.incremental) {
@@ -728,19 +732,10 @@ export class Builder {
         return true;
       }
 
-      // Check if any dependencies have changed
+      // Check if any dependencies have changed (includes layouts tracked in cache)
       if (this.cacheManager.hasDependencyChanges(doc.relativePath, this.site.source)) {
         logger.debug(`Dependency changed for: ${doc.relativePath}`);
         return true;
-      }
-
-      // Check if layout has changed
-      if (doc.layout) {
-        const layout = this.site.getLayout(doc.layout);
-        if (layout && this.cacheManager.hasChanged(layout.path, layout.relativePath)) {
-          logger.debug(`Layout changed for: ${doc.relativePath}`);
-          return true;
-        }
       }
 
       return false;

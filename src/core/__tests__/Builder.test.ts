@@ -576,7 +576,7 @@ Content`
       const builder = new Builder(site, { incremental: true, clean: true });
       await builder.build();
 
-      // Existing file should still be there (clean is skipped in incremental mode)
+      // Existing file should still be there (when incremental is enabled, cleaning is always skipped, regardless of the clean option value)
       expect(existsSync(join(destDir, 'existing-file.txt'))).toBe(true);
       // New file should also exist
       expect(existsSync(join(destDir, 'index.html'))).toBe(true);

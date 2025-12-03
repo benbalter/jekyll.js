@@ -448,6 +448,151 @@ export class Renderer {
       if (isNaN(maximum)) return num;
       return Math.min(num, maximum);
     });
+
+    // Modern enhancements - opt-in features that maintain backwards compatibility
+    
+    /**
+     * Calculate estimated reading time for content
+     * Returns the number of minutes to read the content
+     * Based on average reading speed of 200 words per minute
+     * @example {{ content | reading_time }} => 5
+     * @example {{ content | reading_time: 250 }} => 4 (custom WPM)
+     */
+    this.liquid.registerFilter('reading_time', (input: string, wordsPerMinute: number = 200) => {
+      if (!input) return 0;
+      const text = striptags(String(input));
+      const words = text.trim().split(/\s+/).filter(word => word.length > 0).length;
+      const wpm = Number(wordsPerMinute) || 200;
+      const minutes = Math.ceil(words / wpm);
+      return minutes < 1 ? 1 : minutes;
+    });
+
+    /**
+     * Generate a table of contents from HTML content
+     * Parses h2-h4 headings and returns an array of TOC entries
+     * @example {% assign toc = content | toc %}
+     */
+    this.liquid.registerFilter('toc', (input: string) => {
+      if (!input) return [];
+      const headingRegex = /<h([2-4])(?:\s+id="([^"]*)")?[^>]*>([^<]+)<\/h[2-4]>/gi;
+      const toc: Array<{ level: number; id: string; text: string }> = [];
+      let match: RegExpExecArray | null;
+      while ((match = headingRegex.exec(String(input))) !== null) {
+        const levelStr = match[1];
+        const textStr = match[3];
+        if (levelStr && textStr) {
+          const level = parseInt(levelStr, 10);
+          const text = textStr.trim();
+          // Use existing id or generate from text
+          const id = match[2] || slugifyLib(text, { lower: true, strict: true });
+          toc.push({ level, id, text });
+        }
+      }
+      return toc;
+    });
+
+    /**
+     * Add anchor links to headings in HTML content
+     * Adds id attributes and anchor links to h2-h4 headings
+     * @example {{ content | heading_anchors }}
+     */
+    this.liquid.registerFilter('heading_anchors', (input: string) => {
+      if (!input) return '';
+      return String(input).replace(
+        /<h([2-4])(?:\s+id="([^"]*)")?([^>]*)>([^<]+)<\/h[2-4]>/gi,
+        (_match, level, existingId, attrs, text) => {
+          const id = existingId || slugifyLib(text.trim(), { lower: true, strict: true });
+          // Escape any HTML in the text and id to prevent XSS
+          const escapedId = id.replace(/[<>"'&]/g, '');
+          const escapedText = text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+          return `<h${level} id="${escapedId}"${attrs}>${escapedText} <a href="#${escapedId}" class="anchor" aria-hidden="true">#</a></h${level}>`;
+        }
+      );
+    });
+
+    /**
+     * Process external links to add target="_blank" and rel="noopener noreferrer"
+     * Only affects links that point to external domains
+     * @example {{ content | external_links }}
+     * @example {{ content | external_links: "example.com" }} (specify site domain)
+     */
+    this.liquid.registerFilter('external_links', (input: string, siteDomain?: string) => {
+      if (!input) return '';
+      const domain = siteDomain || this.site.config.url?.replace(/^https?:\/\//, '') || '';
+      
+      // Match <a> tags with href starting with http:// or https://
+      return String(input).replace(
+        /<a\s+([^>]*?)href=["'](https?:\/\/)([^"']+)["']([^>]*)>/gi,
+        (match, beforeHref, protocol, href, afterHref) => {
+          // Extract the domain from the href
+          const linkDomain = href.split('/')[0].toLowerCase();
+          
+          // Check if it's an internal link (same domain)
+          if (domain && linkDomain === domain.toLowerCase()) {
+            // Internal link, don't modify
+            return match;
+          }
+          
+          // External link - build new attributes
+          let attributes = `${beforeHref}href="${protocol}${href}"${afterHref}`;
+          
+          // Add target="_blank" if not already present
+          if (!/target\s*=/i.test(attributes)) {
+            attributes += ' target="_blank"';
+          }
+          
+          // Add rel="noopener noreferrer" if not already present
+          if (!/rel\s*=/i.test(attributes)) {
+            attributes += ' rel="noopener noreferrer"';
+          }
+          
+          return `<a ${attributes.trim()}>`;
+        }
+      );
+    });
+
+    /**
+     * Truncate text to a specified number of words and add ellipsis
+     * More intelligent than the built-in truncate filter
+     * @example {{ content | truncate_words: 50 }}
+     * @example {{ content | truncate_words: 50, "..." }}
+     */
+    this.liquid.registerFilter('truncate_words', (input: string, words: number = 50, ellipsis: string = '...') => {
+      if (!input) return '';
+      const text = striptags(String(input));
+      const wordArray = text.trim().split(/\s+/);
+      const limit = Number(words) || 50;
+      if (wordArray.length <= limit) {
+        return text;
+      }
+      return wordArray.slice(0, limit).join(' ') + ellipsis;
+    });
+
+    /**
+     * Generate excerpt from content if not already defined
+     * Extracts the first paragraph or first N words
+     * @example {{ content | auto_excerpt }}
+     * @example {{ content | auto_excerpt: 100 }} (first 100 words)
+     */
+    this.liquid.registerFilter('auto_excerpt', (input: string, wordLimit?: number) => {
+      if (!input) return '';
+      const text = striptags(String(input));
+      
+      if (wordLimit) {
+        // Word-based excerpt
+        const words = text.trim().split(/\s+/);
+        const limit = Number(wordLimit) || 50;
+        return words.slice(0, limit).join(' ') + (words.length > limit ? '...' : '');
+      }
+      
+      // Paragraph-based excerpt (first paragraph)
+      const paragraphs = text.split(/\n\s*\n/);
+      const firstParagraph = paragraphs[0]?.trim() || '';
+      return firstParagraph;
+    });
   }
 
   /**

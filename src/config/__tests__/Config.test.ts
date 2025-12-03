@@ -322,7 +322,7 @@ defaults:
       expect(validation.warnings[0]).toContain('LSI');
     });
 
-    it('should warn about pagination', () => {
+    it('should not warn about pagination when it is configured', () => {
       const config: JekyllConfig = {
         paginate: 10,
       };
@@ -330,8 +330,8 @@ defaults:
       const validation = validateConfig(config);
 
       expect(validation.valid).toBe(true);
-      expect(validation.warnings.length).toBeGreaterThan(0);
-      expect(validation.warnings[0]).toContain('Pagination');
+      // Pagination is now implemented, so there should be no warnings
+      expect(validation.warnings.length).toBe(0);
     });
 
     it('should error on invalid port number', () => {

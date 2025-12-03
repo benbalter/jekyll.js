@@ -1,6 +1,7 @@
 import { Liquid } from 'liquidjs';
 import { Site } from './Site';
 import { Document } from './Document';
+import { Paginator } from './Paginator';
 import { logger } from '../utils/logger';
 import { TemplateError, parseErrorLocation } from '../utils/errors';
 import { processMarkdown } from './markdown';
@@ -651,12 +652,13 @@ export class Renderer {
   /**
    * Render a document with its content and layout
    * @param document Document to render
+   * @param additionalContext Optional additional context to merge (e.g., paginator)
    * @returns Rendered HTML output
    */
-  async renderDocument(document: Document): Promise<string> {
+  async renderDocument(document: Document, additionalContext?: Record<string, unknown>): Promise<string> {
     // Create context with document data and site data
     const siteData = this.site.toJSON();
-    const context = {
+    const context: Record<string, unknown> = {
       page: {
         ...document.data,
         title: document.title,
@@ -677,6 +679,7 @@ export class Renderer {
         source: siteData.source,
         destination: siteData.destination,
       },
+      ...additionalContext,
     };
 
     // First render the document content (processes Liquid tags)
@@ -713,7 +716,7 @@ export class Renderer {
     }
     
     // Update context with rendered content
-    context.page.content = content;
+    (context.page as Record<string, unknown>).content = content;
 
     // If document has a layout, render with layout
     if (document.layout) {
@@ -745,6 +748,33 @@ export class Renderer {
     }
 
     return content;
+  }
+
+  /**
+   * Render a document with a paginator object for pagination
+   * @param document Document to render (typically index page)
+   * @param paginator Paginator object with pagination data
+   * @returns Rendered HTML string
+   */
+  async renderDocumentWithPaginator(document: Document, paginator: Paginator): Promise<string> {
+    // Transform paginator posts to include computed properties
+    const paginatorContext = {
+      paginator: {
+        ...paginator,
+        posts: paginator.posts.map((post: Document) => ({
+          ...post.data,
+          title: post.title,
+          date: post.date,
+          url: post.url,
+          path: post.relativePath,
+          content: post.content,
+          categories: post.categories,
+          tags: post.tags,
+        })),
+      },
+    };
+
+    return this.renderDocument(document, paginatorContext);
   }
 
   /**

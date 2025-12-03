@@ -10,4 +10,5 @@ export { processMarkdown, processMarkdownSync } from './markdown';
 export { Builder, BuilderOptions } from './Builder';
 export { ThemeManager, ThemeConfig } from './ThemeManager';
 export { CacheManager } from './CacheManager';
+export { Paginator } from './Paginator';
 export { SassProcessor, SassProcessorOptions } from './SassProcessor';

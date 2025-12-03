@@ -11,6 +11,7 @@ Welcome to the jekyll.js documentation! This directory contains comprehensive gu
 | Document | Purpose | When to Read |
 |----------|---------|--------------|
 | [**Main README**](../README.md) | Getting started, installation | Start here! |
+| [**PARITY.md**](./PARITY.md) | Parity with Ruby Jekyll & improvements | Understanding compatibility |
 | [**FEATURES.md**](./FEATURES.md) | Feature status reference | Check if feature is supported |
 | [**COMPARISON.md**](./COMPARISON.md) | jekyll.js vs Jekyll.rb | Deciding which to use |
 | [**liquid-rendering.md**](./liquid-rendering.md) | Template engine guide | Using Liquid templates |
@@ -40,6 +41,20 @@ The main entry point for jekyll.js. Contains:
 - Development setup
 
 **Read this first** if you're new to jekyll.js.
+
+---
+
+### [PARITY.md](./PARITY.md)
+**Length**: ~400 lines  
+**Target Audience**: Users evaluating compatibility
+
+Guide to parity with Ruby Jekyll and backwards-compatible improvements. Includes:
+- Complete list of features with full parity
+- Backwards-compatible modern enhancements
+- Differences from Ruby Jekyll
+- Migration guide from Jekyll.rb
+
+**Use this** to understand what works identically and what's improved.
 
 ---
 
@@ -156,6 +171,9 @@ Liquid template engine documentation. Contains:
 
 **...get started with jekyll.js**
 → Read [Main README](../README.md)
+
+**...understand compatibility with Ruby Jekyll**
+→ Read [PARITY.md](./PARITY.md)
 
 **...check if a feature is supported**
 → Check [FEATURES.md](./FEATURES.md)
@@ -323,4 +341,4 @@ All documentation is licensed under MIT License, same as the project.
 
 **Maintained by**: @benbalter  
 **Contributors**: Welcome!  
-**Last Updated**: 2025-11-21
+**Last Updated**: 2025-12-03

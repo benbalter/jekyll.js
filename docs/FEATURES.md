@@ -3,16 +3,18 @@
 Quick reference for feature implementation status in jekyll.js compared to Jekyll.rb.
 
 > 📋 For detailed specifications, see [Jekyll Compatibility Plan](./jekyll-compatibility-plan.md)  
-> 📅 For implementation timeline, see [ROADMAP.md](./ROADMAP.md)
+> 📅 For implementation timeline, see [ROADMAP.md](./ROADMAP.md)  
+> 🔄 For parity details and improvements, see [PARITY.md](./PARITY.md)
 
 ---
 
 ## Legend
 
-- ✅ **Fully Implemented** - Feature works as in Jekyll.rb
+- ✅ **Fully Implemented** - Feature works as in Jekyll.rb (full parity)
 - 🟡 **Partially Implemented** - Basic functionality works, advanced features missing
 - 🔴 **Not Implemented** - Feature is planned but not yet available
 - ⚫ **Not Planned** - Feature will not be implemented (e.g., Ruby-specific)
+- 🆕 **Improvement** - Backwards-compatible enhancement over Jekyll.rb
 
 ---
 
@@ -292,6 +294,35 @@ Sites that need significant work:
 
 ---
 
+## Backwards-Compatible Improvements 🆕
+
+These are optional enhancements over Ruby Jekyll that maintain full backwards compatibility:
+
+| Feature | Status | Default | Notes |
+|---------|--------|---------|-------|
+| Shiki Syntax Highlighting | 🆕 | Disabled | VSCode-powered, 100+ languages |
+| Sharp Image Optimization | 🆕 | Disabled | WebP/AVIF generation, 30-70% size reduction |
+| Zod Config Validation | 🆕 | Enabled | Clear error messages for invalid config |
+| npm-Based Themes | 🆕 | N/A | Standard JS package management |
+| Enhanced Error Messages | 🆕 | Enabled | File/line references and suggestions |
+| TypeScript Implementation | 🆕 | N/A | Type safety, better IDE support |
+
+**Enable in `_config.yml`:**
+```yaml
+modern:
+  syntaxHighlighting:
+    enabled: true
+    theme: github-light
+  imageOptimization:
+    enabled: true
+    quality: 80
+    generateWebP: true
+```
+
+> 📖 See [PARITY.md](./PARITY.md) and [MODERN-FEATURES.md](./MODERN-FEATURES.md) for details.
+
+---
+
 ## Getting Help
 
 ### Documentation
@@ -313,6 +344,6 @@ Sites that need significant work:
 
 ---
 
-**Last Updated**: 2025-11-21  
+**Last Updated**: 2025-12-03  
 **Version**: 0.1.0  
 **Maintained by**: @benbalter

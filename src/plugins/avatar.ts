@@ -86,9 +86,9 @@ function sanitizeUsername(username: string): string {
     // Remove trailing hyphen
     .replace(/-$/, '');
   
-  // Truncate to max username length
+  // Truncate to max username length and ensure no trailing hyphen after truncation
   if (sanitized.length > MAX_USERNAME_LENGTH) {
-    sanitized = sanitized.substring(0, MAX_USERNAME_LENGTH);
+    sanitized = sanitized.substring(0, MAX_USERNAME_LENGTH).replace(/-$/, '');
   }
   
   return sanitized;

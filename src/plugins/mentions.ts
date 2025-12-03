@@ -84,8 +84,8 @@ function isInsideLink(str: string, position: number): boolean {
   // Improved check: look for last valid <a ...> before position without closing </a>
   const beforePosition = str.substring(0, position).toLowerCase();
   
-  // Regex to match <a> or <a ...> but not <anchor> etc.
-  const anchorOpenRegex = /<a(?:\s+[^>]*)?>|<a>/gi;
+  // Regex to match <a> or <a ...> tags
+  const anchorOpenRegex = /<a(?:\s+[^>]*)?>/gi;
   let lastAnchorOpen = -1;
   let match: RegExpExecArray | null;
   

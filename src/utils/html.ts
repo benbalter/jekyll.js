@@ -30,5 +30,7 @@ export function escapeJs(str: string): string {
     .replace(/</g, '\\x3c')
     .replace(/>/g, '\\x3e')
     .replace(/\n/g, '\\n')
-    .replace(/\r/g, '\\r');
+    .replace(/\r/g, '\\r')
+    .replace(/\t/g, '\\t')
+    .replace(/\f/g, '\\f');
 }

@@ -130,9 +130,9 @@ export class Builder {
 
   /**
    * Build the entire site
-   * @returns Build timings if timing is enabled, otherwise void
+   * @returns Build timings if timing is enabled, otherwise undefined
    */
-  async build(): Promise<BuildTimings | void> {
+  async build(): Promise<BuildTimings | undefined> {
     logger.section('Building Site');
 
     // Start the timer if timing is enabled

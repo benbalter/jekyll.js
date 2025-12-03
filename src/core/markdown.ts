@@ -20,7 +20,6 @@ export interface MarkdownOptions {
 }
 
 // Cached module imports to avoid repeated dynamic imports
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let cachedModules: {
   unified: typeof import('unified').unified;
   remarkParse: typeof import('remark-parse').default;
@@ -28,6 +27,7 @@ let cachedModules: {
   remarkHtml: typeof import('remark-html').default;
   remarkGemoji?: typeof import('remark-gemoji').default;
   remarkGithub?: typeof import('remark-github').default;
+  defaultBuildUrl?: typeof import('remark-github').defaultBuildUrl;
 } | null = null;
 
 // Cached processors for different option combinations
@@ -75,8 +75,9 @@ async function loadModules(options: MarkdownOptions): Promise<typeof cachedModul
   }
 
   if (options.githubMentions && !cachedModules.remarkGithub) {
-    const { default: remarkGithub } = await import('remark-github');
+    const { default: remarkGithub, defaultBuildUrl } = await import('remark-github');
     cachedModules.remarkGithub = remarkGithub;
+    cachedModules.defaultBuildUrl = defaultBuildUrl;
   }
 
   return cachedModules;
@@ -111,9 +112,24 @@ async function getProcessor(options: MarkdownOptions): Promise<any> {
   }
 
   // Add GitHub mentions/references support if enabled (jekyll-mentions plugin)
-  if (options.githubMentions && modules.remarkGithub) {
+  // Only handle @mentions, not issues, PRs, commits, or other references
+  if (options.githubMentions && modules.remarkGithub && modules.defaultBuildUrl) {
     const githubOptions = typeof options.githubMentions === 'object' ? options.githubMentions : {};
-    processor = processor.use(modules.remarkGithub, githubOptions);
+    const defaultBuildUrl = modules.defaultBuildUrl;
+
+    // Custom buildUrl that only handles mentions, returning false for other types
+    // This ensures we don't auto-link issues (#123), commits, or other GitHub references
+    const mentionsOnlyBuildUrl = (values: { type: string }) => {
+      if (values.type === 'mention') {
+        return defaultBuildUrl(values as Parameters<typeof defaultBuildUrl>[0]);
+      }
+      return false;
+    };
+
+    processor = processor.use(modules.remarkGithub, {
+      ...githubOptions,
+      buildUrl: mentionsOnlyBuildUrl,
+    });
   }
 
   // Add HTML output - SECURITY: No sanitization - matches Jekyll behavior, allows raw HTML

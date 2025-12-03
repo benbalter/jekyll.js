@@ -17,3 +17,9 @@ export {
 } from './errors';
 export { FileWatcher, type WatcherOptions } from './watcher';
 export { escapeHtml, escapeJs } from './html';
+export {
+  PerformanceTimer,
+  performanceTimer,
+  type TimedOperation,
+  type BuildTimings,
+} from './timer';

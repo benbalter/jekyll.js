@@ -1,6 +1,8 @@
 import { execSync, spawn } from 'child_process';
 import { existsSync, rmSync } from 'fs';
 import { join, resolve } from 'path';
+import { Site, Builder, BuildTimings, TimedOperation } from '../../../core';
+import { loadConfig } from '../../../config';
 
 /**
  * Benchmark test to compare jekyll-ts performance against Ruby Jekyll.
@@ -52,6 +54,23 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
     const padding = ' '.repeat(indent);
     const labelPad = 12;
     console.log(`${padding}${label.padEnd(labelPad)} ${value}`);
+  };
+
+  /**
+   * Print an operation timing row with name, duration, percentage, and optional details
+   * @param op - The timed operation
+   * @param totalDuration - Total build duration for percentage calculation
+   * @param rank - Optional rank number for the operation
+   */
+  const printOperationRow = (op: TimedOperation, totalDuration: number, rank?: number): void => {
+    const percentage = totalDuration > 0 ? ((op.duration / totalDuration) * 100).toFixed(1) : '0.0';
+    const rankStr = rank !== undefined ? `${rank}. ` : '   ';
+    const nameWidth = 22;
+    const name = op.name.length > nameWidth ? op.name.substring(0, nameWidth - 1) + '…' : op.name;
+    const details = op.details ? ` (${op.details})` : '';
+    console.log(
+      `  ${rankStr}${name.padEnd(nameWidth)} ${formatTime(op.duration)} ${percentage.padStart(5)}%${details}`
+    );
   };
 
   /**
@@ -150,6 +169,34 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
     });
   };
 
+  /**
+   * Helper function to run a build with timing enabled and return timings
+   * @returns Promise that resolves with build timings
+   */
+  const runTimedBuild = async (): Promise<BuildTimings> => {
+    const configPath = join(fixtureDir, '_config.yml');
+    const config = loadConfig(configPath, false);
+
+    // Set destination to our test output directory
+    config.source = fixtureDir;
+    config.destination = destDirTs;
+
+    const site = new Site(fixtureDir, config);
+    const builder = new Builder(site, {
+      clean: true,
+      verbose: false,
+      timing: true,
+    });
+
+    const timings = await builder.build();
+
+    if (!timings) {
+      throw new Error('Expected build timings but got undefined');
+    }
+
+    return timings;
+  };
+
   it('should benchmark jekyll-ts build', async () => {
     if (!existsSync(jekyllTsBin)) {
       console.log('⏭ Skipping - Jekyll TS binary not built');
@@ -171,6 +218,41 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
 
     // Reasonable performance threshold (should build in < 10 seconds)
     expect(duration).toBeLessThan(10000);
+  }, 15000); // 15 second timeout
+
+  it('should show most costly operations', async () => {
+    printHeader('⏱️  Operation Breakdown');
+
+    const timings = await runTimedBuild();
+
+    // Sort operations by duration (most costly first)
+    const sortedOps = [...timings.operations].sort((a, b) => b.duration - a.duration);
+
+    // Print total duration
+    console.log('');
+    printStat('Total:', formatTime(timings.totalDuration));
+    console.log('');
+
+    // Print header for operations table
+    console.log(
+      `  ${'#'.padEnd(3)} ${'Operation'.padEnd(22)} ${'Time'.padStart(10)} ${'%'.padStart(6)}`
+    );
+    console.log(`  ${SEPARATOR}`);
+
+    // Print all operations ranked by cost
+    sortedOps.forEach((op, index) => {
+      printOperationRow(op, timings.totalDuration, index + 1);
+    });
+
+    console.log(`  ${SEPARATOR}`);
+
+    // Verify output was created
+    expect(existsSync(destDirTs)).toBe(true);
+    expect(existsSync(join(destDirTs, 'index.html'))).toBe(true);
+
+    // Verify we got timing data
+    expect(timings.operations.length).toBeGreaterThan(0);
+    expect(timings.totalDuration).toBeGreaterThan(0);
   }, 15000); // 15 second timeout
 
   it('should run side-by-side benchmark if Ruby Jekyll is available', async () => {

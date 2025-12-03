@@ -189,6 +189,88 @@ describe('MentionsPlugin', () => {
     });
   });
 
+  describe('graceful handling without repository', () => {
+    const originalEnv = process.env.GITHUB_REPOSITORY;
+
+    beforeEach(() => {
+      // Clear the environment variable to simulate no repository
+      delete process.env.GITHUB_REPOSITORY;
+    });
+
+    afterEach(() => {
+      // Restore the environment variable
+      if (originalEnv !== undefined) {
+        process.env.GITHUB_REPOSITORY = originalEnv;
+      } else {
+        delete process.env.GITHUB_REPOSITORY;
+      }
+    });
+
+    it('should not enable GitHub mentions in markdown when repository is missing', () => {
+      // Create site without repository config
+      const configWithoutRepo = {
+        title: 'Test Site',
+        url: 'https://example.com',
+        // No repository configured
+      };
+
+      const siteWithoutRepo = new Site(testSiteDir, configWithoutRepo);
+      const rendererWithoutRepo = new Renderer(siteWithoutRepo);
+      const pluginWithoutRepo = new MentionsPlugin();
+
+      // Should not throw when registering without repository
+      expect(() => {
+        pluginWithoutRepo.register(rendererWithoutRepo, siteWithoutRepo);
+      }).not.toThrow();
+
+      // Markdown options should not have githubMentions enabled
+      const markdownOptions = rendererWithoutRepo.getMarkdownOptions();
+      expect(markdownOptions.githubMentions).toBeUndefined();
+    });
+
+    it('should still register mentionify filter when repository is missing', async () => {
+      // Create site without repository config
+      const configWithoutRepo = {
+        title: 'Test Site',
+        url: 'https://example.com',
+        // No repository configured
+      };
+
+      const siteWithoutRepo = new Site(testSiteDir, configWithoutRepo);
+      const rendererWithoutRepo = new Renderer(siteWithoutRepo);
+      const pluginWithoutRepo = new MentionsPlugin();
+      pluginWithoutRepo.register(rendererWithoutRepo, siteWithoutRepo);
+
+      // The mentionify filter should still work
+      const template = '{{ "Hello @octocat!" | mentionify }}';
+      const result = await rendererWithoutRepo.render(template, {});
+
+      expect(result).toContain('<a href="https://github.com/octocat"');
+      expect(result).toContain('@octocat</a>');
+    });
+
+    it('should enable GitHub mentions when repository is configured', () => {
+      // Create site with repository config
+      const configWithRepo = {
+        title: 'Test Site',
+        url: 'https://example.com',
+        repository: 'owner/repo',
+      };
+
+      const siteWithRepo = new Site(testSiteDir, configWithRepo);
+      const rendererWithRepo = new Renderer(siteWithRepo);
+      const pluginWithRepo = new MentionsPlugin();
+      pluginWithRepo.register(rendererWithRepo, siteWithRepo);
+
+      // Markdown options should have githubMentions enabled
+      const markdownOptions = rendererWithRepo.getMarkdownOptions();
+      expect(markdownOptions.githubMentions).toEqual({
+        repository: 'owner/repo',
+        mentionStrong: false,
+      });
+    });
+  });
+
   describe('edge cases', () => {
     it('should handle very long usernames (up to 39 chars)', () => {
       const longUsername = 'a'.repeat(39);

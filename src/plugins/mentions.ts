@@ -31,13 +31,17 @@ export class MentionsPlugin implements Plugin {
     // Get repository for GitHub references (issues, PRs, etc.)
     const repository = site.config.repository || process.env.GITHUB_REPOSITORY || undefined;
 
-    // Enable GitHub mentions/references processing in markdown
-    renderer.enableGitHubMentions({
-      repository,
-      mentionStrong: false,
-    });
+    // Only enable GitHub mentions/references processing in markdown if repository is configured
+    // Without a repository, remark-github throws an error, so we gracefully skip this feature
+    if (repository) {
+      renderer.enableGitHubMentions({
+        repository,
+        mentionStrong: false,
+      });
+    }
 
     // Register the mentions filter for Liquid templates (for non-markdown content)
+    // This filter works independently of remark-github and doesn't require repository
     renderer.getLiquid().registerFilter('mentionify', (input: string) => {
       return mentionify(input, baseUrl);
     });

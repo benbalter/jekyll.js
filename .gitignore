@@ -15,6 +15,7 @@ build/
 *.d.ts
 *.js.map
 !jest.config.js
+!eslint.config.js
 !.eslintrc.js
 !scripts/**/*.js
 

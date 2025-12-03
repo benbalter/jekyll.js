@@ -263,7 +263,6 @@ jekyll.js/
 
 - [x] Data files (`_data` directory)
 - [x] Watch mode for builds
-- [x] Incremental builds
 - [x] Front matter defaults
 - [ ] SASS/SCSS processing
 - [ ] Additional Liquid filters

@@ -161,6 +161,9 @@ export class Builder {
       // Process SASS/SCSS files
       this.processSassFiles();
 
+      // Process SASS/SCSS files
+      this.processSassFiles();
+
       // Copy static files
       this.copyStaticFiles();
 

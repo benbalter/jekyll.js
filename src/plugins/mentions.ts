@@ -31,8 +31,10 @@ export class MentionsPlugin implements Plugin {
     // Get repository for GitHub references (issues, PRs, etc.)
     const repository = site.config.repository || process.env.GITHUB_REPOSITORY || undefined;
 
-    // Only enable GitHub mentions/references processing in markdown if repository is configured
-    // Without a repository, remark-github throws an error, so we gracefully skip this feature
+    // Only enable GitHub mentions/references processing in markdown if repository is configured.
+    // The remark-github library (used for markdown processing) requires a repository to link
+    // GitHub-specific features like @mentions, issue references (#123), and commit SHAs.
+    // Without a repository, remark-github throws an error, so we gracefully skip this feature.
     if (repository) {
       renderer.enableGitHubMentions({
         repository,

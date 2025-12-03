@@ -31,22 +31,22 @@ export class AvatarPlugin implements Plugin {
     renderer.getLiquid().registerTag('avatar', {
       parse(token: { args: string }) {
         const args = token.args.trim();
-        
+
         // Parse username and optional size parameter
         // Format: username [size=N]
         const match = args.match(/^(\S+)(?:\s+size\s*=\s*(\d+))?$/i);
-        
+
         if (!match) {
           throw new Error('avatar tag requires a username argument');
         }
-        
+
         this.username = match[1];
         this.size = match[2] ? parseInt(match[2], 10) : 40; // Default size is 40
       },
       render: function (ctx: { get: (path: string[]) => unknown }) {
         // Resolve username - it might be a variable reference
         let username = this.username;
-        
+
         // Check if username is a variable reference (doesn't start with quote)
         if (!username.startsWith('"') && !username.startsWith("'")) {
           // Try to resolve from context
@@ -58,11 +58,11 @@ export class AvatarPlugin implements Plugin {
           // Remove quotes if present
           username = username.replace(/^["']|["']$/g, '');
         }
-        
+
         // Sanitize username to prevent XSS
         const sanitizedUsername = sanitizeUsername(username);
         const size = this.size;
-        
+
         return generateAvatarTag(sanitizedUsername, size);
       },
     });
@@ -85,12 +85,12 @@ function sanitizeUsername(username: string): string {
     .replace(/^-/, '')
     // Remove trailing hyphen
     .replace(/-$/, '');
-  
+
   // Truncate to max username length and ensure no trailing hyphen after truncation
   if (sanitized.length > MAX_USERNAME_LENGTH) {
     sanitized = sanitized.substring(0, MAX_USERNAME_LENGTH).replace(/-$/, '');
   }
-  
+
   return sanitized;
 }
 
@@ -102,17 +102,17 @@ function sanitizeUsername(username: string): string {
  */
 export function generateAvatarTag(username: string, size: number = 40): string {
   const sanitized = sanitizeUsername(username);
-  
+
   if (!sanitized) {
     return '';
   }
-  
+
   // Use GitHub's avatar service
   // The retina size provides a high-DPI version
   const url = `https://avatars.githubusercontent.com/${sanitized}?v=4&s=${size * RETINA_MULTIPLIER}`;
   const escapedUrl = escapeHtml(url);
   const escapedUsername = escapeHtml(sanitized);
-  
+
   return `<img class="avatar avatar-small" src="${escapedUrl}" alt="${escapedUsername}" srcset="${escapedUrl} 2x" width="${size}" height="${size}" />`;
 }
 
@@ -124,10 +124,10 @@ export function generateAvatarTag(username: string, size: number = 40): string {
  */
 export function getAvatarUrl(username: string, size: number = 40): string {
   const sanitized = sanitizeUsername(username);
-  
+
   if (!sanitized) {
     return '';
   }
-  
+
   return `https://avatars.githubusercontent.com/${sanitized}?v=4&s=${size}`;
 }

@@ -63,10 +63,7 @@ describe('RedirectFromPlugin', () => {
 
   it('should handle single redirect_from value', () => {
     const pageFile = join(testSiteDir, 'new-page.html');
-    writeFileSync(
-      pageFile,
-      '---\ntitle: New Page\nredirect_from: /old-page/\n---\nContent'
-    );
+    writeFileSync(pageFile, '---\ntitle: New Page\nredirect_from: /old-page/\n---\nContent');
 
     const page = new Document(pageFile, testSiteDir, DocumentType.PAGE);
     page.url = '/new-page/';
@@ -81,10 +78,7 @@ describe('RedirectFromPlugin', () => {
 
   it('should generate redirects from redirect_to front matter', () => {
     const pageFile = join(testSiteDir, 'old-page.html');
-    writeFileSync(
-      pageFile,
-      '---\ntitle: Old Page\nredirect_to: /new-page/\n---\nContent'
-    );
+    writeFileSync(pageFile, '---\ntitle: Old Page\nredirect_to: /new-page/\n---\nContent');
 
     const page = new Document(pageFile, testSiteDir, DocumentType.PAGE);
     page.url = '/old-page/';
@@ -125,10 +119,7 @@ describe('RedirectFromPlugin', () => {
     plugin.register(new Renderer(site), site);
 
     const pageFile = join(testSiteDir, 'new-page.html');
-    writeFileSync(
-      pageFile,
-      '---\ntitle: New Page\nredirect_from: /old-page/\n---\nContent'
-    );
+    writeFileSync(pageFile, '---\ntitle: New Page\nredirect_from: /old-page/\n---\nContent');
 
     const page = new Document(pageFile, testSiteDir, DocumentType.PAGE);
     page.url = '/new-page/';
@@ -141,10 +132,7 @@ describe('RedirectFromPlugin', () => {
 
   it('should generate valid HTML redirect page', () => {
     const pageFile = join(testSiteDir, 'new-page.html');
-    writeFileSync(
-      pageFile,
-      '---\ntitle: New Page\nredirect_from: /old-page/\n---\nContent'
-    );
+    writeFileSync(pageFile, '---\ntitle: New Page\nredirect_from: /old-page/\n---\nContent');
 
     const page = new Document(pageFile, testSiteDir, DocumentType.PAGE);
     page.url = '/new-page/';
@@ -162,10 +150,7 @@ describe('RedirectFromPlugin', () => {
 
   it('should escape HTML in redirect URLs', () => {
     const pageFile = join(testSiteDir, 'new-page.html');
-    writeFileSync(
-      pageFile,
-      '---\ntitle: New Page\nredirect_from: /old-page/\n---\nContent'
-    );
+    writeFileSync(pageFile, '---\ntitle: New Page\nredirect_from: /old-page/\n---\nContent');
 
     const page = new Document(pageFile, testSiteDir, DocumentType.PAGE);
     page.url = '/page?param=value&other="test"';
@@ -199,10 +184,7 @@ describe('RedirectFromPlugin', () => {
 
   it('should normalize URLs without leading slash', () => {
     const pageFile = join(testSiteDir, 'new-page.html');
-    writeFileSync(
-      pageFile,
-      '---\ntitle: New Page\nredirect_from: old-page\n---\nContent'
-    );
+    writeFileSync(pageFile, '---\ntitle: New Page\nredirect_from: old-page\n---\nContent');
 
     const page = new Document(pageFile, testSiteDir, DocumentType.PAGE);
     page.url = '/new-page/';

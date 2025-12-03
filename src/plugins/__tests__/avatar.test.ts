@@ -103,7 +103,9 @@ describe('AvatarPlugin', () => {
       const tag = generateAvatarTag('octocat', 40);
 
       // Ampersand is escaped in HTML attributes
-      expect(tag).toContain('srcset="https://avatars.githubusercontent.com/octocat?v=4&amp;s=80 2x"');
+      expect(tag).toContain(
+        'srcset="https://avatars.githubusercontent.com/octocat?v=4&amp;s=80 2x"'
+      );
     });
   });
 

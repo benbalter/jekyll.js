@@ -9,12 +9,14 @@ export interface MarkdownOptions {
   /** Enable emoji processing (converts :emoji: to unicode) */
   emoji?: boolean;
   /** Enable GitHub-style mentions and references */
-  githubMentions?: boolean | {
-    /** GitHub repository (e.g., 'owner/repo') for linking issues/PRs */
-    repository?: string;
-    /** Base URL for user mentions (default: 'https://github.com') */
-    mentionStrong?: boolean;
-  };
+  githubMentions?:
+    | boolean
+    | {
+        /** GitHub repository (e.g., 'owner/repo') for linking issues/PRs */
+        repository?: string;
+        /** Base URL for user mentions (default: 'https://github.com') */
+        mentionStrong?: boolean;
+      };
 }
 
 /**
@@ -41,7 +43,10 @@ export interface MarkdownOptions {
  * Only process markdown from trusted sources. If handling user-generated content,
  * implement additional input validation or consider using sanitize: true.
  */
-export async function processMarkdown(content: string, options: MarkdownOptions = {}): Promise<string> {
+export async function processMarkdown(
+  content: string,
+  options: MarkdownOptions = {}
+): Promise<string> {
   // Dynamic import to handle ESM modules
   const { unified } = await import('unified');
   const { default: remarkParse } = await import('remark-parse');

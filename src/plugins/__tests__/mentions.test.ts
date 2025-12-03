@@ -133,7 +133,7 @@ describe('MentionsPlugin', () => {
     it('should escape HTML in usernames', () => {
       // This shouldn't happen with valid GitHub usernames, but test sanitization
       const result = mentionify('@user');
-      
+
       expect(result).not.toContain('&lt;');
       expect(result).not.toContain('&gt;');
     });
@@ -161,7 +161,7 @@ describe('MentionsPlugin', () => {
           base_url: 'https://gitlab.com',
         },
       };
-      
+
       const customSite = new Site(testSiteDir, customConfig);
       const customRenderer = new Renderer(customSite);
       const customPlugin = new MentionsPlugin();
@@ -179,7 +179,7 @@ describe('MentionsPlugin', () => {
           base_url: 'https://bitbucket.org',
         },
       };
-      
+
       const customSite = new Site(testSiteDir, customConfig);
       const customRenderer = new Renderer(customSite);
       const customPlugin = new MentionsPlugin();
@@ -201,7 +201,7 @@ describe('MentionsPlugin', () => {
       const tooLongUsername = 'a'.repeat(40);
       const text = `@${tooLongUsername}`;
       const result = mentionify(text);
-      
+
       // The regex pattern allows max 39 chars: 1 starting char + up to 37 middle chars + 1 ending char
       // For a username of 40 identical chars, the regex will match 39 chars and leave 1
       // The matched username should be the first 39 'a' characters

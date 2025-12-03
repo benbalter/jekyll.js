@@ -72,7 +72,9 @@ export class RedirectFromPlugin implements Plugin {
       const redirectTo = doc.data.redirect_to;
       if (redirectTo) {
         const docUrl = doc.url || '';
-        const toUrl = isAbsoluteUrl(redirectTo) ? redirectTo : `${baseurl}${normalizeUrl(redirectTo)}`;
+        const toUrl = isAbsoluteUrl(redirectTo)
+          ? redirectTo
+          : `${baseurl}${normalizeUrl(redirectTo)}`;
 
         redirects.push({
           from: docUrl,

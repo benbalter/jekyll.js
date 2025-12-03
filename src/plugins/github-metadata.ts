@@ -169,13 +169,13 @@ export class GitHubMetadataPlugin implements Plugin {
   register(_renderer: Renderer, site: Site): void {
     // Initialize github metadata on the site
     const metadata = this.getMetadata(site);
-    
+
     // Add github metadata to site.data so it's accessible in templates
     if (!site.data) {
       site.data = {};
     }
     site.data.github = metadata;
-    
+
     // Also add to site config for backward compatibility
     // Note: Using type assertion since JekyllConfig doesn't include github property
     (site.config as SiteConfigWithGitHub & { github: GitHubMetadata }).github = metadata;
@@ -186,33 +186,33 @@ export class GitHubMetadataPlugin implements Plugin {
    */
   getMetadata(site: Site): GitHubMetadata {
     const config = site.config as SiteConfigWithGitHub;
-    
+
     // Try to get repository from config or environment
     const repository = this.parseRepository(config);
     const owner = repository.owner || '';
     const repoName = repository.name || '';
     const nwo = owner && repoName ? `${owner}/${repoName}` : '';
-    
+
     // Determine environment
     const environment = process.env.JEKYLL_ENV || 'development';
     const isPagesEnv = environment === 'production' || !!process.env.GITHUB_PAGES;
-    
+
     // Base URLs
     const baseUrl = 'https://github.com';
     const apiUrl = 'https://api.github.com';
     const hostname = 'github.com';
-    
+
     // Determine if this is a user/org page or project page
     const isUserPage = repoName === `${owner}.github.io` || repoName === `${owner}.github.com`;
     const isProjectPage = !isUserPage && !!nwo;
-    
+
     // Build URL
     const repoUrl = nwo ? `${baseUrl}/${nwo}` : '';
-    
+
     // Source information
     const branch = config.branch || 'main';
     const sourcePath = config.source || '';
-    
+
     return {
       api_url: apiUrl,
       base_url: baseUrl,
@@ -280,7 +280,7 @@ export class GitHubMetadataPlugin implements Plugin {
         return { owner: parts[0], name: parts[1] };
       }
     }
-    
+
     // Check for github config
     if (config.github?.repository_nwo) {
       const parts = config.github.repository_nwo.split('/');
@@ -288,7 +288,7 @@ export class GitHubMetadataPlugin implements Plugin {
         return { owner: parts[0], name: parts[1] };
       }
     }
-    
+
     // Check environment variables (GitHub Actions)
     const envRepo = process.env.GITHUB_REPOSITORY;
     if (envRepo) {
@@ -297,7 +297,7 @@ export class GitHubMetadataPlugin implements Plugin {
         return { owner: parts[0], name: parts[1] };
       }
     }
-    
+
     // Try to infer from URL
     if (config.url) {
       const match = config.url.match(/github\.io\/([^/]+)/);
@@ -305,7 +305,7 @@ export class GitHubMetadataPlugin implements Plugin {
         const owner = config.url.match(/\/\/([^.]+)\.github\.io/)?.[1] || '';
         return { owner, name: match[1] };
       }
-      
+
       // Check for user/org pages
       const userMatch = config.url.match(/\/\/([^.]+)\.github\.io\/?$/);
       if (userMatch && userMatch[1]) {
@@ -313,7 +313,7 @@ export class GitHubMetadataPlugin implements Plugin {
         return { owner, name: `${owner}.github.io` };
       }
     }
-    
+
     return { owner: '', name: '' };
   }
 }

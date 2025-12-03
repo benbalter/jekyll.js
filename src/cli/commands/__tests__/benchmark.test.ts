@@ -305,7 +305,9 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
     if (durationTs < durationRuby) {
       const icon = '🚀';
       process.stdout.write(`  ${icon} Jekyll TS is FASTER\n`);
-      process.stdout.write(`     by ${Math.abs(difference)}ms (${Math.abs(percentageDiff).toFixed(1)}%)\n`);
+      process.stdout.write(
+        `     by ${Math.abs(difference)}ms (${Math.abs(percentageDiff).toFixed(1)}%)\n`
+      );
     } else if (durationTs > durationRuby) {
       const icon = '🐢';
       process.stdout.write(`  ${icon} Jekyll TS is SLOWER\n`);

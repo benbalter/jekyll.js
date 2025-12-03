@@ -520,20 +520,30 @@ export class Renderer {
     });
 
     // escape_once - HTML escape without double-escaping
+    // This is designed to match Jekyll/Ruby's behavior where already-escaped entities
+    // are preserved and raw HTML characters are escaped
     this.liquid.registerFilter('escape_once', (input: string) => {
       if (!input) return '';
-      // First, unescape any existing HTML entities, then escape
       const str = String(input);
-      const unescaped = str
-        .replace(/&amp;/g, '&')
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/&quot;/g, '"');
-      return unescaped
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
+      
+      // Use a single pass approach to avoid double-escaping issues:
+      // Replace only unescaped HTML special characters
+      // Already-escaped entities like &amp; should remain unchanged
+      return str.replace(/[&<>"]/g, (char) => {
+        switch (char) {
+          case '&':
+            // Don't escape if it's already part of an HTML entity
+            return '&amp;';
+          case '<':
+            return '&lt;';
+          case '>':
+            return '&gt;';
+          case '"':
+            return '&quot;';
+          default:
+            return char;
+        }
+      }).replace(/&amp;(amp|lt|gt|quot);/g, '&$1;'); // Restore double-escaped entities
     });
 
     // Math filters
@@ -773,8 +783,9 @@ export class Renderer {
 
     let result = strftime;
     for (const [pattern, replacement] of Object.entries(conversions)) {
-      // Escape the pattern for regex - only % needs escaping in this context
-      const escapedPattern = pattern.replace(/%/g, '\\%');
+      // Escape special regex characters in the pattern
+      // In this case, patterns like '%Y' only have '%' which needs escaping
+      const escapedPattern = pattern.replace(/[.*+?^${}()|[\]\\%]/g, '\\$&');
       result = result.replace(new RegExp(escapedPattern, 'g'), replacement);
     }
     return result;

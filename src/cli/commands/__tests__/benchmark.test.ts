@@ -276,7 +276,7 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
     printStat('Minimum:', formatTime(min));
     printStat('Maximum:', formatTime(max));
     printStat('Std Dev:', `${stdDev.toFixed(2).padStart(TIME_PAD)}ms`);
-    printStat('Variance:', `${((stdDev / avg) * 100).toFixed(1).padStart(TIME_PAD - 1)}%`);
+    printStat('CV (%):', `${((stdDev / avg) * 100).toFixed(1).padStart(TIME_PAD - 1)}%`);
     console.log(`  ${SEPARATOR}`);
 
     // Verify output was created on last run

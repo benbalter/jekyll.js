@@ -603,6 +603,37 @@ Team Size: {{ site.data.team.developers.count }}`
       expect(result).toContain('Team Lead: Alice');
       expect(result).toContain('Team Size: 5');
     });
+
+    it('should have access to static_files in templates', async () => {
+      // Create static files
+      const assetsDir = join(testDir, 'assets');
+      mkdirSync(assetsDir, { recursive: true });
+      writeFileSync(join(assetsDir, 'style.css'), 'body { margin: 0; }');
+      writeFileSync(join(assetsDir, 'script.js'), 'console.log("hello");');
+
+      site = new Site(testDir);
+      await site.read();
+
+      const docPath = join(testDir, 'test.md');
+      writeFileSync(
+        docPath,
+        `---
+title: Test Page
+---
+Static files count: {{ site.static_files.size }}
+{% for file in site.static_files %}
+File: {{ file.name }} - Path: {{ file.path }}
+{% endfor %}`
+      );
+
+      const doc = new Document(docPath, testDir, DocumentType.PAGE);
+      const renderer = new Renderer(site);
+      const result = await renderer.renderDocument(doc);
+
+      expect(result).toContain('Static files count: 2');
+      expect(result).toContain('File: style.css');
+      expect(result).toContain('File: script.js');
+    });
   });
 
   describe('custom filters and tags', () => {

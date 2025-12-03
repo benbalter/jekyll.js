@@ -11,7 +11,12 @@
 import { Plugin } from './index';
 import { Renderer } from '../core/Renderer';
 import { Site } from '../core/Site';
-import * as nodeEmoji from 'node-emoji';
+import {
+  emojify as nodeEmojiEmojify,
+  get as nodeEmojiGet,
+  has as nodeEmojiHas,
+  find as nodeEmojiFind,
+} from 'node-emoji';
 
 /**
  * Jemoji Plugin implementation
@@ -40,7 +45,7 @@ export function emojify(input: string): string {
   if (!input) return '';
 
   // Use node-emoji's emojify function with fallback to preserve unknown codes
-  return nodeEmoji.emojify(String(input), {
+  return nodeEmojiEmojify(String(input), {
     fallback: (name: string) => `:${name}:`,
   });
 }
@@ -51,7 +56,7 @@ export function emojify(input: string): string {
  * @returns Emoji character or undefined if not found
  */
 export function getEmoji(name: string): string | undefined {
-  return nodeEmoji.get(name);
+  return nodeEmojiGet(name);
 }
 
 /**
@@ -60,7 +65,7 @@ export function getEmoji(name: string): string | undefined {
  * @returns True if emoji exists
  */
 export function hasEmoji(name: string): boolean {
-  return nodeEmoji.has(name);
+  return nodeEmojiHas(name);
 }
 
 /**
@@ -69,5 +74,5 @@ export function hasEmoji(name: string): boolean {
  * @returns Object with emoji and key, or undefined if not found
  */
 export function findEmoji(codeOrName: string): { emoji: string; key: string } | undefined {
-  return nodeEmoji.find(codeOrName);
+  return nodeEmojiFind(codeOrName);
 }

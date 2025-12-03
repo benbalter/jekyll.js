@@ -127,7 +127,6 @@ describe('JemojiPlugin', () => {
   describe('common GitHub emojis', () => {
     it('should support thumbs up/down', () => {
       expect(emojify(':+1:')).toBe('👍');
-      // node-emoji uses '+1' not 'thumbsup'
       expect(emojify(':-1:')).toBe('👎');
     });
 

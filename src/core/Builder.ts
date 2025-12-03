@@ -6,11 +6,30 @@ import { SassProcessor } from './SassProcessor';
 import { logger } from '../utils/logger';
 import { BuildError, FileSystemError, JekyllError } from '../utils/errors';
 import { mkdirSync, writeFileSync, existsSync, readdirSync, statSync, copyFileSync, readFileSync } from 'fs';
-import { join, dirname, extname, basename, relative } from 'path';
+import { join, dirname, extname, basename, relative, sep } from 'path';
 import { rmSync } from 'fs';
 import { registerPlugins } from '../plugins';
 import { CacheManager } from './CacheManager';
 import matter from 'gray-matter';
+
+/**
+ * Normalize path separators to forward slashes for consistent comparison
+ * @param path Path to normalize
+ * @returns Path with forward slashes
+ */
+function normalizePath(path: string): string {
+  return path.split(sep).join('/');
+}
+
+/**
+ * Check if a path matches or is inside a keep pattern
+ * @param path Path to check (forward-slash normalized)
+ * @param pattern Keep pattern to match against (forward-slash normalized)
+ * @returns True if path matches or is inside the pattern
+ */
+function pathMatchesOrInside(path: string, pattern: string): boolean {
+  return path === pattern || path.startsWith(pattern + '/');
+}
 
 /**
  * Builder options interface
@@ -197,10 +216,18 @@ export class Builder {
   }
 
   /**
-   * Clean the destination directory
+   * Clean the destination directory, respecting keep_files configuration
+   * Files and directories listed in keep_files will not be deleted
    */
   private cleanDestination(): void {
-    if (existsSync(this.site.destination)) {
+    if (!existsSync(this.site.destination)) {
+      return;
+    }
+
+    const keepFiles = this.site.config.keep_files || [];
+    
+    // If no keep_files, do a simple recursive delete
+    if (keepFiles.length === 0) {
       logger.info(`Cleaning destination directory: ${this.site.destination}`);
       try {
         rmSync(this.site.destination, { recursive: true, force: true });
@@ -209,6 +236,72 @@ export class Builder {
           file: this.site.destination,
           cause: error instanceof Error ? error : undefined,
         });
+      }
+      return;
+    }
+
+    // Selective cleaning: delete everything except keep_files
+    logger.info(`Cleaning destination directory (keeping: ${keepFiles.join(', ')}): ${this.site.destination}`);
+    this.cleanDirectorySelectively(this.site.destination, keepFiles);
+  }
+
+  /**
+   * Recursively clean a directory while preserving files/dirs in keep_files
+   * @param dir Directory to clean
+   * @param keepFiles Files/directories to keep (relative to destination)
+   * @param relativePath Current relative path from destination
+   */
+  private cleanDirectorySelectively(
+    dir: string,
+    keepFiles: string[],
+    relativePath: string = ''
+  ): void {
+    if (!existsSync(dir)) {
+      return;
+    }
+
+    // Normalize keep patterns to use forward slashes
+    const normalizedKeepFiles = keepFiles.map(normalizePath);
+
+    const entries = readdirSync(dir);
+
+    for (const entry of entries) {
+      const fullPath = join(dir, entry);
+      const relPath = relativePath ? join(relativePath, entry) : entry;
+      const normalizedRelPath = normalizePath(relPath);
+      
+      // Check if this path should be kept
+      const shouldKeep = normalizedKeepFiles.some((keepPattern) => {
+        // Path matches or is inside a kept directory
+        if (pathMatchesOrInside(normalizedRelPath, keepPattern)) {
+          return true;
+        }
+        // keepPattern is inside relPath (so relPath dir contains a keep file)
+        if (pathMatchesOrInside(keepPattern, normalizedRelPath)) {
+          return true;
+        }
+        return false;
+      });
+
+      if (shouldKeep) {
+        // Check if this is a directory that contains something to keep
+        const containsKeptFile = normalizedKeepFiles.some((keepPattern) =>
+          pathMatchesOrInside(keepPattern, normalizedRelPath) && keepPattern !== normalizedRelPath
+        );
+        
+        if (containsKeptFile && statSync(fullPath).isDirectory()) {
+          // Recurse into the directory
+          this.cleanDirectorySelectively(fullPath, keepFiles, relPath);
+        }
+        // Otherwise, keep the entire file/directory
+        continue;
+      }
+
+      // Delete this entry
+      try {
+        rmSync(fullPath, { recursive: true, force: true });
+      } catch (error) {
+        logger.warn(`Failed to delete ${relPath}: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     }
   }
@@ -660,74 +753,49 @@ export class Builder {
 
   /**
    * Copy static files (non-Jekyll files) to destination
+   * Uses the static_files array from Site and skips unchanged files for optimization
    */
   private copyStaticFiles(): void {
-    const staticFiles = this.findStaticFiles(this.site.source);
+    const staticFiles = this.site.static_files;
 
     logger.info(`Copying ${staticFiles.length} static files...`);
 
-    for (const file of staticFiles) {
-      const relativePath = relative(this.site.source, file);
-      const destPath = join(this.site.destination, relativePath);
+    let copiedCount = 0;
+    let skippedCount = 0;
+
+    for (const staticFile of staticFiles) {
+      const destPath = join(this.site.destination, staticFile.destinationRelativePath);
 
       try {
         // Ensure directory exists
         mkdirSync(dirname(destPath), { recursive: true });
 
-        // Copy file
-        copyFileSync(file, destPath);
+        // Check if destination file exists and has same or newer modification time
+        if (existsSync(destPath)) {
+          const destStats = statSync(destPath);
+          // Skip if destination is newer than or same age as source
+          if (destStats.mtime >= staticFile.modified_time) {
+            skippedCount++;
+            logger.debug(`Skipped (unchanged): ${staticFile.relativePath}`);
+            continue;
+          }
+        }
 
-        logger.debug(`Copied: ${relativePath}`);
+        // Copy file
+        copyFileSync(staticFile.path, destPath);
+        copiedCount++;
+
+        logger.debug(`Copied: ${staticFile.relativePath}`);
       } catch (error) {
-        logger.warn(`Failed to copy static file: ${relativePath}`, {
+        logger.warn(`Failed to copy static file: ${staticFile.relativePath}`, {
           error: error instanceof Error ? error.message : String(error),
         });
       }
     }
-  }
 
-  /**
-   * Find all static files (non-Jekyll files) in the site
-   */
-  private findStaticFiles(dir: string, files: string[] = []): string[] {
-    if (!existsSync(dir)) {
-      return files;
+    if (skippedCount > 0) {
+      logger.debug(`Static files: ${copiedCount} copied, ${skippedCount} skipped (unchanged)`);
     }
-
-    const entries = readdirSync(dir);
-
-    for (const entry of entries) {
-      const fullPath = join(dir, entry);
-
-      // Skip if excluded
-      if (this.shouldExclude(fullPath)) {
-        continue;
-      }
-
-      const stats = statSync(fullPath);
-
-      if (stats.isDirectory()) {
-        // Skip Jekyll special directories at root level
-        if (this.isJekyllDirectory(entry) && dirname(fullPath) === this.site.source) {
-          continue;
-        }
-
-        // Recurse into directory
-        this.findStaticFiles(fullPath, files);
-      } else if (stats.isFile()) {
-        // Skip markdown/HTML/SASS files - they're processed through their own pipelines
-        // All .md, .markdown, .html, .htm files should be rendered through the document pipeline
-        // All .scss, .sass files should be compiled through the SASS processor
-        const ext = extname(fullPath).toLowerCase();
-        if (['.md', '.markdown', '.html', '.htm', '.scss', '.sass'].includes(ext)) {
-          continue;
-        }
-
-        files.push(fullPath);
-      }
-    }
-
-    return files;
   }
 
   /**

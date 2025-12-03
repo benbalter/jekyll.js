@@ -3,9 +3,10 @@ import { Site } from '../../core/Site';
 import { Renderer } from '../../core/Renderer';
 import { mkdirSync, rmSync } from 'fs';
 import { join } from 'path';
+import { tmpdir } from 'os';
 
 describe('MentionsPlugin', () => {
-  const testSiteDir = join(__dirname, '../../../../../tmp/test-mentions-site');
+  const testSiteDir = join(tmpdir(), 'jekyll-test-mentions-site');
   let site: Site;
   let renderer: Renderer;
   let plugin: MentionsPlugin;
@@ -196,15 +197,18 @@ describe('MentionsPlugin', () => {
       expect(result).toContain(`href="https://github.com/${longUsername}"`);
     });
 
-    it('should not match usernames longer than 39 chars', () => {
+    it('should handle usernames at exactly 39 chars boundary', () => {
       const tooLongUsername = 'a'.repeat(40);
       const text = `@${tooLongUsername}`;
-      // The regex should match only the first 39 chars as valid username
-      // Since the username is aaaa...(40 chars), it will match "a" followed by up to 37 middle chars
-      // and one ending char = max 39 chars. For 40 chars, it will match 39 and leave 1.
       const result = mentionify(text);
-      // The regex matches up to 39 chars
-      expect(result).toContain('href=');
+      
+      // The regex pattern allows max 39 chars: 1 starting char + up to 37 middle chars + 1 ending char
+      // For a username of 40 identical chars, the regex will match 39 chars and leave 1
+      // The matched username should be the first 39 'a' characters
+      const expected39Chars = 'a'.repeat(39);
+      expect(result).toContain(`href="https://github.com/${expected39Chars}"`);
+      // The remaining 'a' should not be part of the link
+      expect(result).toMatch(/<\/a>a$/);
     });
 
     it('should not match usernames starting with hyphen', () => {

@@ -3,9 +3,10 @@ import { Site } from '../../core/Site';
 import { Renderer } from '../../core/Renderer';
 import { mkdirSync, rmSync } from 'fs';
 import { join } from 'path';
+import { tmpdir } from 'os';
 
 describe('JemojiPlugin', () => {
-  const testSiteDir = join(__dirname, '../../../../../tmp/test-jemoji-site');
+  const testSiteDir = join(tmpdir(), 'jekyll-test-jemoji-site');
   let site: Site;
   let renderer: Renderer;
   let plugin: JemojiPlugin;

@@ -3,9 +3,10 @@ import { Site } from '../../core/Site';
 import { Renderer } from '../../core/Renderer';
 import { mkdirSync, rmSync } from 'fs';
 import { join } from 'path';
+import { tmpdir } from 'os';
 
 describe('AvatarPlugin', () => {
-  const testSiteDir = join(__dirname, '../../../../../tmp/test-avatar-site');
+  const testSiteDir = join(tmpdir(), 'jekyll-test-avatar-site');
   let site: Site;
   let renderer: Renderer;
   let plugin: AvatarPlugin;
@@ -85,10 +86,13 @@ describe('AvatarPlugin', () => {
       expect(tag).toContain('scriptalertxssscript');
     });
 
-    it('should allow hyphens and underscores in username', () => {
+    it('should allow hyphens in username but not underscores', () => {
+      // GitHub usernames only allow alphanumeric and hyphens, not underscores
       const tag = generateAvatarTag('octo-cat_123');
 
-      expect(tag).toContain('octo-cat_123');
+      // The underscore should be stripped, leaving 'octo-cat123'
+      expect(tag).toContain('octo-cat123');
+      expect(tag).not.toContain('_');
     });
 
     it('should return empty string for empty username', () => {

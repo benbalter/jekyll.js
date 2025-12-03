@@ -4,9 +4,10 @@ import { Renderer } from '../../core/Renderer';
 import { Document, DocumentType } from '../../core/Document';
 import { mkdirSync, writeFileSync, rmSync } from 'fs';
 import { join } from 'path';
+import { tmpdir } from 'os';
 
 describe('RedirectFromPlugin', () => {
-  const testSiteDir = join(__dirname, '../../../../../tmp/test-redirect-site');
+  const testSiteDir = join(tmpdir(), 'jekyll-test-redirect-site');
   let site: Site;
   let renderer: Renderer;
   let plugin: RedirectFromPlugin;

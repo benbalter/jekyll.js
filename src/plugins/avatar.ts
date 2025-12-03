@@ -10,6 +10,13 @@
 import { Plugin } from './index';
 import { Renderer } from '../core/Renderer';
 import { Site } from '../core/Site';
+import { escapeHtml } from '../utils/html';
+
+/** Maximum length for GitHub usernames */
+const MAX_USERNAME_LENGTH = 39;
+
+/** Multiplier for retina/high-DPI display support */
+const RETINA_MULTIPLIER = 2;
 
 /**
  * Avatar Plugin implementation
@@ -22,7 +29,7 @@ export class AvatarPlugin implements Plugin {
     // Usage: {% avatar username %}
     // Usage: {% avatar username size=80 %}
     renderer.getLiquid().registerTag('avatar', {
-      parse(token: any) {
+      parse(token: { args: string }) {
         const args = token.args.trim();
         
         // Parse username and optional size parameter
@@ -36,17 +43,15 @@ export class AvatarPlugin implements Plugin {
         this.username = match[1];
         this.size = match[2] ? parseInt(match[2], 10) : 40; // Default size is 40
       },
-      render: function (ctx: any) {
+      render: function (ctx: { get: (path: string[]) => unknown }) {
         // Resolve username - it might be a variable reference
         let username = this.username;
         
         // Check if username is a variable reference (doesn't start with quote)
         if (!username.startsWith('"') && !username.startsWith("'")) {
-          // Try to resolve from context using various methods
-          const resolved = ctx.get([username]) || 
-                           ctx.environments?.[username] || 
-                           ctx.scopes?.[0]?.[username];
-          if (resolved) {
+          // Try to resolve from context
+          const resolved = ctx.get([username]);
+          if (resolved !== undefined && resolved !== null) {
             username = String(resolved);
           }
         } else {
@@ -65,15 +70,29 @@ export class AvatarPlugin implements Plugin {
 }
 
 /**
- * Sanitize username to prevent XSS attacks
- * Only allow alphanumeric characters, hyphens, and underscores
+ * Sanitize username to prevent XSS attacks and enforce GitHub username rules.
+ * Only allow alphanumeric characters and hyphens.
+ * Disallow consecutive hyphens, leading/trailing hyphens, and limit to 39 chars.
+ * @see https://github.com/join
  */
 function sanitizeUsername(username: string): string {
-  return String(username).replace(/[^a-zA-Z0-9_-]/g, '');
+  let sanitized = String(username)
+    // Remove all characters except alphanumeric and hyphen
+    .replace(/[^a-zA-Z0-9-]/g, '')
+    // Collapse consecutive hyphens to a single hyphen
+    .replace(/-+/g, '-')
+    // Remove leading hyphen
+    .replace(/^-/, '')
+    // Remove trailing hyphen
+    .replace(/-$/, '');
+  
+  // Truncate to max username length
+  if (sanitized.length > MAX_USERNAME_LENGTH) {
+    sanitized = sanitized.substring(0, MAX_USERNAME_LENGTH);
+  }
+  
+  return sanitized;
 }
-
-/** Multiplier for retina/high-DPI display support */
-const RETINA_MULTIPLIER = 2;
 
 /**
  * Generate an avatar image tag for a GitHub user
@@ -111,16 +130,4 @@ export function getAvatarUrl(username: string, size: number = 40): string {
   }
   
   return `https://avatars.githubusercontent.com/${sanitized}?v=4&s=${size}`;
-}
-
-/**
- * Escape HTML special characters
- */
-function escapeHtml(str: string): string {
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
 }

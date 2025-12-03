@@ -10,6 +10,7 @@
 import { Plugin } from './index';
 import { Renderer } from '../core/Renderer';
 import { Site } from '../core/Site';
+import { escapeHtml } from '../utils/html';
 
 /**
  * Mentions Plugin implementation
@@ -44,8 +45,8 @@ export function mentionify(input: string, baseUrl: string = 'https://github.com'
   
   // Match @username patterns
   // GitHub usernames: alphanumeric, hyphens (not at start/end), max 39 chars
-  // Must be preceded by whitespace, start of string, or certain punctuation
-  // Must not be inside a link already
+  // Negative lookbehind ensures @ is not immediately preceded by an alphanumeric character.
+  // Note: Exclusion of matches inside links is handled by isInsideLink(), not by this regex.
   const mentionRegex = /(?<![a-zA-Z0-9])@([a-zA-Z0-9](?:[a-zA-Z0-9-]{0,37}[a-zA-Z0-9])?)/g;
   
   return String(input).replace(mentionRegex, (match, username, offset, str) => {
@@ -80,9 +81,17 @@ function isInsideHtmlTag(str: string, position: number): boolean {
  * Check if a position is inside an anchor link
  */
 function isInsideLink(str: string, position: number): boolean {
-  // Simple check: look for <a before position without closing </a>
+  // Improved check: look for last valid <a ...> before position without closing </a>
   const beforePosition = str.substring(0, position).toLowerCase();
-  const lastAnchorOpen = beforePosition.lastIndexOf('<a');
+  
+  // Regex to match <a> or <a ...> but not <anchor> etc.
+  const anchorOpenRegex = /<a(?:\s+[^>]*)?>|<a>/gi;
+  let lastAnchorOpen = -1;
+  let match: RegExpExecArray | null;
+  
+  while ((match = anchorOpenRegex.exec(beforePosition)) !== null) {
+    lastAnchorOpen = match.index;
+  }
   
   if (lastAnchorOpen === -1) return false;
   
@@ -90,16 +99,4 @@ function isInsideLink(str: string, position: number): boolean {
   
   // If the last anchor open is after the last anchor close, we're inside a link
   return lastAnchorOpen > lastAnchorClose;
-}
-
-/**
- * Escape HTML special characters
- */
-function escapeHtml(str: string): string {
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
 }

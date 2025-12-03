@@ -11,6 +11,7 @@ import { Plugin } from './index';
 import { Renderer } from '../core/Renderer';
 import { Site } from '../core/Site';
 import { Document } from '../core/Document';
+import { escapeHtml, escapeJs } from '../utils/html';
 
 /**
  * Interface for redirect information
@@ -28,10 +29,9 @@ export interface RedirectInfo {
 export class RedirectFromPlugin implements Plugin {
   name = 'jekyll-redirect-from';
 
-  register(_renderer: Renderer, site: Site): void {
-    // Store a reference to generate redirects during build
-    // This will be called by the Builder after all documents are processed
-    (site as any)._redirectFromPlugin = this;
+  register(_renderer: Renderer, _site: Site): void {
+    // Plugin is invoked explicitly when needed via generateRedirects()
+    // No need to store a reference on the site object
   }
 
   /**
@@ -63,7 +63,7 @@ export class RedirectFromPlugin implements Plugin {
           redirects.push({
             from: normalizedFrom,
             to: `${baseurl}${toUrl}`,
-            html: generateRedirectHtml(`${baseurl}${toUrl}`, site),
+            html: generateRedirectHtml(`${baseurl}${toUrl}`),
           });
         }
       }
@@ -77,7 +77,7 @@ export class RedirectFromPlugin implements Plugin {
         redirects.push({
           from: docUrl,
           to: toUrl,
-          html: generateRedirectHtml(toUrl, site),
+          html: generateRedirectHtml(toUrl),
         });
       }
     }
@@ -105,12 +105,12 @@ function isAbsoluteUrl(url: string): boolean {
 /**
  * Generate HTML content for a redirect page
  * @param targetUrl URL to redirect to
- * @param site Site instance for configuration
  * @returns HTML string for redirect page
  */
-function generateRedirectHtml(targetUrl: string, _site: Site): string {
+function generateRedirectHtml(targetUrl: string): string {
   // Escape the target URL for use in HTML attributes
   const escapedUrl = escapeHtml(targetUrl);
+  const escapedJsUrl = escapeJs(targetUrl);
 
   return `<!DOCTYPE html>
 <html lang="en-US">
@@ -118,7 +118,7 @@ function generateRedirectHtml(targetUrl: string, _site: Site): string {
     <meta charset="utf-8">
     <title>Redirecting&hellip;</title>
     <link rel="canonical" href="${escapedUrl}">
-    <script>location="${escapeJs(targetUrl)}"</script>
+    <script>window.location.href="${escapedJsUrl}";</script>
     <meta http-equiv="refresh" content="0; url=${escapedUrl}">
     <meta name="robots" content="noindex">
   </head>
@@ -127,30 +127,4 @@ function generateRedirectHtml(targetUrl: string, _site: Site): string {
     <a href="${escapedUrl}">Click here if you are not redirected.</a>
   </body>
 </html>`;
-}
-
-/**
- * Escape HTML special characters
- */
-function escapeHtml(str: string): string {
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-/**
- * Escape JavaScript string for use in a script tag
- */
-function escapeJs(str: string): string {
-  return String(str)
-    .replace(/\\/g, '\\\\')
-    .replace(/"/g, '\\"')
-    .replace(/'/g, "\\'")
-    .replace(/</g, '\\x3c')
-    .replace(/>/g, '\\x3e')
-    .replace(/\n/g, '\\n')
-    .replace(/\r/g, '\\r');
 }

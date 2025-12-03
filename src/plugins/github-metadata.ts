@@ -147,15 +147,26 @@ export interface GitHubMetadata {
 }
 
 /**
+ * Site config with github metadata extension
+ */
+interface SiteConfigWithGitHub {
+  repository?: string;
+  github?: {
+    repository_nwo?: string;
+  };
+  url?: string;
+  description?: string;
+  branch?: string;
+  source?: string;
+}
+
+/**
  * GitHub Metadata Plugin implementation
  */
 export class GitHubMetadataPlugin implements Plugin {
   name = 'jekyll-github-metadata';
 
   register(_renderer: Renderer, site: Site): void {
-    // Store a reference to provide metadata during build
-    (site as any)._githubMetadataPlugin = this;
-
     // Initialize github metadata on the site
     const metadata = this.getMetadata(site);
     
@@ -166,14 +177,15 @@ export class GitHubMetadataPlugin implements Plugin {
     site.data.github = metadata;
     
     // Also add to site config for backward compatibility
-    (site.config as any).github = metadata;
+    // Note: Using type assertion since JekyllConfig doesn't include github property
+    (site.config as SiteConfigWithGitHub & { github: GitHubMetadata }).github = metadata;
   }
 
   /**
    * Get GitHub metadata from configuration and environment
    */
   getMetadata(site: Site): GitHubMetadata {
-    const config = site.config;
+    const config = site.config as SiteConfigWithGitHub;
     
     // Try to get repository from config or environment
     const repository = this.parseRepository(config);
@@ -260,7 +272,7 @@ export class GitHubMetadataPlugin implements Plugin {
   /**
    * Parse repository information from configuration
    */
-  private parseRepository(config: any): { owner: string; name: string } {
+  private parseRepository(config: SiteConfigWithGitHub): { owner: string; name: string } {
     // Check for explicit repository config
     if (config.repository) {
       const parts = config.repository.split('/');
@@ -289,14 +301,14 @@ export class GitHubMetadataPlugin implements Plugin {
     // Try to infer from URL
     if (config.url) {
       const match = config.url.match(/github\.io\/([^/]+)/);
-      if (match) {
+      if (match && match[1]) {
         const owner = config.url.match(/\/\/([^.]+)\.github\.io/)?.[1] || '';
         return { owner, name: match[1] };
       }
       
       // Check for user/org pages
       const userMatch = config.url.match(/\/\/([^.]+)\.github\.io\/?$/);
-      if (userMatch) {
+      if (userMatch && userMatch[1]) {
         const owner = userMatch[1];
         return { owner, name: `${owner}.github.io` };
       }

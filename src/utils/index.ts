@@ -16,3 +16,4 @@ export {
   parseErrorLocation,
 } from './errors';
 export { FileWatcher, type WatcherOptions } from './watcher';
+export { escapeHtml, escapeJs } from './html';

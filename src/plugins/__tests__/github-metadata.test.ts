@@ -3,9 +3,10 @@ import { Site } from '../../core/Site';
 import { Renderer } from '../../core/Renderer';
 import { mkdirSync, rmSync } from 'fs';
 import { join } from 'path';
+import { tmpdir } from 'os';
 
 describe('GitHubMetadataPlugin', () => {
-  const testSiteDir = join(__dirname, '../../../../../tmp/test-github-metadata-site');
+  const testSiteDir = join(tmpdir(), 'jekyll-test-github-metadata-site');
   let site: Site;
   let renderer: Renderer;
   let plugin: GitHubMetadataPlugin;

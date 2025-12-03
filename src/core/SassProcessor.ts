@@ -56,9 +56,9 @@ export class SassProcessor {
   }
 
   /**
-   * Check if a file has a SASS/SCSS extension
-   * @param filePath Path to the file
-   * @returns True if file is .scss or .sass
+    * Check if a file has a SASS/SCSS extension
+    * @param filePath Path to the file
+    * @returns True if file is .scss or .sass
    */
   isSassFile(filePath: string): boolean {
     const ext = filePath.toLowerCase();

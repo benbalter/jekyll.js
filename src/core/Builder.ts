@@ -1,6 +1,7 @@
 import { Site } from './Site';
 import { Renderer } from './Renderer';
 import { Document, DocumentType } from './Document';
+import { generatePagination, getPaginatedFilePath } from './Paginator';
 import { SassProcessor } from './SassProcessor';
 import { logger } from '../utils/logger';
 import { BuildError, FileSystemError, JekyllError } from '../utils/errors';
@@ -112,6 +113,9 @@ export class Builder {
 
       // Render posts
       await this.renderPosts();
+
+      // Render pagination pages if enabled
+      await this.renderPagination();
 
       // Render collections
       await this.renderCollections();
@@ -290,28 +294,103 @@ export class Builder {
   }
 
   /**
-   * Render all posts
+   * Get filtered posts based on draft and future post options
+   * @returns Filtered array of posts
    */
-  private async renderPosts(): Promise<void> {
-    // Filter posts based on options
-    const posts = this.site.posts.filter((post) => {
+  private getFilteredPosts(): Document[] {
+    return this.site.posts.filter((post) => {
       // Filter unpublished posts unless showDrafts is enabled
       if (!post.published && !this.options.showDrafts) {
         return false;
       }
-
       // Filter future posts unless showFuture is enabled
       if (!this.options.showFuture && post.date && post.date > new Date()) {
         return false;
       }
-
       return true;
     });
+  }
+
+  /**
+   * Render all posts
+   */
+  private async renderPosts(): Promise<void> {
+    const posts = this.getFilteredPosts();
 
     logger.info(`Rendering ${posts.length} posts...`);
 
     for (const post of posts) {
       await this.renderDocument(post);
+    }
+  }
+
+  /**
+   * Render pagination pages if pagination is enabled
+   */
+  private async renderPagination(): Promise<void> {
+    // Check if pagination is enabled
+    const perPage = this.site.config.paginate;
+    if (!perPage || perPage <= 0) {
+      return;
+    }
+
+    // Get filtered posts for pagination
+    const posts = this.getFilteredPosts();
+
+    // Generate pagination data
+    const paginators = generatePagination(posts, this.site.config);
+    
+    if (paginators.length === 0) {
+      return;
+    }
+
+    logger.info(`Generating ${paginators.length} pagination pages...`);
+
+    // Find the index page that should be used for pagination
+    // Pagination requires an index.html or index.md in the source root
+    const indexPage = this.site.pages.find((page) => {
+      const baseName = basename(page.relativePath, extname(page.relativePath));
+      return baseName === 'index' && dirname(page.relativePath) === '.';
+    });
+
+    if (!indexPage) {
+      logger.warn('Pagination enabled but no index page found. Skipping pagination.');
+      return;
+    }
+
+    // Get pagination path pattern
+    const paginatePath = this.site.config.paginate_path || '/page:num/';
+
+    // Render each paginated page
+    for (const paginator of paginators) {
+      // Render the page with the paginator object in context
+      const html = await this.renderer.renderDocumentWithPaginator(indexPage, paginator);
+
+      // Get output path for this paginated page
+      const filePath = getPaginatedFilePath(paginator.page, paginatePath);
+      const outputPath = join(this.site.destination, filePath);
+
+      // Ensure directory exists
+      try {
+        mkdirSync(dirname(outputPath), { recursive: true });
+      } catch (error) {
+        throw new FileSystemError('Failed to create pagination output directory', {
+          file: dirname(outputPath),
+          cause: error instanceof Error ? error : undefined,
+        });
+      }
+
+      // Write file
+      try {
+        writeFileSync(outputPath, html, 'utf-8');
+      } catch (error) {
+        throw new FileSystemError('Failed to write pagination file', {
+          file: outputPath,
+          cause: error instanceof Error ? error : undefined,
+        });
+      }
+
+      logger.debug(`Rendered pagination page ${paginator.page} → ${filePath}`);
     }
   }
 

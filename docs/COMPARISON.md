@@ -15,14 +15,14 @@ Side-by-side comparison of jekyll.js (TypeScript) and Jekyll.rb (Ruby) features.
 | Category | Supported | Planned | Not Planned |
 |----------|-----------|---------|-------------|
 | Core Features | 8/8 (100%) | 0 | 0 |
-| Content Types | 6/7 (86%) | 1 | 0 |
-| Templating | 4/7 (57%) | 3 | 0 |
-| Build Features | 5/8 (63%) | 3 | 0 |
+| Content Types | 7/7 (100%) | 0 | 0 |
+| Templating | 7/7 (100%) | 0 | 0 |
+| Build Features | 6/8 (75%) | 2 | 0 |
 | Assets & Styling | 1/5 (20%) | 4 | 0 |
 | Plugins | 3/4 (75%) | 1 | 0 |
 | Advanced Features | 0/7 (0%) | 7 | 0 |
 
-**Overall**: 27/46 features (59%) implemented, 19 planned, 0 blocked
+**Overall**: 32/46 features (70%) implemented, 14 planned, 0 blocked
 
 ---
 
@@ -52,7 +52,7 @@ Side-by-side comparison of jekyll.js (TypeScript) and Jekyll.rb (Ruby) features.
 | Collections | ✅ | ✅ | ✅ Working |
 | Layouts | ✅ | ✅ | ✅ Working |
 | Includes | ✅ | ✅ | ✅ Working |
-| Data files (_data) | ✅ | 🔴 | 🔴 v0.2.0 planned |
+| Data files (_data) | ✅ | ✅ | ✅ Working |
 | Static files | ✅ | 🟡 | 🟡 Basic support |
 
 ---
@@ -63,11 +63,11 @@ Side-by-side comparison of jekyll.js (TypeScript) and Jekyll.rb (Ruby) features.
 |---------|-----------|-----------|--------|
 | Liquid syntax | ✅ | ✅ | ✅ Full support |
 | Jekyll filters (basic) | ✅ | ✅ | ✅ Date, URL, array, string |
-| Jekyll filters (advanced) | ✅ | 🟡 | 🟡 Some missing |
+| Jekyll filters (advanced) | ✅ | ✅ | ✅ Math, truncate, find, etc. |
 | Jekyll tags (basic) | ✅ | ✅ | ✅ include, highlight, raw |
 | Jekyll tags (advanced) | ✅ | ✅ | ✅ include_relative |
 | Layout inheritance | ✅ | ✅ | ✅ Nested layouts |
-| Front matter defaults | ✅ | 🔴 | 🔴 v0.2.0 planned |
+| Front matter defaults | ✅ | ✅ | ✅ Working |
 
 ---
 
@@ -77,8 +77,8 @@ Side-by-side comparison of jekyll.js (TypeScript) and Jekyll.rb (Ruby) features.
 |---------|-----------|-----------|----------------|
 | Basic build | ✅ | ✅ | ✅ Complete |
 | Custom source/destination | ✅ | ✅ | ✅ -s, -d flags |
-| Watch mode | ✅ | 🔴 | 🔴 Planned v0.2.0 |
-| Incremental builds | ✅ | 🔴 | 🔴 Planned v0.3.0 |
+| Watch mode | ✅ | ✅ | ✅ --watch flag |
+| Incremental builds | ✅ | ✅ | ✅ --incremental flag |
 | Configuration files | ✅ | 🟡 | 🟡 Single file only |
 | Multiple configs | ✅ | 🔴 | 🔴 Planned v0.4.0 |
 | Environment variables | ✅ | 🔴 | 🔴 Planned v0.4.0 |
@@ -90,9 +90,9 @@ Side-by-side comparison of jekyll.js (TypeScript) and Jekyll.rb (Ruby) features.
 
 | Feature | Jekyll.rb | jekyll.js | Status |
 |---------|-----------|-----------|--------|
-| HTTP server | ✅ | ✅ | ✅ Express-based |
+| HTTP server | ✅ | ✅ | ✅ Built-in |
 | LiveReload | ✅ | ✅ | ✅ WebSocket-based |
-| File watching | ✅ | 🟡 | 🟡 Basic, needs polish |
+| File watching | ✅ | ✅ | ✅ Chokidar-based |
 | Custom port/host | ✅ | ✅ | ✅ -P, -H flags |
 | HTTPS | ✅ | 🔴 | 🔴 Future |
 | URL prefix | ✅ | ✅ | ✅ baseurl support |
@@ -151,7 +151,7 @@ Side-by-side comparison of jekyll.js (TypeScript) and Jekyll.rb (Ruby) features.
 | source, destination | ✅ | ✅ | ✅ Full |
 | collections_dir | ✅ | ✅ | ✅ Full |
 | layouts_dir | ✅ | ✅ | ✅ Full |
-| data_dir | ✅ | 🔴 | 🔴 Config exists, not used |
+| data_dir | ✅ | ✅ | ✅ Full |
 | includes_dir | ✅ | ✅ | ✅ Full |
 | **Content** |
 | permalink | ✅ | ✅ | ✅ Full |
@@ -163,10 +163,10 @@ Side-by-side comparison of jekyll.js (TypeScript) and Jekyll.rb (Ruby) features.
 | **Plugins** |
 | plugins | ✅ | 🟡 | 🟡 List only, not loaded |
 | **Defaults** |
-| defaults | ✅ | 🔴 | 🔴 Planned v0.2.0 |
+| defaults | ✅ | ✅ | ✅ Full |
 | **SASS** |
-| sass.sass_dir | ✅ | 🔴 | 🔴 Planned v0.2.0 |
-| sass.style | ✅ | 🔴 | 🔴 Planned v0.2.0 |
+| sass.sass_dir | ✅ | ✅ | ✅ Full |
+| sass.style | ✅ | ✅ | ✅ Full |
 | **Liquid** |
 | liquid.error_mode | ✅ | 🟡 | 🟡 Partial |
 | liquid.strict_filters | ✅ | ✅ | ✅ Full |
@@ -179,6 +179,7 @@ Side-by-side comparison of jekyll.js (TypeScript) and Jekyll.rb (Ruby) features.
 #### Implemented in jekyll.js ✅
 
 **Date Filters:**
+- `date` - Format date with strftime format
 - `date_to_xmlschema` - ISO 8601 format
 - `date_to_rfc822` - RFC 822 format
 - `date_to_string` - Short date
@@ -194,6 +195,20 @@ Side-by-side comparison of jekyll.js (TypeScript) and Jekyll.rb (Ruby) features.
 - `group_by` - Group by property
 - `group_by_exp` - Group by expression (basic)
 - `array_to_sentence_string` - Array to sentence
+- `sort` - Sort array
+- `sort_natural` - Natural sort (case-insensitive)
+- `uniq` - Remove duplicates
+- `sample` - Random element(s)
+- `push`, `pop`, `shift`, `unshift` - Array manipulation
+- `find` - Find element by property
+- `find_exp` - Find element by expression (basic)
+- `first`, `last` - First/last element
+- `reverse` - Reverse array
+- `compact` - Remove nil values
+- `concat` - Concatenate arrays
+- `map` - Map property from objects
+- `join` - Join array to string
+- `size` - Array/string length
 
 **String Filters:**
 - `xml_escape` - XML escaping
@@ -205,27 +220,37 @@ Side-by-side comparison of jekyll.js (TypeScript) and Jekyll.rb (Ruby) features.
 - `markdownify` - Markdown to HTML
 - `jsonify` - JSON output
 - `inspect` - Debug output
-
-#### Missing from jekyll.js 🔴
-
-**Array Filters:**
-- `sort`, `sort_natural` - Sorting
-- `uniq` - Remove duplicates
-- `sample` - Random element
-- `push`, `pop`, `shift`, `unshift` - Array manipulation
-- `find`, `find_exp` - Find element
+- `normalize_whitespace` - Whitespace normalization
+- `newline_to_br` - Newlines to HTML breaks
+- `strip_html` - Remove HTML tags
+- `strip_newlines` - Remove newlines
+- `truncate` - Truncate string by length
+- `truncatewords` - Truncate by word count
+- `upcase` - Uppercase
+- `downcase` - Lowercase
+- `capitalize` - Capitalize first letter
+- `strip`, `lstrip`, `rstrip` - Trim whitespace
+- `prepend`, `append` - Add prefix/suffix
+- `remove`, `remove_first` - Remove substring
+- `replace`, `replace_first` - Replace substring
+- `split` - Split string to array
+- `escape_once` - HTML escape without double-escaping
+- `default` - Default value for nil/empty
 
 **Math Filters:**
 - `abs` - Absolute value
 - `plus`, `minus`, `times`, `divided_by` - Arithmetic
 - `modulo` - Modulo operation
 - `round`, `ceil`, `floor` - Rounding
+- `at_least`, `at_most` - Min/max bounds
 
 **Type Filters:**
-- `to_integer`, `to_float` - Type conversion
+- `to_integer` - Convert to integer
 
-**String Filters:**
-- `normalize_whitespace` - Whitespace normalization
+#### Remaining to implement 🟡
+
+**Type Filters:**
+- `to_float` - Convert to float
 
 ---
 
@@ -234,15 +259,15 @@ Side-by-side comparison of jekyll.js (TypeScript) and Jekyll.rb (Ruby) features.
 #### Implemented ✅
 
 - `{% include %}` - Include partials
+- `{% include_relative %}` - Include relative to current file
 - `{% highlight %}` - Syntax highlighting
 - `{% link %}` - Link to pages (basic)
 - `{% post_url %}` - Link to posts (basic)
+- `{% raw %}` - Disable Liquid processing (built into liquidjs)
 
-#### Missing 🔴
+#### Built-in from liquidjs 
 
-- `{% raw %}` - Disable Liquid
-- `{% include_relative %}` - Relative includes
-- `{% comment %}` - Multi-line comments (may be built-in)
+- `{% comment %}` - Multi-line comments (built into liquidjs)
 
 ---
 
@@ -497,6 +522,6 @@ Achieve production-ready status:
 
 ---
 
-**Last Updated**: 2025-11-21  
+**Last Updated**: 2025-12-03  
 **Comparison Version**: Jekyll.rb 4.3.x vs jekyll.js 0.1.0  
 **Maintained by**: @benbalter

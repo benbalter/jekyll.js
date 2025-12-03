@@ -420,6 +420,331 @@ describe('Renderer', () => {
         const result = await renderer.render(template, { value: 5 });
         expect(result).toBe('5');
       });
+
+      it('should support plus filter', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ value | plus: 5 }}';
+        const result = await renderer.render(template, { value: 10 });
+        expect(result).toBe('15');
+      });
+
+      it('should support minus filter', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ value | minus: 3 }}';
+        const result = await renderer.render(template, { value: 10 });
+        expect(result).toBe('7');
+      });
+
+      it('should support times filter', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ value | times: 4 }}';
+        const result = await renderer.render(template, { value: 5 });
+        expect(result).toBe('20');
+      });
+
+      it('should support divided_by filter', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ value | divided_by: 3 }}';
+        const result = await renderer.render(template, { value: 10 });
+        expect(result).toBe('3'); // Floor division
+      });
+
+      it('should support modulo filter', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ value | modulo: 3 }}';
+        const result = await renderer.render(template, { value: 10 });
+        expect(result).toBe('1');
+      });
+
+      it('should support round filter', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ value | round }}';
+        const result = await renderer.render(template, { value: 3.7 });
+        expect(result).toBe('4');
+      });
+
+      it('should support round filter with precision', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ value | round: 2 }}';
+        const result = await renderer.render(template, { value: 3.14159 });
+        expect(result).toBe('3.14');
+      });
+
+      it('should support ceil filter', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ value | ceil }}';
+        const result = await renderer.render(template, { value: 3.2 });
+        expect(result).toBe('4');
+      });
+
+      it('should support floor filter', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ value | floor }}';
+        const result = await renderer.render(template, { value: 3.9 });
+        expect(result).toBe('3');
+      });
+    });
+
+    describe('Additional Jekyll compatibility filters', () => {
+      it('should support sort_natural filter', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ items | sort_natural | join: "," }}';
+        const result = await renderer.render(template, { items: ['b', 'A', 'c', 'B'] });
+        expect(result.toLowerCase()).toBe('a,b,b,c');
+      });
+
+      it('should support sort_natural filter with property', async () => {
+        const renderer = new Renderer(site);
+        const items = [
+          { name: 'banana' },
+          { name: 'Apple' },
+          { name: 'cherry' },
+        ];
+        const template = '{% assign sorted = items | sort_natural: "name" %}{{ sorted[0].name }}';
+        const result = await renderer.render(template, { items });
+        expect(result.toLowerCase()).toBe('apple');
+      });
+
+      it('should support find filter', async () => {
+        const renderer = new Renderer(site);
+        const items = [
+          { id: 1, name: 'apple' },
+          { id: 2, name: 'banana' },
+          { id: 3, name: 'cherry' },
+        ];
+        const template = '{% assign found = items | find: "id", 2 %}{{ found.name }}';
+        const result = await renderer.render(template, { items });
+        expect(result).toBe('banana');
+      });
+
+      it('should support truncate filter', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ text | truncate: 10 }}';
+        const result = await renderer.render(template, { text: 'Hello World, how are you?' });
+        expect(result).toBe('Hello W...');
+      });
+
+      it('should support truncate filter with custom ellipsis', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ text | truncate: 10, "!" }}';
+        const result = await renderer.render(template, { text: 'Hello World, how are you?' });
+        expect(result).toBe('Hello Wor!');
+      });
+
+      it('should support truncatewords filter', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ text | truncatewords: 3 }}';
+        const result = await renderer.render(template, { text: 'One two three four five' });
+        expect(result).toBe('One two three...');
+      });
+
+      it('should support truncatewords filter with custom ellipsis', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ text | truncatewords: 3, " [more]" }}';
+        const result = await renderer.render(template, { text: 'One two three four five' });
+        expect(result).toBe('One two three [more]');
+      });
+
+      it('should support escape_once filter', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ text | escape_once }}';
+        const result = await renderer.render(template, { text: '&lt;div&gt;test&lt;/div&gt;' });
+        expect(result).toBe('&lt;div&gt;test&lt;/div&gt;');
+      });
+
+      it('should support escape_once filter with unescaped input', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ text | escape_once }}';
+        const result = await renderer.render(template, { text: '<div>test</div>' });
+        expect(result).toBe('&lt;div&gt;test&lt;/div&gt;');
+      });
+
+      it('should support upcase filter', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ text | upcase }}';
+        const result = await renderer.render(template, { text: 'hello world' });
+        expect(result).toBe('HELLO WORLD');
+      });
+
+      it('should support downcase filter', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ text | downcase }}';
+        const result = await renderer.render(template, { text: 'HELLO WORLD' });
+        expect(result).toBe('hello world');
+      });
+
+      it('should support capitalize filter', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ text | capitalize }}';
+        const result = await renderer.render(template, { text: 'hello' });
+        expect(result).toBe('Hello');
+      });
+
+      it('should support strip filter', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ text | strip }}';
+        const result = await renderer.render(template, { text: '  hello  ' });
+        expect(result).toBe('hello');
+      });
+
+      it('should support lstrip filter', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ text | lstrip }}';
+        const result = await renderer.render(template, { text: '  hello  ' });
+        expect(result).toBe('hello  ');
+      });
+
+      it('should support rstrip filter', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ text | rstrip }}';
+        const result = await renderer.render(template, { text: '  hello  ' });
+        expect(result).toBe('  hello');
+      });
+
+      it('should support prepend filter', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ text | prepend: "Hello " }}';
+        const result = await renderer.render(template, { text: 'World' });
+        expect(result).toBe('Hello World');
+      });
+
+      it('should support append filter', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ text | append: " World" }}';
+        const result = await renderer.render(template, { text: 'Hello' });
+        expect(result).toBe('Hello World');
+      });
+
+      it('should support remove filter', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ text | remove: "l" }}';
+        const result = await renderer.render(template, { text: 'Hello World' });
+        expect(result).toBe('Heo Word');
+      });
+
+      it('should support remove_first filter', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ text | remove_first: "l" }}';
+        const result = await renderer.render(template, { text: 'Hello World' });
+        expect(result).toBe('Helo World');
+      });
+
+      it('should support replace filter', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ text | replace: "o", "0" }}';
+        const result = await renderer.render(template, { text: 'Hello World' });
+        expect(result).toBe('Hell0 W0rld');
+      });
+
+      it('should support replace_first filter', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ text | replace_first: "o", "0" }}';
+        const result = await renderer.render(template, { text: 'Hello World' });
+        expect(result).toBe('Hell0 World');
+      });
+
+      it('should support split filter', async () => {
+        const renderer = new Renderer(site);
+        const template = '{% assign words = text | split: " " %}{{ words.size }}';
+        const result = await renderer.render(template, { text: 'one two three' });
+        expect(result).toBe('3');
+      });
+
+      it('should support join filter', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ items | join: ", " }}';
+        const result = await renderer.render(template, { items: ['a', 'b', 'c'] });
+        expect(result).toBe('a, b, c');
+      });
+
+      it('should support first filter', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ items | first }}';
+        const result = await renderer.render(template, { items: ['a', 'b', 'c'] });
+        expect(result).toBe('a');
+      });
+
+      it('should support last filter', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ items | last }}';
+        const result = await renderer.render(template, { items: ['a', 'b', 'c'] });
+        expect(result).toBe('c');
+      });
+
+      it('should support reverse filter', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ items | reverse | join: "," }}';
+        const result = await renderer.render(template, { items: ['a', 'b', 'c'] });
+        expect(result).toBe('c,b,a');
+      });
+
+      it('should support size filter with array', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ items | size }}';
+        const result = await renderer.render(template, { items: ['a', 'b', 'c'] });
+        expect(result).toBe('3');
+      });
+
+      it('should support size filter with string', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ text | size }}';
+        const result = await renderer.render(template, { text: 'hello' });
+        expect(result).toBe('5');
+      });
+
+      it('should support compact filter', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ items | compact | join: "," }}';
+        const result = await renderer.render(template, { items: ['a', null, 'b', undefined, 'c'] });
+        expect(result).toBe('a,b,c');
+      });
+
+      it('should support concat filter', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ items1 | concat: items2 | join: "," }}';
+        const result = await renderer.render(template, { items1: ['a', 'b'], items2: ['c', 'd'] });
+        expect(result).toBe('a,b,c,d');
+      });
+
+      it('should support map filter', async () => {
+        const renderer = new Renderer(site);
+        const items = [
+          { name: 'alice' },
+          { name: 'bob' },
+          { name: 'carol' },
+        ];
+        const template = '{{ items | map: "name" | join: ", " }}';
+        const result = await renderer.render(template, { items });
+        expect(result).toBe('alice, bob, carol');
+      });
+
+      it('should support date filter with strftime format', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ date | date: "%Y-%m-%d" }}';
+        const result = await renderer.render(template, { date: '2024-01-15' });
+        expect(result).toBe('2024-01-15');
+      });
+
+      it('should support default filter', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ value | default: "N/A" }}';
+        const result = await renderer.render(template, { value: null });
+        expect(result).toBe('N/A');
+      });
+
+      it('should support default filter with existing value', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ value | default: "N/A" }}';
+        const result = await renderer.render(template, { value: 'hello' });
+        expect(result).toBe('hello');
+      });
+
+      it('should support default filter with empty string', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ value | default: "N/A" }}';
+        const result = await renderer.render(template, { value: '' });
+        expect(result).toBe('N/A');
+      });
     });
   });
 

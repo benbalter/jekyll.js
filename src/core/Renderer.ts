@@ -448,6 +448,328 @@ export class Renderer {
       if (isNaN(maximum)) return num;
       return Math.min(num, maximum);
     });
+
+    // sort_natural - Natural sort (case-insensitive alphabetical)
+    this.liquid.registerFilter('sort_natural', (array: any[], property?: string) => {
+      if (!Array.isArray(array)) return array;
+      const arr = [...array]; // Create a copy to avoid mutating original
+      
+      const collator = new Intl.Collator(undefined, {
+        numeric: true,
+        sensitivity: 'base',
+      });
+      
+      if (property) {
+        // Sort by property (natural, case-insensitive)
+        return arr.sort((a, b) => {
+          const aVal = a?.[property];
+          const bVal = b?.[property];
+          if (aVal == null && bVal == null) return 0;
+          if (aVal == null) return 1;
+          if (bVal == null) return -1;
+          return collator.compare(String(aVal), String(bVal));
+        });
+      }
+      
+      // Default natural sort
+      return arr.sort((a, b) => collator.compare(String(a), String(b)));
+    });
+
+    // find - Find first element matching property value
+    this.liquid.registerFilter('find', (array: any[], property: string, value: any) => {
+      if (!Array.isArray(array)) return null;
+      return array.find((item) => item?.[property] === value) || null;
+    });
+
+    // find_exp - Find first element matching expression (basic implementation)
+    this.liquid.registerFilter('find_exp', (array: any[], _variable: string, _expression: string) => {
+      if (!Array.isArray(array)) return null;
+      // TODO: Implement full expression evaluation
+      // For now, this is a placeholder that returns first item
+      logger.warn('find_exp filter has limited support - returning first item');
+      return array.length > 0 ? array[0] : null;
+    });
+
+    // truncate - Truncate string to specified length
+    this.liquid.registerFilter('truncate', (input: string, length: number = 50, ellipsis: string = '...') => {
+      if (!input) return '';
+      const str = String(input);
+      const len = Number(length) || 50;
+      const suffix = ellipsis != null ? String(ellipsis) : '...';
+      
+      if (str.length <= len) return str;
+      
+      // Jekyll truncates at length including ellipsis
+      const truncateLength = Math.max(0, len - suffix.length);
+      return str.substring(0, truncateLength) + suffix;
+    });
+
+    // truncatewords - Truncate string to specified word count
+    this.liquid.registerFilter('truncatewords', (input: string, words: number = 15, ellipsis: string = '...') => {
+      if (!input) return '';
+      const str = String(input);
+      const wordCount = Number(words) || 15;
+      const suffix = ellipsis != null ? String(ellipsis) : '...';
+      
+      const wordArray = str.split(/\s+/);
+      if (wordArray.length <= wordCount) return str;
+      
+      return wordArray.slice(0, wordCount).join(' ') + suffix;
+    });
+
+    // escape_once - HTML escape without double-escaping
+    this.liquid.registerFilter('escape_once', (input: string) => {
+      if (!input) return '';
+      // First, unescape any existing HTML entities, then escape
+      const str = String(input);
+      const unescaped = str
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"');
+      return unescaped
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    });
+
+    // Math filters
+    this.liquid.registerFilter('plus', (input: number, operand: number) => {
+      const a = Number(input);
+      const b = Number(operand);
+      if (isNaN(a)) return b;
+      if (isNaN(b)) return a;
+      return a + b;
+    });
+
+    this.liquid.registerFilter('minus', (input: number, operand: number) => {
+      const a = Number(input);
+      const b = Number(operand);
+      if (isNaN(a)) return -b;
+      if (isNaN(b)) return a;
+      return a - b;
+    });
+
+    this.liquid.registerFilter('times', (input: number, operand: number) => {
+      const a = Number(input);
+      const b = Number(operand);
+      if (isNaN(a) || isNaN(b)) return 0;
+      return a * b;
+    });
+
+    this.liquid.registerFilter('divided_by', (input: number, operand: number) => {
+      const a = Number(input);
+      const b = Number(operand);
+      if (isNaN(a) || isNaN(b) || b === 0) return 0;
+      // Jekyll uses floor division for integers
+      return Math.floor(a / b);
+    });
+
+    this.liquid.registerFilter('modulo', (input: number, operand: number) => {
+      const a = Number(input);
+      const b = Number(operand);
+      if (isNaN(a) || isNaN(b) || b === 0) return 0;
+      return a % b;
+    });
+
+    this.liquid.registerFilter('round', (input: number, precision: number = 0) => {
+      const num = Number(input);
+      const p = Number(precision) || 0;
+      if (isNaN(num)) return 0;
+      const factor = Math.pow(10, p);
+      return Math.round(num * factor) / factor;
+    });
+
+    this.liquid.registerFilter('ceil', (input: number) => {
+      const num = Number(input);
+      if (isNaN(num)) return 0;
+      return Math.ceil(num);
+    });
+
+    this.liquid.registerFilter('floor', (input: number) => {
+      const num = Number(input);
+      if (isNaN(num)) return 0;
+      return Math.floor(num);
+    });
+
+    // Additional string filters for Jekyll compatibility
+    this.liquid.registerFilter('upcase', (input: string) => {
+      if (!input) return '';
+      return String(input).toUpperCase();
+    });
+
+    this.liquid.registerFilter('downcase', (input: string) => {
+      if (!input) return '';
+      return String(input).toLowerCase();
+    });
+
+    this.liquid.registerFilter('capitalize', (input: string) => {
+      if (!input) return '';
+      const str = String(input);
+      return str.charAt(0).toUpperCase() + str.slice(1);
+    });
+
+    this.liquid.registerFilter('strip', (input: string) => {
+      if (!input) return '';
+      return String(input).trim();
+    });
+
+    this.liquid.registerFilter('lstrip', (input: string) => {
+      if (!input) return '';
+      return String(input).replace(/^\s+/, '');
+    });
+
+    this.liquid.registerFilter('rstrip', (input: string) => {
+      if (!input) return '';
+      return String(input).replace(/\s+$/, '');
+    });
+
+    this.liquid.registerFilter('prepend', (input: string, prefix: string) => {
+      return (prefix || '') + (input || '');
+    });
+
+    this.liquid.registerFilter('append', (input: string, suffix: string) => {
+      return (input || '') + (suffix || '');
+    });
+
+    this.liquid.registerFilter('remove', (input: string, substring: string) => {
+      if (!input || !substring) return input || '';
+      return String(input).split(substring).join('');
+    });
+
+    this.liquid.registerFilter('remove_first', (input: string, substring: string) => {
+      if (!input || !substring) return input || '';
+      const str = String(input);
+      const index = str.indexOf(substring);
+      if (index === -1) return str;
+      return str.substring(0, index) + str.substring(index + substring.length);
+    });
+
+    this.liquid.registerFilter('replace', (input: string, substring: string, replacement: string = '') => {
+      if (!input || !substring) return input || '';
+      return String(input).split(substring).join(replacement);
+    });
+
+    this.liquid.registerFilter('replace_first', (input: string, substring: string, replacement: string = '') => {
+      if (!input || !substring) return input || '';
+      const str = String(input);
+      const index = str.indexOf(substring);
+      if (index === -1) return str;
+      return str.substring(0, index) + replacement + str.substring(index + substring.length);
+    });
+
+    this.liquid.registerFilter('split', (input: string, separator: string = ' ') => {
+      if (!input) return [];
+      return String(input).split(separator);
+    });
+
+    // Array filters
+    this.liquid.registerFilter('join', (array: any[], separator: string = ' ') => {
+      if (!Array.isArray(array)) return String(array || '');
+      return array.join(separator);
+    });
+
+    this.liquid.registerFilter('first', (array: any[]) => {
+      if (!Array.isArray(array)) return null;
+      return array.length > 0 ? array[0] : null;
+    });
+
+    this.liquid.registerFilter('last', (array: any[]) => {
+      if (!Array.isArray(array)) return null;
+      return array.length > 0 ? array[array.length - 1] : null;
+    });
+
+    this.liquid.registerFilter('reverse', (array: any[]) => {
+      if (!Array.isArray(array)) return array;
+      return [...array].reverse();
+    });
+
+    this.liquid.registerFilter('size', (input: any) => {
+      if (Array.isArray(input)) return input.length;
+      if (typeof input === 'string') return input.length;
+      if (input && typeof input === 'object') return Object.keys(input).length;
+      return 0;
+    });
+
+    this.liquid.registerFilter('compact', (array: any[]) => {
+      if (!Array.isArray(array)) return array;
+      return array.filter((item) => item != null);
+    });
+
+    this.liquid.registerFilter('concat', (array: any[], other: any[]) => {
+      if (!Array.isArray(array)) return other || [];
+      if (!Array.isArray(other)) return array;
+      return [...array, ...other];
+    });
+
+    this.liquid.registerFilter('map', (array: any[], property: string) => {
+      if (!Array.isArray(array)) return [];
+      return array.map((item) => item?.[property]);
+    });
+
+    // Date filter (using date-fns format)
+    this.liquid.registerFilter('date', (input: any, formatStr: string = '%Y-%m-%d') => {
+      if (!input) return '';
+      try {
+        const d = this.parseDate(input);
+        // Convert Ruby strftime format to date-fns format
+        const dateFormat = this.strftimeToDateFns(formatStr);
+        return format(d, dateFormat);
+      } catch (error) {
+        logger.warn(`date filter: ${error instanceof Error ? error.message : 'Invalid date'}`);
+        return '';
+      }
+    });
+
+    // default filter - return default value if input is nil or empty
+    this.liquid.registerFilter('default', (input: any, defaultValue: any = '') => {
+      if (input == null || input === '' || input === false) {
+        return defaultValue;
+      }
+      if (Array.isArray(input) && input.length === 0) {
+        return defaultValue;
+      }
+      if (typeof input === 'object' && Object.keys(input).length === 0) {
+        return defaultValue;
+      }
+      return input;
+    });
+  }
+
+  /**
+   * Convert Ruby strftime format to date-fns format
+   * @param strftime Ruby strftime format string
+   * @returns date-fns compatible format string
+   */
+  private strftimeToDateFns(strftime: string): string {
+    const conversions: Record<string, string> = {
+      '%Y': 'yyyy',    // 4-digit year
+      '%y': 'yy',      // 2-digit year
+      '%m': 'MM',      // Month (01-12)
+      '%B': 'MMMM',    // Full month name
+      '%b': 'MMM',     // Abbreviated month name
+      '%d': 'dd',      // Day of month (01-31)
+      '%e': 'd',       // Day of month (1-31)
+      '%H': 'HH',      // Hour (00-23)
+      '%I': 'hh',      // Hour (01-12)
+      '%M': 'mm',      // Minute (00-59)
+      '%S': 'ss',      // Second (00-59)
+      '%p': 'a',       // AM/PM
+      '%A': 'EEEE',    // Full weekday name
+      '%a': 'EEE',     // Abbreviated weekday name
+      '%j': 'DDD',     // Day of year (001-366)
+      '%w': 'e',       // Day of week (0-6)
+      '%Z': 'zzz',     // Timezone name
+      '%z': 'xxx',     // Timezone offset
+      '%%': '%',       // Literal %
+    };
+
+    let result = strftime;
+    for (const [pattern, replacement] of Object.entries(conversions)) {
+      result = result.replace(new RegExp(pattern.replace('%', '\\%'), 'g'), replacement);
+    }
+    return result;
   }
 
   /**

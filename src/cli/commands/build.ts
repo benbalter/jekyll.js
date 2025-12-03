@@ -1,5 +1,5 @@
 import chalk from 'chalk';
-import { resolve, join, dirname } from 'path';
+import { resolve, join, isAbsolute } from 'path';
 import { loadConfig, validateConfig, printValidation } from '../../config';
 import { Site, Builder } from '../../core';
 import { logger } from '../../utils/logger';
@@ -25,8 +25,13 @@ export async function buildCommand(options: BuildOptions): Promise<void> {
   logger.setVerbose(options.verbose || false);
 
   try {
-    // Load configuration from file
-    const configPath = resolve(options.config);
+    // Resolve source directory from CLI option (defaults to '.')
+    const sourcePath = resolve(options.source);
+
+    // Resolve config path relative to source directory if it's a relative path
+    const configPath = isAbsolute(options.config)
+      ? options.config
+      : resolve(sourcePath, options.config);
 
     logger.debug('Loading configuration', { path: configPath });
     const config = loadConfig(configPath, options.verbose);
@@ -40,9 +45,11 @@ export async function buildCommand(options: BuildOptions): Promise<void> {
     }
 
     // Override config with CLI options
-    const destPath = options.destination
-      ? resolve(options.destination)
-      : config.destination || join(config.source || '.', '_site');
+    // Destination path: CLI option takes precedence, then config, then default based on source
+    const destPath =
+      options.destination !== undefined
+        ? resolve(options.destination)
+        : (config.destination ? resolve(config.destination) : join(sourcePath, '_site'));
 
     // Apply CLI flags to config
     if (options.drafts) {
@@ -60,7 +67,7 @@ export async function buildCommand(options: BuildOptions): Promise<void> {
 
     if (options.verbose) {
       logger.section('Configuration');
-      console.log('  Source:', config.source);
+      console.log('  Source:', sourcePath);
       console.log('  Destination:', destPath);
       console.log('  Config file:', configPath);
       if (config.show_drafts) console.log('  Drafts:', 'enabled');
@@ -68,9 +75,6 @@ export async function buildCommand(options: BuildOptions): Promise<void> {
       if (config.watch) console.log('  Watch:', 'enabled');
       if (config.incremental) console.log('  Incremental:', 'enabled');
     }
-
-    // Determine source directory
-    const sourcePath = config.source ? resolve(config.source) : dirname(resolve(configPath));
 
     // Update config with final paths
     config.source = sourcePath;

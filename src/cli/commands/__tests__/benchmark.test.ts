@@ -39,9 +39,9 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
    * @param title - The title of the section
    */
   const printHeader = (title: string): void => {
-    console.log(`\n${SEPARATOR}`);
-    console.log(`  ${title}`);
-    console.log(`${SEPARATOR}`);
+    process.stdout.write(`\n${SEPARATOR}\n`);
+    process.stdout.write(`  ${title}\n`);
+    process.stdout.write(`${SEPARATOR}\n`);
   };
 
   /**
@@ -53,7 +53,7 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
   const printStat = (label: string, value: string, indent: number = 2): void => {
     const padding = ' '.repeat(indent);
     const labelPad = 12;
-    console.log(`${padding}${label.padEnd(labelPad)} ${value}`);
+    process.stdout.write(`${padding}${label.padEnd(labelPad)} ${value}\n`);
   };
 
   /**
@@ -88,8 +88,8 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
   beforeAll(() => {
     // Skip all tests if jekyll-ts binary doesn't exist (not built yet)
     if (!existsSync(jekyllTsBin)) {
-      console.log('⚠ Jekyll TS binary not found - skipping benchmark tests');
-      console.log('   Run `npm run build` before running benchmarks');
+      process.stdout.write('⚠ Jekyll TS binary not found - skipping benchmark tests\n');
+      process.stdout.write('   Run `npm run build` before running benchmarks\n');
       return;
     }
 
@@ -98,17 +98,17 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
       execSync('jekyll --version', { stdio: 'pipe' });
       rubyJekyllAvailable = true;
       useBundle = false;
-      console.log('✓ Ruby Jekyll detected - will run comparison benchmark');
+      process.stdout.write('✓ Ruby Jekyll detected - will run comparison benchmark\n');
     } catch (error) {
       // Try bundle exec jekyll (CI uses bundler-cache which makes bundle available)
       try {
         execSync('bundle exec jekyll --version', { stdio: 'pipe', cwd: projectRoot });
         rubyJekyllAvailable = true;
         useBundle = true;
-        console.log('✓ Ruby Jekyll detected via bundle - will run comparison benchmark');
+        process.stdout.write('✓ Ruby Jekyll detected via bundle - will run comparison benchmark\n');
       } catch (bundleError) {
         rubyJekyllAvailable = false;
-        console.log('⚠ Ruby Jekyll not found - will only benchmark jekyll-ts');
+        process.stdout.write('⚠ Ruby Jekyll not found - will only benchmark jekyll-ts\n');
       }
     }
 
@@ -126,6 +126,8 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
 
   /**
    * Helper function to benchmark a build command
+   * Runs in production mode (NODE_ENV=production, JEKYLL_ENV=production)
+   * to take advantage of caching and other production optimizations.
    * @param command - The command to execute (e.g., 'node', 'jekyll')
    * @param args - Array of command-line arguments
    * @param cwd - Current working directory for the command
@@ -139,6 +141,11 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
         cwd,
         stdio: 'pipe',
         shell: true,
+        env: {
+          ...process.env,
+          NODE_ENV: 'production',
+          JEKYLL_ENV: 'production',
+        },
       });
 
       let stdout = '';
@@ -199,7 +206,7 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
 
   it('should benchmark jekyll-ts build', async () => {
     if (!existsSync(jekyllTsBin)) {
-      console.log('⏭ Skipping - Jekyll TS binary not built');
+      process.stdout.write('⏭ Skipping - Jekyll TS binary not built\n');
       return;
     }
 
@@ -257,12 +264,12 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
 
   it('should run side-by-side benchmark if Ruby Jekyll is available', async () => {
     if (!existsSync(jekyllTsBin)) {
-      console.log('⏭ Skipping - Jekyll TS binary not built');
+      process.stdout.write('⏭ Skipping - Jekyll TS binary not built\n');
       return;
     }
 
     if (!rubyJekyllAvailable) {
-      console.log('⏭ Skipping Ruby Jekyll comparison (not installed)');
+      process.stdout.write('⏭ Skipping Ruby Jekyll comparison (not installed)\n');
       return;
     }
 
@@ -285,7 +292,7 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
     const durationRuby = await benchmarkBuild(jekyllCommand, jekyllArgs, jekyllCwd);
 
     // Print build times
-    console.log('');
+    process.stdout.write('\n');
     printStat('Jekyll TS:', formatTime(durationTs));
     printStat('Ruby Jekyll:', formatTime(durationRuby));
 
@@ -293,20 +300,20 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
     const difference = durationTs - durationRuby;
     const percentageDiff = durationRuby !== 0 ? (difference / durationRuby) * 100 : 0;
 
-    console.log('');
-    console.log(`  ${SEPARATOR}`);
+    process.stdout.write('\n');
+    process.stdout.write(`  ${SEPARATOR}\n`);
     if (durationTs < durationRuby) {
       const icon = '🚀';
-      console.log(`  ${icon} Jekyll TS is FASTER`);
-      console.log(`     by ${Math.abs(difference)}ms (${Math.abs(percentageDiff).toFixed(1)}%)`);
+      process.stdout.write(`  ${icon} Jekyll TS is FASTER\n`);
+      process.stdout.write(`     by ${Math.abs(difference)}ms (${Math.abs(percentageDiff).toFixed(1)}%)\n`);
     } else if (durationTs > durationRuby) {
       const icon = '🐢';
-      console.log(`  ${icon} Jekyll TS is SLOWER`);
-      console.log(`     by ${difference}ms (${percentageDiff.toFixed(1)}%)`);
+      process.stdout.write(`  ${icon} Jekyll TS is SLOWER\n`);
+      process.stdout.write(`     by ${difference}ms (${percentageDiff.toFixed(1)}%)\n`);
     } else {
-      console.log(`  ⚖️  Performance is EQUAL`);
+      process.stdout.write(`  ⚖️  Performance is EQUAL\n`);
     }
-    console.log(`  ${SEPARATOR}`);
+    process.stdout.write(`  ${SEPARATOR}\n`);
 
     // Verify both outputs were created
     expect(existsSync(destDirTs)).toBe(true);
@@ -317,7 +324,7 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
 
   it('should benchmark multiple runs for consistency', async () => {
     if (!existsSync(jekyllTsBin)) {
-      console.log('⏭ Skipping - Jekyll TS binary not built');
+      process.stdout.write('⏭ Skipping - Jekyll TS binary not built\n');
       return;
     }
 
@@ -325,7 +332,7 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
     const durations: number[] = [];
 
     printHeader(`🔄 Consistency Test (${runs} runs)`);
-    console.log('');
+    process.stdout.write('\n');
 
     for (let i = 0; i < runs; i++) {
       // Clean up before each run
@@ -350,16 +357,16 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
     const stdDev = Math.sqrt(variance);
 
     // Print statistics table
-    console.log('');
-    console.log(`  ${SEPARATOR}`);
-    console.log('  📊 Statistics');
-    console.log(`  ${SEPARATOR}`);
+    process.stdout.write('\n');
+    process.stdout.write(`  ${SEPARATOR}\n`);
+    process.stdout.write('  📊 Statistics\n');
+    process.stdout.write(`  ${SEPARATOR}\n`);
     printStat('Average:', `${avg.toFixed(2).padStart(TIME_PAD)}ms`);
     printStat('Minimum:', formatTime(min));
     printStat('Maximum:', formatTime(max));
     printStat('Std Dev:', `${stdDev.toFixed(2).padStart(TIME_PAD)}ms`);
     printStat('CV (%):', `${((stdDev / avg) * 100).toFixed(1).padStart(TIME_PAD - 1)}%`);
-    console.log(`  ${SEPARATOR}`);
+    process.stdout.write(`  ${SEPARATOR}\n`);
 
     // Verify output was created on last run
     expect(existsSync(destDirTs)).toBe(true);

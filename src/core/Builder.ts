@@ -459,9 +459,7 @@ export class Builder {
     const pagesToRender = pages || this.site.pages;
     logger.info(`Rendering ${pagesToRender.length} pages...`);
 
-    for (const page of pagesToRender) {
-      await this.renderDocument(page);
-    }
+    await Promise.all(pagesToRender.map((page) => this.renderDocument(page)));
   }
 
   /**
@@ -493,9 +491,7 @@ export class Builder {
 
     logger.info(`Rendering ${filteredPosts.length} posts...`);
 
-    for (const post of filteredPosts) {
-      await this.renderDocument(post);
-    }
+    await Promise.all(filteredPosts.map((post) => this.renderDocument(post)));
   }
 
   /**
@@ -535,37 +531,39 @@ export class Builder {
     // Get pagination path pattern
     const paginatePath = this.site.config.paginate_path || '/page:num/';
 
-    // Render each paginated page
-    for (const paginator of paginators) {
-      // Render the page with the paginator object in context
-      const html = await this.renderer.renderDocumentWithPaginator(indexPage, paginator);
+    // Render each paginated page in parallel
+    await Promise.all(
+      paginators.map(async (paginator) => {
+        // Render the page with the paginator object in context
+        const html = await this.renderer.renderDocumentWithPaginator(indexPage, paginator);
 
-      // Get output path for this paginated page
-      const filePath = getPaginatedFilePath(paginator.page, paginatePath);
-      const outputPath = join(this.site.destination, filePath);
+        // Get output path for this paginated page
+        const filePath = getPaginatedFilePath(paginator.page, paginatePath);
+        const outputPath = join(this.site.destination, filePath);
 
-      // Ensure directory exists
-      try {
-        mkdirSync(dirname(outputPath), { recursive: true });
-      } catch (error) {
-        throw new FileSystemError('Failed to create pagination output directory', {
-          file: dirname(outputPath),
-          cause: error instanceof Error ? error : undefined,
-        });
-      }
+        // Ensure directory exists
+        try {
+          mkdirSync(dirname(outputPath), { recursive: true });
+        } catch (error) {
+          throw new FileSystemError('Failed to create pagination output directory', {
+            file: dirname(outputPath),
+            cause: error instanceof Error ? error : undefined,
+          });
+        }
 
-      // Write file
-      try {
-        writeFileSync(outputPath, html, 'utf-8');
-      } catch (error) {
-        throw new FileSystemError('Failed to write pagination file', {
-          file: outputPath,
-          cause: error instanceof Error ? error : undefined,
-        });
-      }
+        // Write file
+        try {
+          writeFileSync(outputPath, html, 'utf-8');
+        } catch (error) {
+          throw new FileSystemError('Failed to write pagination file', {
+            file: outputPath,
+            cause: error instanceof Error ? error : undefined,
+          });
+        }
 
-      logger.debug(`Rendered pagination page ${paginator.page} → ${filePath}`);
-    }
+        logger.debug(`Rendered pagination page ${paginator.page} → ${filePath}`);
+      })
+    );
   }
 
   /**
@@ -573,6 +571,8 @@ export class Builder {
    */
   private async renderCollections(collections?: Map<string, Document[]>): Promise<void> {
     const collectionsToRender = collections || this.site.collections;
+
+    const collectionPromises: Promise<void[]>[] = [];
 
     for (const [collectionName, documents] of collectionsToRender) {
       const collectionConfig = this.site.config.collections?.[collectionName];
@@ -585,10 +585,10 @@ export class Builder {
 
       logger.info(`Rendering ${documents.length} documents from collection '${collectionName}'...`);
 
-      for (const doc of documents) {
-        await this.renderDocument(doc);
-      }
+      collectionPromises.push(Promise.all(documents.map((doc) => this.renderDocument(doc))));
     }
+
+    await Promise.all(collectionPromises);
   }
 
   /**

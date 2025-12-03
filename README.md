@@ -283,29 +283,50 @@ jekyll.js/
 
 This project aims to be compatible with Jekyll 4.x. While the goal is 100% compatibility, some features may not be available in early versions.
 
+> 📖 **Parity & Improvements**: See [**PARITY.md**](./docs/PARITY.md) for a complete guide to features with full parity with Ruby Jekyll and backwards-compatible improvements.
+>
 > 📖 **Modern Features**: Jekyll.js includes optional modern JavaScript enhancements. See [**MODERN-FEATURES.md**](./docs/MODERN-FEATURES.md) for details on syntax highlighting, image optimization, and advanced validation.
 
-### Supported Features
+### Features with Full Parity
+
+These features work identically to Ruby Jekyll - no changes needed for existing sites:
 
 - ✅ CLI commands (`new`, `build`, `serve`)
 - ✅ Configuration parsing (`_config.yml`)
-- ✅ Liquid templates with Jekyll-specific tags and filters
-- ✅ Pages and posts
-- ✅ Collections
-- ✅ Layouts and includes
+- ✅ Liquid templates with 50+ Jekyll-specific filters and tags
+- ✅ Pages, posts, drafts, and future posts
+- ✅ Collections with custom permalinks
+- ✅ Layouts and includes with parameter support
 - ✅ Data files (`_data` directory) - YAML and JSON support
-- ✅ Front matter (YAML)
-- ✅ Front matter defaults - Set default front matter values for files based on path and type
+- ✅ Front matter (YAML) and front matter defaults
 - ✅ Markdown processing (using Remark with GFM support)
 - ✅ Permalinks and URL generation
 - ✅ Built-in plugins:
   - `jekyll-seo-tag` - SEO meta tags and JSON-LD
   - `jekyll-sitemap` - XML sitemap generation
   - `jekyll-feed` - Atom feed generation
-- ✅ Draft and future post filtering
 - ✅ Theme support (npm package-based themes)
-- ✅ Watch mode for automatic rebuilds
-- ✅ Incremental builds
+- ✅ Watch mode and incremental builds
+- ✅ Development server with live reload
+
+### Backwards-Compatible Improvements
+
+Jekyll.js includes optional modern enhancements (disabled by default):
+
+- 🆕 **Shiki syntax highlighting** - VSCode-powered, 100+ languages
+- 🆕 **Sharp image optimization** - WebP/AVIF generation, 30-70% size reduction
+- 🆕 **Zod configuration validation** - Clear error messages for invalid config
+- 🆕 **npm-based themes** - Standard JavaScript package management
+- 🆕 **Enhanced error messages** - File/line references and suggestions
+
+Enable modern features in `_config.yml`:
+```yaml
+modern:
+  syntaxHighlighting:
+    enabled: true
+  imageOptimization:
+    enabled: true
+```
 
 ### Planned Features
 

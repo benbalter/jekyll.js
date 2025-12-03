@@ -15,19 +15,23 @@ export interface SassProcessorOptions {
 
   /** Site configuration */
   config: JekyllConfig;
+
+  /** Environment (for sourcemap generation) */
+  environment?: string;
 }
 
 /**
  * SASS/SCSS Processor for Jekyll sites
  *
  * Handles compilation of .scss and .sass files with front matter.
- * Supports @import from _sass directory.
+ * Supports @import from _sass directory and additional load_paths.
  */
 export class SassProcessor {
   private source: string;
   private sassDir: string;
+  private loadPaths: string[];
   private style: OutputStyle;
-  private sourceComments: boolean;
+  private generateSourceMap: boolean;
 
   constructor(options: SassProcessorOptions) {
     this.source = options.source;
@@ -35,6 +39,10 @@ export class SassProcessor {
     // Get SASS configuration from site config
     const sassConfig = options.config.sass || {};
     this.sassDir = resolve(this.source, sassConfig.sass_dir || '_sass');
+
+    // Build load_paths array: _sass directory + custom load_paths + file's directory (added at process time)
+    const customLoadPaths = (sassConfig.load_paths || []).map((p) => resolve(this.source, p));
+    this.loadPaths = [this.sassDir, ...customLoadPaths];
 
     /**
      * Map Jekyll-compatible style names to Dart Sass output styles.
@@ -52,7 +60,25 @@ export class SassProcessor {
       compressed: 'compressed',
     };
     this.style = styleMap[sassConfig.style as string] || 'expanded';
-    this.sourceComments = sassConfig.source_comments === true;
+
+    // Determine source map generation based on sourcemap configuration
+    // Jekyll's sourcemap options: 'always', 'never', 'development' (default: 'always')
+    // Also maintain backward compatibility with source_comments option
+    const sourcemapSetting = sassConfig.sourcemap || 'always';
+    const environment = options.environment || process.env.JEKYLL_ENV || 'development';
+
+    // Check for legacy source_comments option for backward compatibility
+    if (sassConfig.source_comments !== undefined && sassConfig.sourcemap === undefined) {
+      // Use source_comments as a boolean fallback when sourcemap is not set
+      this.generateSourceMap = sassConfig.source_comments === true;
+    } else if (sourcemapSetting === 'always') {
+      this.generateSourceMap = true;
+    } else if (sourcemapSetting === 'never') {
+      this.generateSourceMap = false;
+    } else {
+      // 'development' - only generate source maps in development environment
+      this.generateSourceMap = environment === 'development';
+    }
   }
 
   /**
@@ -75,20 +101,21 @@ export class SassProcessor {
     try {
       const isSass = filePath.toLowerCase().endsWith('.sass');
 
+      // Build load paths for this specific file (includes file's directory)
+      const paths = [...this.loadPaths, dirname(filePath)];
+
       // Compile the SASS/SCSS content
       const result = compileString(content, {
         syntax: isSass ? 'indented' : 'scss',
         style: this.style,
-        sourceMap: this.sourceComments,
-        loadPaths: [this.sassDir, dirname(filePath)],
+        sourceMap: this.generateSourceMap,
+        loadPaths: paths,
         url: new URL(`file://${filePath}`),
         importer: {
           canonicalize: (url: string) => {
             // Handle sass partial imports (files starting with underscore)
             if (!url.startsWith('file://')) {
               // Try to find the file in load paths
-              const paths = [this.sassDir, dirname(filePath)];
-
               for (const loadPath of paths) {
                 // Try with underscore prefix first (partial)
                 const partialPath = join(loadPath, `_${url}.scss`);
@@ -155,5 +182,12 @@ export class SassProcessor {
    */
   getSassDir(): string {
     return this.sassDir;
+  }
+
+  /**
+   * Get all configured load paths
+   */
+  getLoadPaths(): string[] {
+    return [...this.loadPaths];
   }
 }

@@ -127,6 +127,8 @@ export const JekyllConfigSchema = z
         style: z.enum(['nested', 'compact', 'compressed', 'expanded']).optional(),
         sass_dir: z.string().optional(),
         load_paths: z.array(z.string()).optional(),
+        source_comments: z.boolean().optional(),
+        sourcemap: z.enum(['always', 'never', 'development']).optional(),
       })
       .optional(),
 

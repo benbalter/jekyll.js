@@ -49,6 +49,34 @@ describe('SassProcessor', () => {
 
       expect(processor.getSassDir()).toBe(join(testDir, 'custom_sass'));
     });
+
+    it('should respect load_paths configuration', () => {
+      const processor = new SassProcessor({
+        source: testDir,
+        config: {
+          sass: {
+            load_paths: ['vendor/scss', 'node_modules/bootstrap/scss'],
+          },
+        },
+      });
+
+      const loadPaths = processor.getLoadPaths();
+      expect(loadPaths).toContain(join(testDir, '_sass'));
+      expect(loadPaths).toContain(join(testDir, 'vendor/scss'));
+      expect(loadPaths).toContain(join(testDir, 'node_modules/bootstrap/scss'));
+    });
+
+    it('should default to empty load_paths when not configured', () => {
+      const processor = new SassProcessor({
+        source: testDir,
+        config: {},
+      });
+
+      const loadPaths = processor.getLoadPaths();
+      // Should only have the default _sass directory
+      expect(loadPaths).toHaveLength(1);
+      expect(loadPaths).toContain(join(testDir, '_sass'));
+    });
   });
 
   describe('isSassFile', () => {
@@ -267,6 +295,135 @@ $color: blue
 
       expect(css).toContain('.test');
       expect(css).toContain('color: blue');
+    });
+
+    it('should import from custom load_paths', () => {
+      // Create a vendor directory with a partial
+      const vendorDir = join(testDir, 'vendor', 'scss');
+      mkdirSync(vendorDir, { recursive: true });
+      writeFileSync(join(vendorDir, '_vendor-vars.scss'), '$vendor-color: #ff0000;');
+
+      const processor = new SassProcessor({
+        source: testDir,
+        config: {
+          sass: {
+            load_paths: ['vendor/scss'],
+          },
+        },
+      });
+
+      const scss = `
+@import "vendor-vars";
+.vendor-styled { color: $vendor-color; }
+      `;
+      const testFile = join(testDir, 'main.scss');
+      writeFileSync(testFile, scss);
+
+      const css = processor.process(testFile, scss);
+
+      expect(css).toContain('.vendor-styled');
+      expect(css).toContain('color: #ff0000');
+    });
+  });
+
+  describe('sourcemap configuration', () => {
+    it('should compile SCSS with sourcemap: always (default)', () => {
+      const processor = new SassProcessor({
+        source: testDir,
+        config: {},
+      });
+
+      const scss = '.test { color: blue; }';
+      const testFile = join(testDir, 'sourcemap-always.scss');
+      writeFileSync(testFile, scss);
+
+      const css = processor.process(testFile, scss);
+
+      // Verify CSS is generated correctly
+      expect(css).toContain('.test');
+      expect(css).toContain('color: blue');
+    });
+
+    it('should compile SCSS with sourcemap: never configuration', () => {
+      const processor = new SassProcessor({
+        source: testDir,
+        config: {
+          sass: {
+            sourcemap: 'never',
+          },
+        },
+      });
+
+      const scss = '.test { color: red; }';
+      const testFile = join(testDir, 'sourcemap-never.scss');
+      writeFileSync(testFile, scss);
+
+      const css = processor.process(testFile, scss);
+
+      expect(css).toContain('.test');
+      expect(css).toContain('color: red');
+    });
+
+    it('should compile SCSS with sourcemap: development in dev environment', () => {
+      const processor = new SassProcessor({
+        source: testDir,
+        config: {
+          sass: {
+            sourcemap: 'development',
+          },
+        },
+        environment: 'development',
+      });
+
+      const scss = '.dev-test { color: green; }';
+      const testFile = join(testDir, 'sourcemap-dev.scss');
+      writeFileSync(testFile, scss);
+
+      const css = processor.process(testFile, scss);
+
+      expect(css).toContain('.dev-test');
+      expect(css).toContain('color: green');
+    });
+
+    it('should compile SCSS with sourcemap: development in production environment', () => {
+      const processor = new SassProcessor({
+        source: testDir,
+        config: {
+          sass: {
+            sourcemap: 'development',
+          },
+        },
+        environment: 'production',
+      });
+
+      const scss = '.prod-test { color: yellow; }';
+      const testFile = join(testDir, 'sourcemap-prod.scss');
+      writeFileSync(testFile, scss);
+
+      const css = processor.process(testFile, scss);
+
+      expect(css).toContain('.prod-test');
+      expect(css).toContain('color: yellow');
+    });
+
+    it('should compile SCSS with legacy source_comments option for backward compatibility', () => {
+      const processor = new SassProcessor({
+        source: testDir,
+        config: {
+          sass: {
+            source_comments: true,
+          },
+        },
+      });
+
+      const scss = '.legacy-test { color: purple; }';
+      const testFile = join(testDir, 'sourcemap-legacy.scss');
+      writeFileSync(testFile, scss);
+
+      const css = processor.process(testFile, scss);
+
+      expect(css).toContain('.legacy-test');
+      expect(css).toContain('color: purple');
     });
   });
 });

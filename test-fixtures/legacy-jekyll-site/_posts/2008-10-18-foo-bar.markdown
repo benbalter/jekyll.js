@@ -1,0 +1,6 @@
+---
+layout: default
+title: Foo Bar
+category: foo
+---
+Best *post* ever

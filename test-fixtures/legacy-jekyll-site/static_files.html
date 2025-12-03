@@ -1,0 +1,7 @@
+---
+layout: default
+title: Static Files
+---
+{% for file in site.static_files %}
+- {{ file.name }} ({{ file.extname }})
+{% endfor %}

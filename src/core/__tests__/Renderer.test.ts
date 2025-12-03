@@ -962,6 +962,14 @@ title: Directory Test
         expect(result).toBe('hello-world');
       });
 
+      it('should handle headings with nested HTML tags', async () => {
+        const renderer = new Renderer(site);
+        const html = '<h2>Hello <em>World</em></h2><h3>Code: <code>example</code></h3>';
+        const template = '{% assign tocItems = content | toc %}{{ tocItems[0].text }}-{{ tocItems[1].text }}';
+        const result = await renderer.render(template, { content: html });
+        expect(result).toBe('Hello World-Code: example');
+      });
+
       it('should return empty array for content without headings', async () => {
         const renderer = new Renderer(site);
         const html = '<p>No headings here</p>';
@@ -996,6 +1004,15 @@ title: Directory Test
         const result = await renderer.render(template, { content: html });
         expect(result).toContain('id="custom"');
         expect(result).toContain('href="#custom"');
+      });
+
+      it('should preserve nested HTML in headings', async () => {
+        const renderer = new Renderer(site);
+        const html = '<h2>Hello <em>World</em></h2>';
+        const template = '{{ content | heading_anchors }}';
+        const result = await renderer.render(template, { content: html });
+        expect(result).toContain('<em>World</em>');
+        expect(result).toContain('id="hello-world"');
       });
 
       it('should handle multiple headings', async () => {

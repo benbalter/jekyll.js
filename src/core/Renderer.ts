@@ -474,18 +474,22 @@ export class Renderer {
      */
     this.liquid.registerFilter('toc', (input: string) => {
       if (!input) return [];
-      const headingRegex = /<h([2-4])(?:\s+id="([^"]*)")?[^>]*>([^<]+)<\/h[2-4]>/gi;
+      // Match h2-h4 headings, capturing optional id attribute and content (including nested HTML)
+      const headingRegex = /<h([2-4])(?:\s+id="([^"]*)")?[^>]*>([\s\S]*?)<\/h\1>/gi;
       const toc: Array<{ level: number; id: string; text: string }> = [];
       let match: RegExpExecArray | null;
       while ((match = headingRegex.exec(String(input))) !== null) {
         const levelStr = match[1];
-        const textStr = match[3];
-        if (levelStr && textStr) {
+        const contentStr = match[3];
+        if (levelStr && contentStr) {
           const level = parseInt(levelStr, 10);
-          const text = textStr.trim();
-          // Use existing id or generate from text
-          const id = match[2] || slugifyLib(text, { lower: true, strict: true });
-          toc.push({ level, id, text });
+          // Strip HTML tags to get plain text for the TOC entry
+          const text = striptags(contentStr).trim();
+          if (text) {
+            // Use existing id or generate from text
+            const id = match[2] || slugifyLib(text, { lower: true, strict: true });
+            toc.push({ level, id, text });
+          }
         }
       }
       return toc;
@@ -498,17 +502,17 @@ export class Renderer {
      */
     this.liquid.registerFilter('heading_anchors', (input: string) => {
       if (!input) return '';
+      // Match h2-h4 headings, capturing optional id attribute and content (including nested HTML)
       return String(input).replace(
-        /<h([2-4])(?:\s+id="([^"]*)")?([^>]*)>([^<]+)<\/h[2-4]>/gi,
-        (_match, level, existingId, attrs, text) => {
-          const id = existingId || slugifyLib(text.trim(), { lower: true, strict: true });
-          // Escape any HTML in the text and id to prevent XSS
+        /<h([2-4])(\s+id="([^"]*)")?([^>]*)>([\s\S]*?)<\/h\1>/gi,
+        (_match, level, _idAttr, existingId, attrs, content) => {
+          // Strip HTML to get plain text for ID generation
+          const plainText = striptags(content).trim();
+          const id = existingId || slugifyLib(plainText, { lower: true, strict: true });
+          // Escape the ID to prevent XSS (slug should already be safe, but double-check)
           const escapedId = id.replace(/[<>"'&]/g, '');
-          const escapedText = text
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;');
-          return `<h${level} id="${escapedId}"${attrs}>${escapedText} <a href="#${escapedId}" class="anchor" aria-hidden="true">#</a></h${level}>`;
+          // Preserve the original content with its HTML
+          return `<h${level} id="${escapedId}"${attrs}>${content} <a href="#${escapedId}" class="anchor" aria-hidden="true">#</a></h${level}>`;
         }
       );
     });

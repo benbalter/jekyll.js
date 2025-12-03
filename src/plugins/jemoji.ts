@@ -1,7 +1,7 @@
 /**
  * Jemoji Plugin for Jekyll.js
  *
- * Implements jemoji functionality using the node-emoji library
+ * Implements jemoji functionality using the node-emoji library and remark-gemoji
  * Converts GitHub-style emoji codes (e.g., :smile:) to emoji characters
  *
  * @see https://github.com/jekyll/jemoji
@@ -21,13 +21,17 @@ import {
 /**
  * Jemoji Plugin implementation
  *
- * Uses the node-emoji library for comprehensive emoji support
+ * Uses remark-gemoji for automatic emoji conversion in markdown content,
+ * and provides the emojify filter for use in Liquid templates
  */
 export class JemojiPlugin implements Plugin {
   name = 'jemoji';
 
   register(renderer: Renderer, _site: Site): void {
-    // Register the emojify filter
+    // Enable emoji processing in markdown (converts :emoji: to unicode automatically)
+    renderer.enableEmojiProcessing();
+
+    // Register the emojify filter for Liquid templates (for non-markdown content)
     renderer.getLiquid().registerFilter('emojify', (input: string) => {
       return emojify(input);
     });

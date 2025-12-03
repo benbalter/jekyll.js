@@ -1,8 +1,8 @@
 /**
  * Mentions Plugin for Jekyll.js
  *
- * Implements jekyll-mentions functionality
- * Converts @mentions to GitHub profile links
+ * Implements jekyll-mentions functionality using remark-github
+ * Converts @mentions to GitHub profile links automatically in markdown
  *
  * @see https://github.com/jekyll/jekyll-mentions
  */
@@ -14,6 +14,9 @@ import { escapeHtml } from '../utils/html';
 
 /**
  * Mentions Plugin implementation
+ * 
+ * Uses remark-github for automatic @mention conversion in markdown content,
+ * and provides the mentionify filter for use in Liquid templates
  */
 export class MentionsPlugin implements Plugin {
   name = 'jekyll-mentions';
@@ -23,8 +26,19 @@ export class MentionsPlugin implements Plugin {
     const baseUrl = site.config.jekyll_mentions?.base_url || 
                     site.config.mentions?.base_url ||
                     'https://github.com';
+
+    // Get repository for GitHub references (issues, PRs, etc.)
+    const repository = site.config.repository || 
+                       process.env.GITHUB_REPOSITORY || 
+                       undefined;
+
+    // Enable GitHub mentions/references processing in markdown
+    renderer.enableGitHubMentions({
+      repository,
+      mentionStrong: false,
+    });
     
-    // Register the mentions filter
+    // Register the mentions filter for Liquid templates (for non-markdown content)
     renderer.getLiquid().registerFilter('mentionify', (input: string) => {
       return mentionify(input, baseUrl);
     });

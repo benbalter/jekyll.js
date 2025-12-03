@@ -4,7 +4,7 @@ import { Document } from './Document';
 import { Paginator } from './Paginator';
 import { logger } from '../utils/logger';
 import { TemplateError, parseErrorLocation } from '../utils/errors';
-import { processMarkdown } from './markdown';
+import { processMarkdown, MarkdownOptions } from './markdown';
 import slugifyLib from 'slugify';
 import { format, parseISO, formatISO, formatRFC7231, isValid } from 'date-fns';
 import striptags from 'striptags';
@@ -48,6 +48,8 @@ interface SlugifyOptions {
 export class Renderer {
   private liquid: Liquid;
   private site: Site;
+  /** Markdown processing options (set based on enabled plugins) */
+  private markdownOptions: MarkdownOptions = {};
 
   /**
    * Create a new Renderer instance
@@ -277,7 +279,7 @@ export class Renderer {
     this.liquid.registerFilter('markdownify', async (input: string) => {
       if (!input) return '';
       try {
-        return await processMarkdown(String(input));
+        return await processMarkdown(String(input), this.markdownOptions);
       } catch (error) {
         logger.warn(
           `markdownify filter failed: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -1243,7 +1245,7 @@ export class Renderer {
     const isMarkdown = ['.md', '.markdown'].includes(document.extname.toLowerCase());
     if (isMarkdown) {
       try {
-        content = await processMarkdown(content);
+        content = await processMarkdown(content, this.markdownOptions);
       } catch (err) {
         // Log the error but don't fail the build - markdown processing can be fragile
         // The content remains as-is (Liquid-rendered), which may already contain HTML
@@ -1398,5 +1400,29 @@ export class Renderer {
    */
   registerTag(name: string, tag: any): void {
     this.liquid.registerTag(name, tag);
+  }
+
+  /**
+   * Enable emoji processing in markdown (for jemoji plugin)
+   * When enabled, :emoji: codes in markdown are automatically converted to unicode
+   */
+  enableEmojiProcessing(): void {
+    this.markdownOptions.emoji = true;
+  }
+
+  /**
+   * Enable GitHub-style mentions/references in markdown (for jekyll-mentions plugin)
+   * When enabled, @mentions are automatically converted to links
+   * @param options Optional GitHub options (repository for linking issues/PRs)
+   */
+  enableGitHubMentions(options?: { repository?: string; mentionStrong?: boolean }): void {
+    this.markdownOptions.githubMentions = options || true;
+  }
+
+  /**
+   * Get current markdown processing options
+   */
+  getMarkdownOptions(): MarkdownOptions {
+    return { ...this.markdownOptions };
   }
 }

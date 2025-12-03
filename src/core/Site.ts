@@ -4,6 +4,7 @@ import { Document, DocumentType } from './Document';
 import { StaticFile } from './StaticFile';
 import { JekyllConfig, loadConfig } from '../config';
 import { ThemeManager } from './ThemeManager';
+import { logger } from '../utils/logger';
 import yaml from 'js-yaml';
 
 /**
@@ -369,7 +370,9 @@ export class Site {
         this.static_files.push(staticFile);
       } catch (error) {
         // Log warning but don't fail - some files might have permission issues
-        console.warn(`Warning: Failed to read static file ${file}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        logger.warn(`Failed to read static file ${file}`, {
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
       }
     }
   }

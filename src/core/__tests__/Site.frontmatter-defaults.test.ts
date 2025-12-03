@@ -92,7 +92,7 @@ Content`
     site.read();
 
     expect(site.posts.length).toBe(2);
-    
+
     // First post should have default layout
     const firstPost = site.posts.find((p) => p.data.title === 'First Post');
     expect(firstPost?.data.layout).toBe('post');

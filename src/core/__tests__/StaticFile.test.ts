@@ -172,7 +172,7 @@ describe('StaticFile', () => {
     it('should handle binary files', () => {
       const filePath = join(testDir, 'data.bin');
       // Write actual binary data
-      const binaryData = Buffer.from([0x00, 0x01, 0x02, 0x03, 0xFF, 0xFE]);
+      const binaryData = Buffer.from([0x00, 0x01, 0x02, 0x03, 0xff, 0xfe]);
       writeFileSync(filePath, binaryData);
 
       const staticFile = new StaticFile(filePath, sourcePath);

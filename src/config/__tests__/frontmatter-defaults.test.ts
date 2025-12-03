@@ -5,28 +5,18 @@ describe('applyFrontMatterDefaults', () => {
     it('should return front matter unchanged when no defaults are configured', () => {
       const frontMatter = { title: 'Test', author: 'John' };
       const config: JekyllConfig = {};
-      
-      const result = applyFrontMatterDefaults(
-        'test.md',
-        'page',
-        frontMatter,
-        config
-      );
-      
+
+      const result = applyFrontMatterDefaults('test.md', 'page', frontMatter, config);
+
       expect(result).toEqual(frontMatter);
     });
 
     it('should return front matter unchanged when defaults array is empty', () => {
       const frontMatter = { title: 'Test', author: 'John' };
       const config: JekyllConfig = { defaults: [] };
-      
-      const result = applyFrontMatterDefaults(
-        'test.md',
-        'page',
-        frontMatter,
-        config
-      );
-      
+
+      const result = applyFrontMatterDefaults('test.md', 'page', frontMatter, config);
+
       expect(result).toEqual(frontMatter);
     });
 
@@ -40,14 +30,9 @@ describe('applyFrontMatterDefaults', () => {
           },
         ],
       };
-      
-      const result = applyFrontMatterDefaults(
-        'test.md',
-        'page',
-        frontMatter,
-        config
-      );
-      
+
+      const result = applyFrontMatterDefaults('test.md', 'page', frontMatter, config);
+
       expect(result).toEqual({
         layout: 'default',
         author: 'Jane Doe',
@@ -65,14 +50,9 @@ describe('applyFrontMatterDefaults', () => {
           },
         ],
       };
-      
-      const result = applyFrontMatterDefaults(
-        'test.md',
-        'page',
-        frontMatter,
-        config
-      );
-      
+
+      const result = applyFrontMatterDefaults('test.md', 'page', frontMatter, config);
+
       expect(result).toEqual({
         layout: 'custom', // File front matter wins
         author: 'Jane Doe',
@@ -92,14 +72,14 @@ describe('applyFrontMatterDefaults', () => {
           },
         ],
       };
-      
+
       const result = applyFrontMatterDefaults(
         '_posts/2024-01-01-test.md',
         'post',
         frontMatter,
         config
       );
-      
+
       expect(result).toEqual({ layout: 'post' });
     });
 
@@ -113,14 +93,9 @@ describe('applyFrontMatterDefaults', () => {
           },
         ],
       };
-      
-      const result = applyFrontMatterDefaults(
-        'about.md',
-        'page',
-        frontMatter,
-        config
-      );
-      
+
+      const result = applyFrontMatterDefaults('about.md', 'page', frontMatter, config);
+
       expect(result).toEqual({});
     });
 
@@ -134,14 +109,9 @@ describe('applyFrontMatterDefaults', () => {
           },
         ],
       };
-      
-      const result = applyFrontMatterDefaults(
-        'about.md',
-        'page',
-        frontMatter,
-        config
-      );
-      
+
+      const result = applyFrontMatterDefaults('about.md', 'page', frontMatter, config);
+
       expect(result).toEqual({ layout: 'page' });
     });
 
@@ -155,14 +125,14 @@ describe('applyFrontMatterDefaults', () => {
           },
         ],
       };
-      
+
       const result = applyFrontMatterDefaults(
         '_posts/2024-01-01-test.md',
         'post',
         frontMatter,
         config
       );
-      
+
       expect(result).toEqual({});
     });
 
@@ -176,14 +146,14 @@ describe('applyFrontMatterDefaults', () => {
           },
         ],
       };
-      
+
       const result = applyFrontMatterDefaults(
         '_recipes/chocolate-cake.md',
         'recipes',
         frontMatter,
         config
       );
-      
+
       expect(result).toEqual({ layout: 'recipe' });
     });
   });
@@ -199,14 +169,14 @@ describe('applyFrontMatterDefaults', () => {
           },
         ],
       };
-      
+
       const result = applyFrontMatterDefaults(
         'projects/my-project.md',
         'page',
         frontMatter,
         config
       );
-      
+
       expect(result).toEqual({ layout: 'project' });
     });
 
@@ -220,14 +190,14 @@ describe('applyFrontMatterDefaults', () => {
           },
         ],
       };
-      
+
       const result = applyFrontMatterDefaults(
         'projects/subdir/my-project.md',
         'page',
         frontMatter,
         config
       );
-      
+
       expect(result).toEqual({ layout: 'project' });
     });
 
@@ -241,14 +211,9 @@ describe('applyFrontMatterDefaults', () => {
           },
         ],
       };
-      
-      const result = applyFrontMatterDefaults(
-        'about.md',
-        'page',
-        frontMatter,
-        config
-      );
-      
+
+      const result = applyFrontMatterDefaults('about.md', 'page', frontMatter, config);
+
       expect(result).toEqual({});
     });
 
@@ -262,14 +227,9 @@ describe('applyFrontMatterDefaults', () => {
           },
         ],
       };
-      
-      const result = applyFrontMatterDefaults(
-        'test.draft.md',
-        'page',
-        frontMatter,
-        config
-      );
-      
+
+      const result = applyFrontMatterDefaults('test.draft.md', 'page', frontMatter, config);
+
       expect(result).toEqual({ published: false });
     });
   });
@@ -285,14 +245,14 @@ describe('applyFrontMatterDefaults', () => {
           },
         ],
       };
-      
+
       const result = applyFrontMatterDefaults(
         'projects/my-project.md',
         'page',
         frontMatter,
         config
       );
-      
+
       expect(result).toEqual({ layout: 'project' });
     });
 
@@ -306,14 +266,14 @@ describe('applyFrontMatterDefaults', () => {
           },
         ],
       };
-      
+
       const result = applyFrontMatterDefaults(
         '_posts/2024-01-01-test.md',
         'post',
         frontMatter,
         config
       );
-      
+
       expect(result).toEqual({});
     });
 
@@ -327,14 +287,9 @@ describe('applyFrontMatterDefaults', () => {
           },
         ],
       };
-      
-      const result = applyFrontMatterDefaults(
-        'about.md',
-        'page',
-        frontMatter,
-        config
-      );
-      
+
+      const result = applyFrontMatterDefaults('about.md', 'page', frontMatter, config);
+
       expect(result).toEqual({});
     });
   });
@@ -354,14 +309,14 @@ describe('applyFrontMatterDefaults', () => {
           },
         ],
       };
-      
+
       const result = applyFrontMatterDefaults(
         'projects/my-project.md',
         'page',
         frontMatter,
         config
       );
-      
+
       expect(result).toEqual({
         layout: 'project', // Later scope overrides
         author: 'Jane Doe', // From first scope
@@ -390,14 +345,14 @@ describe('applyFrontMatterDefaults', () => {
           },
         ],
       };
-      
+
       const result = applyFrontMatterDefaults(
         '_posts/tech/2024-01-01-my-post.md',
         'post',
         frontMatter,
         config
       );
-      
+
       expect(result).toEqual({
         layout: 'post',
         author: 'Tech Team',
@@ -421,14 +376,14 @@ describe('applyFrontMatterDefaults', () => {
           },
         ],
       };
-      
+
       const result = applyFrontMatterDefaults(
         'projects/my-project.md',
         'page',
         frontMatter,
         config
       );
-      
+
       expect(result).toEqual({
         layout: 'custom', // File front matter wins
         author: 'File Author', // File front matter wins
@@ -453,30 +408,15 @@ describe('applyFrontMatterDefaults', () => {
       };
 
       // Test post with no front matter
-      const postResult = applyFrontMatterDefaults(
-        '_posts/2024-01-01-test.md',
-        'post',
-        {},
-        config
-      );
+      const postResult = applyFrontMatterDefaults('_posts/2024-01-01-test.md', 'post', {}, config);
       expect(postResult).toEqual({ layout: 'post', author: 'John Doe' });
 
       // Test project page
-      const projectResult = applyFrontMatterDefaults(
-        'projects/awesome-app.md',
-        'page',
-        {},
-        config
-      );
+      const projectResult = applyFrontMatterDefaults('projects/awesome-app.md', 'page', {}, config);
       expect(projectResult).toEqual({ layout: 'project' });
 
       // Test regular page
-      const pageResult = applyFrontMatterDefaults(
-        'about.md',
-        'page',
-        {},
-        config
-      );
+      const pageResult = applyFrontMatterDefaults('about.md', 'page', {}, config);
       expect(pageResult).toEqual({});
     });
 
@@ -528,12 +468,7 @@ describe('applyFrontMatterDefaults', () => {
         ],
       };
 
-      const result = applyFrontMatterDefaults(
-        'test.md',
-        'page',
-        {},
-        config
-      );
+      const result = applyFrontMatterDefaults('test.md', 'page', {}, config);
       expect(result).toEqual({ layout: 'default' });
     });
   });
@@ -549,14 +484,14 @@ describe('applyFrontMatterDefaults', () => {
           },
         ],
       };
-      
+
       const result = applyFrontMatterDefaults(
         'projects\\my-project.md', // Windows-style path
         'page',
         frontMatter,
         config
       );
-      
+
       expect(result).toEqual({ layout: 'project' });
     });
 
@@ -570,14 +505,14 @@ describe('applyFrontMatterDefaults', () => {
           },
         ],
       };
-      
+
       const result = applyFrontMatterDefaults(
         'projects/subdir/my-project.md',
         'page',
         frontMatter,
         config
       );
-      
+
       expect(result).toEqual({ layout: 'project' });
     });
 
@@ -587,7 +522,7 @@ describe('applyFrontMatterDefaults', () => {
         defaults: [
           {
             scope: { path: '' },
-            values: { 
+            values: {
               layout: 'default',
               metadata: {
                 author: 'Site Author',
@@ -597,14 +532,9 @@ describe('applyFrontMatterDefaults', () => {
           },
         ],
       };
-      
-      const result = applyFrontMatterDefaults(
-        'test.md',
-        'page',
-        frontMatter,
-        config
-      );
-      
+
+      const result = applyFrontMatterDefaults('test.md', 'page', frontMatter, config);
+
       expect(result).toEqual({
         layout: 'default',
         metadata: {
@@ -620,21 +550,16 @@ describe('applyFrontMatterDefaults', () => {
         defaults: [
           {
             scope: { path: '' },
-            values: { 
+            values: {
               tags: ['default', 'general'],
               categories: ['blog'],
             },
           },
         ],
       };
-      
-      const result = applyFrontMatterDefaults(
-        'test.md',
-        'page',
-        frontMatter,
-        config
-      );
-      
+
+      const result = applyFrontMatterDefaults('test.md', 'page', frontMatter, config);
+
       expect(result).toEqual({
         tags: ['default', 'general'],
         categories: ['blog'],

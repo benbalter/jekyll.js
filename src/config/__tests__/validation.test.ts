@@ -17,7 +17,7 @@ describe('Config Validation', () => {
         title: 'My Site',
         url: 'https://example.com',
       };
-      
+
       const result = validateJekyllConfig(config);
       expect(result.success).toBe(true);
       expect(result.data).toBeDefined();
@@ -40,7 +40,7 @@ describe('Config Validation', () => {
         plugins: ['jekyll-feed', 'jekyll-seo-tag'],
         exclude: ['node_modules', '.git'],
       };
-      
+
       const result = validateJekyllConfig(config);
       expect(result.success).toBe(true);
       expect(result.data).toBeDefined();
@@ -50,18 +50,18 @@ describe('Config Validation', () => {
       const config = {
         email: 'not-an-email',
       };
-      
+
       const result = validateJekyllConfig(config);
       expect(result.success).toBe(false);
       expect(result.errors).toBeDefined();
-      expect(result.errors?.some(e => e.path.includes('email'))).toBe(true);
+      expect(result.errors?.some((e) => e.path.includes('email'))).toBe(true);
     });
 
     it('should reject invalid port number', () => {
       const config = {
         port: 99999, // Too high
       };
-      
+
       const result = validateJekyllConfig(config);
       expect(result.success).toBe(false);
       expect(result.errors).toBeDefined();
@@ -71,7 +71,7 @@ describe('Config Validation', () => {
       const config = {
         highlighter: 'invalid-highlighter',
       };
-      
+
       const result = validateJekyllConfig(config);
       expect(result.success).toBe(false);
       expect(result.errors).toBeDefined();
@@ -91,7 +91,7 @@ describe('Config Validation', () => {
           },
         },
       };
-      
+
       const result = validateJekyllConfig(config);
       expect(result.success).toBe(true);
       expect(result.data?.modern?.syntaxHighlighting?.enabled).toBe(true);
@@ -101,7 +101,7 @@ describe('Config Validation', () => {
       const config = {
         url: '',
       };
-      
+
       const result = validateJekyllConfig(config);
       expect(result.success).toBe(true);
     });
@@ -129,7 +129,7 @@ describe('Config Validation', () => {
         title: 'My Site',
         port: 3000,
       };
-      
+
       const result = mergeAndValidateConfig(userConfig);
       expect(result.success).toBe(true);
       expect(result.data?.title).toBe('My Site');
@@ -141,7 +141,7 @@ describe('Config Validation', () => {
       const userConfig = {
         port: 'not-a-number',
       };
-      
+
       const result = mergeAndValidateConfig(userConfig);
       expect(result.success).toBe(false);
     });
@@ -152,7 +152,7 @@ describe('Config Validation', () => {
       const partialConfig = {
         title: 'My Site',
       };
-      
+
       const result = validatePartialConfig(partialConfig);
       expect(result.success).toBe(true);
     });
@@ -161,7 +161,7 @@ describe('Config Validation', () => {
       const partialConfig = {
         port: 99999,
       };
-      
+
       const result = validatePartialConfig(partialConfig);
       expect(result.success).toBe(false);
     });
@@ -172,7 +172,7 @@ describe('Config Validation', () => {
       const config = {
         title: 'My Site',
       };
-      
+
       const result = validateAndLog(config);
       expect(result).toBe(true);
     });
@@ -181,14 +181,14 @@ describe('Config Validation', () => {
       const config = {
         email: 'not-an-email',
       };
-      
+
       // Suppress console output during test
       const originalError = console.error;
       console.error = jest.fn();
-      
+
       const result = validateAndLog(config);
       expect(result).toBe(false);
-      
+
       console.error = originalError;
     });
   });

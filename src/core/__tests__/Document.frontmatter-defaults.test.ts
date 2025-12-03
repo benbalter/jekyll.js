@@ -179,13 +179,7 @@ Delicious recipe`;
       ],
     };
 
-    const doc = new Document(
-      filePath,
-      testDir,
-      DocumentType.COLLECTION,
-      'recipes',
-      config
-    );
+    const doc = new Document(filePath, testDir, DocumentType.COLLECTION, 'recipes', config);
 
     expect(doc.data.title).toBe('Chocolate Cake');
     expect(doc.data.layout).toBe('recipe');

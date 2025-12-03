@@ -61,12 +61,7 @@ This is a test page.`;
       const filePath = join(testDir, 'test.md');
       writeFileSync(filePath, '---\ntitle: Test\n---\nContent');
 
-      const doc = new Document(
-        filePath,
-        testDir,
-        DocumentType.COLLECTION,
-        'recipes'
-      );
+      const doc = new Document(filePath, testDir, DocumentType.COLLECTION, 'recipes');
 
       expect(doc.collection).toBe('recipes');
     });
@@ -163,10 +158,7 @@ This is a test page.`;
   describe('categories property', () => {
     it('should return array of categories', () => {
       const filePath = join(testDir, 'test.md');
-      writeFileSync(
-        filePath,
-        '---\ncategories: [tech, programming]\n---\nContent'
-      );
+      writeFileSync(filePath, '---\ncategories: [tech, programming]\n---\nContent');
 
       const doc = new Document(filePath, testDir, DocumentType.POST);
       expect(doc.categories).toEqual(['tech', 'programming']);
@@ -266,10 +258,7 @@ This is a test page.`;
   describe('toJSON method', () => {
     it('should return JSON representation of document', () => {
       const filePath = join(testDir, 'test.md');
-      writeFileSync(
-        filePath,
-        '---\ntitle: Test\nlayout: post\n---\nContent'
-      );
+      writeFileSync(filePath, '---\ntitle: Test\nlayout: post\n---\nContent');
 
       const doc = new Document(filePath, testDir, DocumentType.PAGE);
       const json = doc.toJSON();

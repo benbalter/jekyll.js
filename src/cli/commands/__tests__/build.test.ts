@@ -15,12 +15,9 @@ describe('buildCommand', () => {
     // Create a simple test site
     mkdirSync(testSiteDir, { recursive: true });
     mkdirSync(join(testSiteDir, '_layouts'), { recursive: true });
-    
+
     // Create a simple config file
-    writeFileSync(
-      join(testSiteDir, '_config.yml'),
-      'title: Test Site\n'
-    );
+    writeFileSync(join(testSiteDir, '_config.yml'), 'title: Test Site\n');
 
     // Create a simple layout
     writeFileSync(
@@ -82,7 +79,7 @@ describe('buildCommand', () => {
     const futureDate = new Date();
     futureDate.setFullYear(futureDate.getFullYear() + 1);
     const dateStr = futureDate.toISOString().split('T')[0];
-    
+
     writeFileSync(
       join(testSiteDir, '_posts', `${dateStr}-future-post.md`),
       '---\nlayout: default\ntitle: Future\n---\nFuture content'
@@ -100,7 +97,7 @@ describe('buildCommand', () => {
 
   it('should not hang when --watch is not used', async () => {
     const startTime = Date.now();
-    
+
     await buildCommand({
       source: testSiteDir,
       destination: outputDir,
@@ -108,7 +105,7 @@ describe('buildCommand', () => {
     });
 
     const duration = Date.now() - startTime;
-    
+
     // Build should complete quickly (within 5 seconds)
     expect(duration).toBeLessThan(5000);
     expect(existsSync(outputDir)).toBe(true);

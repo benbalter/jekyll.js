@@ -102,31 +102,23 @@ export class Document {
         if (type === DocumentType.COLLECTION && collection) {
           docTypeStr = collection; // Use collection name for collection documents
         }
-        
-        this.data = applyFrontMatterDefaults(
-          this.relativePath,
-          docTypeStr,
-          parsed.data,
-          config
-        );
+
+        this.data = applyFrontMatterDefaults(this.relativePath, docTypeStr, parsed.data, config);
       } else {
         this.data = parsed.data;
       }
-      
+
       this.content = parsed.content;
     } catch (error) {
       if (error instanceof Error) {
         // Check if it's a YAML parsing error (from js-yaml via gray-matter)
         if ((error as any).name === 'YAMLException') {
-          throw new FrontMatterError(
-            `Failed to parse front matter: ${error.message}`,
-            {
-              file: this.relativePath,
-              cause: error,
-            }
-          );
+          throw new FrontMatterError(`Failed to parse front matter: ${error.message}`, {
+            file: this.relativePath,
+            cause: error,
+          });
         }
-        
+
         // Generic file read error
         throw new FileSystemError(`Failed to read file: ${error.message}`, {
           file: this.relativePath,

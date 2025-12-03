@@ -17,16 +17,16 @@ import { readFileSync, existsSync, statSync } from 'fs';
 export interface RendererOptions {
   /** Root directory for includes */
   root?: string;
-  
+
   /** Layout directory (or array of directories) */
   layoutsDir?: string | string[];
-  
+
   /** Includes directory (or array of directories) */
   includesDir?: string | string[];
-  
+
   /** Enable strict mode for variables */
   strictVariables?: boolean;
-  
+
   /** Enable strict mode for filters */
   strictFilters?: boolean;
 }
@@ -71,7 +71,7 @@ export class Renderer {
 
     // Register Jekyll-compatible filters
     this.registerFilters();
-    
+
     // Register Jekyll-compatible tags
     this.registerTags();
   }
@@ -89,12 +89,12 @@ export class Renderer {
 
     // Parse string dates using parseISO, otherwise create Date object
     const parsed = typeof date === 'string' ? parseISO(date) : new Date(date);
-    
+
     // Validate the resulting date
     if (!isValid(parsed)) {
       throw new Error(`Invalid date input: unable to parse "${date}"`);
     }
-    
+
     return parsed;
   }
 
@@ -110,7 +110,9 @@ export class Renderer {
         // Use formatISO which always outputs in UTC with Z suffix
         return formatISO(d, { format: 'extended' });
       } catch (error) {
-        logger.warn(`date_to_xmlschema filter: ${error instanceof Error ? error.message : 'Invalid date'}`);
+        logger.warn(
+          `date_to_xmlschema filter: ${error instanceof Error ? error.message : 'Invalid date'}`
+        );
         return '';
       }
     });
@@ -122,7 +124,9 @@ export class Renderer {
         // Use formatRFC7231 which always outputs in GMT
         return formatRFC7231(d);
       } catch (error) {
-        logger.warn(`date_to_rfc822 filter: ${error instanceof Error ? error.message : 'Invalid date'}`);
+        logger.warn(
+          `date_to_rfc822 filter: ${error instanceof Error ? error.message : 'Invalid date'}`
+        );
         return '';
       }
     });
@@ -133,7 +137,9 @@ export class Renderer {
         const d = this.parseDate(date);
         return format(d, 'dd MMM yyyy');
       } catch (error) {
-        logger.warn(`date_to_string filter: ${error instanceof Error ? error.message : 'Invalid date'}`);
+        logger.warn(
+          `date_to_string filter: ${error instanceof Error ? error.message : 'Invalid date'}`
+        );
         return '';
       }
     });
@@ -144,7 +150,9 @@ export class Renderer {
         const d = this.parseDate(date);
         return format(d, 'dd MMMM yyyy');
       } catch (error) {
-        logger.warn(`date_to_long_string filter: ${error instanceof Error ? error.message : 'Invalid date'}`);
+        logger.warn(
+          `date_to_long_string filter: ${error instanceof Error ? error.message : 'Invalid date'}`
+        );
         return '';
       }
     });
@@ -180,19 +188,22 @@ export class Renderer {
       return array.filter((item) => item && item[key] === value);
     });
 
-    this.liquid.registerFilter('where_exp', (array: any[], _variable: string, _expression: string) => {
-      if (!Array.isArray(array)) return [];
-      // TODO: Implement full expression evaluation
-      // For now, this is a placeholder that returns the full array
-      // A complete implementation would parse and evaluate the expression
-      logger.warn('where_exp filter has limited support - returning all items');
-      return array;
-    });
+    this.liquid.registerFilter(
+      'where_exp',
+      (array: any[], _variable: string, _expression: string) => {
+        if (!Array.isArray(array)) return [];
+        // TODO: Implement full expression evaluation
+        // For now, this is a placeholder that returns the full array
+        // A complete implementation would parse and evaluate the expression
+        logger.warn('where_exp filter has limited support - returning all items');
+        return array;
+      }
+    );
 
     this.liquid.registerFilter('group_by', (array: any[], property: string) => {
       if (!Array.isArray(array)) return [];
       const groups = new Map<any, any[]>();
-      
+
       for (const item of array) {
         const key = item[property];
         if (!groups.has(key)) {
@@ -208,13 +219,16 @@ export class Renderer {
       }));
     });
 
-    this.liquid.registerFilter('group_by_exp', (array: any[], _variable: string, _expression: string) => {
-      if (!Array.isArray(array)) return [];
-      // TODO: Implement full expression evaluation for grouping
-      // For now, this is a placeholder that returns empty array
-      logger.warn('group_by_exp filter is not yet implemented - returning empty array');
-      return [];
-    });
+    this.liquid.registerFilter(
+      'group_by_exp',
+      (array: any[], _variable: string, _expression: string) => {
+        if (!Array.isArray(array)) return [];
+        // TODO: Implement full expression evaluation for grouping
+        // For now, this is a placeholder that returns empty array
+        logger.warn('group_by_exp filter is not yet implemented - returning empty array');
+        return [];
+      }
+    );
 
     this.liquid.registerFilter('xml_escape', (input: string) => {
       if (!input) return '';
@@ -245,16 +259,19 @@ export class Renderer {
     });
 
     // Array manipulation
-    this.liquid.registerFilter('array_to_sentence_string', (array: any[], connector: string = 'and') => {
-      if (!Array.isArray(array)) return '';
-      if (array.length === 0) return '';
-      if (array.length === 1) return String(array[0]);
-      if (array.length === 2) return `${array[0]} ${connector} ${array[1]}`;
-      
-      const last = array[array.length - 1];
-      const rest = array.slice(0, -1);
-      return `${rest.join(', ')}, ${connector} ${last}`;
-    });
+    this.liquid.registerFilter(
+      'array_to_sentence_string',
+      (array: any[], connector: string = 'and') => {
+        if (!Array.isArray(array)) return '';
+        if (array.length === 0) return '';
+        if (array.length === 1) return String(array[0]);
+        if (array.length === 2) return `${array[0]} ${connector} ${array[1]}`;
+
+        const last = array[array.length - 1];
+        const rest = array.slice(0, -1);
+        return `${rest.join(', ')}, ${connector} ${last}`;
+      }
+    );
 
     // String filters
     this.liquid.registerFilter('markdownify', async (input: string) => {
@@ -262,7 +279,9 @@ export class Renderer {
       try {
         return await processMarkdown(String(input));
       } catch (error) {
-        logger.warn(`markdownify filter failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        logger.warn(
+          `markdownify filter failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
         return input;
       }
     });
@@ -272,22 +291,22 @@ export class Renderer {
       return String(input)
         .replace(/\.\.\./g, '…')
         .replace(/--/g, '—')
-        .replace(/''/g, '"')    // double single quotes first
-        .replace(/``/g, '"')    // double backticks next
+        .replace(/''/g, '"') // double single quotes first
+        .replace(/``/g, '"') // double backticks next
         .replace(/'/g, '\u2019') // then remaining single quotes
         .replace(/`/g, '\u2018'); // then remaining backticks
     });
 
     this.liquid.registerFilter('slugify', (input: string, mode: string = 'default') => {
       if (!input) return '';
-      
+
       // Use slugify library with Jekyll-compatible modes
       const options: SlugifyOptions = {
         lower: true,
         strict: false,
         trim: true,
       };
-      
+
       if (mode === 'raw') {
         // Raw mode: only replace spaces, keep everything else
         options.strict = false;
@@ -304,7 +323,7 @@ export class Renderer {
         options.strict = false;
         options.remove = /[^\w\s-]/g;
       }
-      
+
       return slugifyLib(String(input), options);
     });
 
@@ -322,7 +341,7 @@ export class Renderer {
     this.liquid.registerFilter('sort', (array: any[], property?: string) => {
       if (!Array.isArray(array)) return array;
       const arr = [...array]; // Create a copy to avoid mutating original
-      
+
       if (property) {
         // Sort by property
         return arr.sort((a, b) => {
@@ -334,7 +353,7 @@ export class Renderer {
           return aVal > bVal ? 1 : -1;
         });
       }
-      
+
       // Default sort
       return arr.sort();
     });
@@ -346,7 +365,7 @@ export class Renderer {
 
     this.liquid.registerFilter('sample', (array: any[], count?: number) => {
       if (!Array.isArray(array) || array.length === 0) return count ? [] : null;
-      
+
       if (count !== undefined) {
         // Return multiple samples using Fisher-Yates shuffle
         const numSamples = Math.min(Math.max(0, count), array.length);
@@ -357,7 +376,7 @@ export class Renderer {
         }
         return shuffled.slice(0, numSamples);
       }
-      
+
       // Return single random item
       return array[Math.floor(Math.random() * array.length)];
     });
@@ -365,12 +384,12 @@ export class Renderer {
     this.liquid.registerFilter('pop', (array: any[], count?: number) => {
       if (!Array.isArray(array)) return array;
       const arr = [...array]; // Create a copy to avoid mutating original
-      
+
       if (count !== undefined) {
         if (count <= 0) return arr;
         return arr.slice(0, -count);
       }
-      
+
       arr.pop();
       return arr;
     });
@@ -383,12 +402,12 @@ export class Renderer {
     this.liquid.registerFilter('shift', (array: any[], count?: number) => {
       if (!Array.isArray(array)) return array;
       const arr = [...array]; // Create a copy to avoid mutating original
-      
+
       if (count !== undefined) {
         const normalizedCount = Math.max(0, count);
         return arr.slice(normalizedCount);
       }
-      
+
       arr.shift();
       return arr;
     });
@@ -412,7 +431,7 @@ export class Renderer {
     this.liquid.registerFilter('strip_html', (input: string) => {
       if (!input) return '';
       // Use striptags library for proper HTML parsing and removal
-      // Handles edge cases: self-closing tags, nested tags, malformed HTML, 
+      // Handles edge cases: self-closing tags, nested tags, malformed HTML,
       // HTML comments, and preserves HTML entities properly
       return striptags(String(input));
     });
@@ -450,7 +469,7 @@ export class Renderer {
     });
 
     // Modern enhancements - opt-in features that maintain backwards compatibility
-    
+
     /**
      * Calculate estimated reading time for content
      * Returns the number of minutes to read the content
@@ -461,7 +480,10 @@ export class Renderer {
     this.liquid.registerFilter('reading_time', (input: string, wordsPerMinute: number = 200) => {
       if (!input) return 0;
       const text = striptags(String(input));
-      const words = text.trim().split(/\s+/).filter(word => word.length > 0).length;
+      const words = text
+        .trim()
+        .split(/\s+/)
+        .filter((word) => word.length > 0).length;
       const wpm = Number(wordsPerMinute) || 200;
       const minutes = Math.ceil(words / wpm);
       return minutes < 1 ? 1 : minutes;
@@ -526,33 +548,33 @@ export class Renderer {
     this.liquid.registerFilter('external_links', (input: string, siteDomain?: string) => {
       if (!input) return '';
       const domain = siteDomain || this.site.config.url?.replace(/^https?:\/\//, '') || '';
-      
+
       // Match <a> tags with href starting with http:// or https://
       return String(input).replace(
         /<a\s+([^>]*?)href=["'](https?:\/\/)([^"']+)["']([^>]*)>/gi,
         (match, beforeHref, protocol, href, afterHref) => {
           // Extract the domain from the href
           const linkDomain = href.split('/')[0].toLowerCase();
-          
+
           // Check if it's an internal link (same domain)
           if (domain && linkDomain === domain.toLowerCase()) {
             // Internal link, don't modify
             return match;
           }
-          
+
           // External link - build new attributes
           let attributes = `${beforeHref}href="${protocol}${href}"${afterHref}`;
-          
+
           // Add target="_blank" if not already present
           if (!/target\s*=/i.test(attributes)) {
             attributes += ' target="_blank"';
           }
-          
+
           // Add rel="noopener noreferrer" if not already present
           if (!/rel\s*=/i.test(attributes)) {
             attributes += ' rel="noopener noreferrer"';
           }
-          
+
           return `<a ${attributes.trim()}>`;
         }
       );
@@ -564,16 +586,19 @@ export class Renderer {
      * @example {{ content | truncate_words: 50 }}
      * @example {{ content | truncate_words: 50, "..." }}
      */
-    this.liquid.registerFilter('truncate_words', (input: string, words: number = 50, ellipsis: string = '...') => {
-      if (!input) return '';
-      const text = striptags(String(input));
-      const wordArray = text.trim().split(/\s+/);
-      const limit = Number(words) || 50;
-      if (wordArray.length <= limit) {
-        return text;
+    this.liquid.registerFilter(
+      'truncate_words',
+      (input: string, words: number = 50, ellipsis: string = '...') => {
+        if (!input) return '';
+        const text = striptags(String(input));
+        const wordArray = text.trim().split(/\s+/);
+        const limit = Number(words) || 50;
+        if (wordArray.length <= limit) {
+          return text;
+        }
+        return wordArray.slice(0, limit).join(' ') + ellipsis;
       }
-      return wordArray.slice(0, limit).join(' ') + ellipsis;
-    });
+    );
 
     /**
      * Generate excerpt from content if not already defined
@@ -584,14 +609,14 @@ export class Renderer {
     this.liquid.registerFilter('auto_excerpt', (input: string, wordLimit?: number) => {
       if (!input) return '';
       const text = striptags(String(input));
-      
+
       if (wordLimit) {
         // Word-based excerpt
         const words = text.trim().split(/\s+/);
         const limit = Number(wordLimit) || 50;
         return words.slice(0, limit).join(' ') + (words.length > limit ? '...' : '');
       }
-      
+
       // Paragraph-based excerpt (first paragraph)
       const paragraphs = text.split(/\n\s*\n/);
       const firstParagraph = paragraphs[0]?.trim() || '';
@@ -601,12 +626,12 @@ export class Renderer {
     this.liquid.registerFilter('sort_natural', (array: any[], property?: string) => {
       if (!Array.isArray(array)) return array;
       const arr = [...array]; // Create a copy to avoid mutating original
-      
+
       const collator = new Intl.Collator(undefined, {
         numeric: true,
         sensitivity: 'base',
       });
-      
+
       if (property) {
         // Sort by property (natural, case-insensitive)
         return arr.sort((a, b) => {
@@ -618,7 +643,7 @@ export class Renderer {
           return collator.compare(String(aVal), String(bVal));
         });
       }
-      
+
       // Default natural sort
       return arr.sort((a, b) => collator.compare(String(a), String(b)));
     });
@@ -635,37 +660,45 @@ export class Renderer {
     this.liquid.registerFilter('find_exp', (array: any[], variable: string, expression: string) => {
       if (!Array.isArray(array)) return null;
       // Log a warning that full expression evaluation is not supported
-      logger.warn(`find_exp filter: Full expression evaluation not supported. Expression '${expression}' on variable '${variable}' will not be evaluated. Consider using the 'find' filter instead.`);
+      logger.warn(
+        `find_exp filter: Full expression evaluation not supported. Expression '${expression}' on variable '${variable}' will not be evaluated. Consider using the 'find' filter instead.`
+      );
       // Return first item as a fallback - users should use 'find' filter for property matching
       return array.length > 0 ? array[0] : null;
     });
 
     // truncate - Truncate string to specified length
-    this.liquid.registerFilter('truncate', (input: string, length: number = 50, ellipsis: string = '...') => {
-      if (!input) return '';
-      const str = String(input);
-      const len = Number(length) || 50;
-      const suffix = ellipsis != null ? String(ellipsis) : '...';
-      
-      if (str.length <= len) return str;
-      
-      // Jekyll truncates at length including ellipsis
-      const truncateLength = Math.max(0, len - suffix.length);
-      return str.substring(0, truncateLength) + suffix;
-    });
+    this.liquid.registerFilter(
+      'truncate',
+      (input: string, length: number = 50, ellipsis: string = '...') => {
+        if (!input) return '';
+        const str = String(input);
+        const len = Number(length) || 50;
+        const suffix = ellipsis != null ? String(ellipsis) : '...';
+
+        if (str.length <= len) return str;
+
+        // Jekyll truncates at length including ellipsis
+        const truncateLength = Math.max(0, len - suffix.length);
+        return str.substring(0, truncateLength) + suffix;
+      }
+    );
 
     // truncatewords - Truncate string to specified word count
-    this.liquid.registerFilter('truncatewords', (input: string, words: number = 15, ellipsis: string = '...') => {
-      if (!input) return '';
-      const str = String(input);
-      const wordCount = Number(words) || 15;
-      const suffix = ellipsis != null ? String(ellipsis) : '...';
-      
-      const wordArray = str.split(/\s+/);
-      if (wordArray.length <= wordCount) return str;
-      
-      return wordArray.slice(0, wordCount).join(' ') + suffix;
-    });
+    this.liquid.registerFilter(
+      'truncatewords',
+      (input: string, words: number = 15, ellipsis: string = '...') => {
+        if (!input) return '';
+        const str = String(input);
+        const wordCount = Number(words) || 15;
+        const suffix = ellipsis != null ? String(ellipsis) : '...';
+
+        const wordArray = str.split(/\s+/);
+        if (wordArray.length <= wordCount) return str;
+
+        return wordArray.slice(0, wordCount).join(' ') + suffix;
+      }
+    );
 
     // escape_once - HTML escape without double-escaping
     // This is designed to match Jekyll/Ruby's behavior where already-escaped entities
@@ -673,25 +706,27 @@ export class Renderer {
     this.liquid.registerFilter('escape_once', (input: string) => {
       if (!input) return '';
       const str = String(input);
-      
+
       // Use a single pass approach to avoid double-escaping issues:
       // Replace only unescaped HTML special characters
       // Already-escaped entities like &amp; should remain unchanged
-      return str.replace(/[&<>"]/g, (char) => {
-        switch (char) {
-          case '&':
-            // Don't escape if it's already part of an HTML entity
-            return '&amp;';
-          case '<':
-            return '&lt;';
-          case '>':
-            return '&gt;';
-          case '"':
-            return '&quot;';
-          default:
-            return char;
-        }
-      }).replace(/&amp;(amp|lt|gt|quot);/g, '&$1;'); // Restore double-escaped entities
+      return str
+        .replace(/[&<>"]/g, (char) => {
+          switch (char) {
+            case '&':
+              // Don't escape if it's already part of an HTML entity
+              return '&amp;';
+            case '<':
+              return '&lt;';
+            case '>':
+              return '&gt;';
+            case '"':
+              return '&quot;';
+            default:
+              return char;
+          }
+        })
+        .replace(/&amp;(amp|lt|gt|quot);/g, '&$1;'); // Restore double-escaped entities
     });
 
     // Math filters
@@ -807,18 +842,24 @@ export class Renderer {
       return str.substring(0, index) + str.substring(index + substring.length);
     });
 
-    this.liquid.registerFilter('replace', (input: string, substring: string, replacement: string = '') => {
-      if (!input || !substring) return input || '';
-      return String(input).split(substring).join(replacement);
-    });
+    this.liquid.registerFilter(
+      'replace',
+      (input: string, substring: string, replacement: string = '') => {
+        if (!input || !substring) return input || '';
+        return String(input).split(substring).join(replacement);
+      }
+    );
 
-    this.liquid.registerFilter('replace_first', (input: string, substring: string, replacement: string = '') => {
-      if (!input || !substring) return input || '';
-      const str = String(input);
-      const index = str.indexOf(substring);
-      if (index === -1) return str;
-      return str.substring(0, index) + replacement + str.substring(index + substring.length);
-    });
+    this.liquid.registerFilter(
+      'replace_first',
+      (input: string, substring: string, replacement: string = '') => {
+        if (!input || !substring) return input || '';
+        const str = String(input);
+        const index = str.indexOf(substring);
+        if (index === -1) return str;
+        return str.substring(0, index) + replacement + str.substring(index + substring.length);
+      }
+    );
 
     this.liquid.registerFilter('split', (input: string, separator: string = ' ') => {
       if (!input) return [];
@@ -908,25 +949,25 @@ export class Renderer {
    */
   private strftimeToDateFns(strftime: string): string {
     const conversions: Record<string, string> = {
-      '%Y': 'yyyy',    // 4-digit year
-      '%y': 'yy',      // 2-digit year
-      '%m': 'MM',      // Month (01-12)
-      '%B': 'MMMM',    // Full month name
-      '%b': 'MMM',     // Abbreviated month name
-      '%d': 'dd',      // Day of month (01-31)
-      '%e': 'd',       // Day of month (1-31)
-      '%H': 'HH',      // Hour (00-23)
-      '%I': 'hh',      // Hour (01-12)
-      '%M': 'mm',      // Minute (00-59)
-      '%S': 'ss',      // Second (00-59)
-      '%p': 'a',       // AM/PM
-      '%A': 'EEEE',    // Full weekday name
-      '%a': 'EEE',     // Abbreviated weekday name
-      '%j': 'DDD',     // Day of year (001-366)
-      '%w': 'e',       // Day of week (0-6)
-      '%Z': 'zzz',     // Timezone name
-      '%z': 'xxx',     // Timezone offset
-      '%%': '%',       // Literal %
+      '%Y': 'yyyy', // 4-digit year
+      '%y': 'yy', // 2-digit year
+      '%m': 'MM', // Month (01-12)
+      '%B': 'MMMM', // Full month name
+      '%b': 'MMM', // Abbreviated month name
+      '%d': 'dd', // Day of month (01-31)
+      '%e': 'd', // Day of month (1-31)
+      '%H': 'HH', // Hour (00-23)
+      '%I': 'hh', // Hour (01-12)
+      '%M': 'mm', // Minute (00-59)
+      '%S': 'ss', // Second (00-59)
+      '%p': 'a', // AM/PM
+      '%A': 'EEEE', // Full weekday name
+      '%a': 'EEE', // Abbreviated weekday name
+      '%j': 'DDD', // Day of year (001-366)
+      '%w': 'e', // Day of week (0-6)
+      '%Z': 'zzz', // Timezone name
+      '%z': 'xxx', // Timezone offset
+      '%%': '%', // Literal %
     };
 
     let result = strftime;
@@ -947,7 +988,7 @@ export class Renderer {
     // The 'include' tag is handled by liquidjs with jekyllInclude option
     // The 'highlight' tag would require custom implementation with a syntax highlighter
     // For now, we'll add a basic highlight tag that just wraps content
-    
+
     this.liquid.registerTag('highlight', {
       parse(token: any) {
         // Sanitize language to prevent XSS
@@ -956,12 +997,13 @@ export class Renderer {
       render: async function* (_ctx: any): any {
         const content = yield this.liquid.renderer.renderTemplates(this.templates, _ctx);
         // Escape HTML special characters in content to prevent XSS
-        const escapeHtml = (str: string) => String(str)
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;')
-          .replace(/"/g, '&quot;')
-          .replace(/'/g, '&#39;');
+        const escapeHtml = (str: string) =>
+          String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
         const escapedContent = escapeHtml(content);
         return `<div class="highlight"><pre class="highlight"><code class="language-${this.language}">${escapedContent}</code></pre></div>`;
       },
@@ -1016,28 +1058,30 @@ export class Renderer {
           const site = ctx.environments?.site || ctx.site || ctx.scopes?.[0]?.site;
           const sourcePath = site?.source || '.';
           const absoluteSourcePath = resolve(sourcePath);
-          
+
           // Resolve the include path relative to the current page's directory
           const pagePath = page.path;
           const pageDir = dirname(pagePath);
           const relativePath = normalize(join(pageDir, this.includePath));
-          
+
           // Resolve to absolute path
           const absolutePath = normalize(resolve(absoluteSourcePath, relativePath));
-          
+
           // Security check: Ensure the resolved path is within the site source directory
           // This prevents directory traversal attacks
           // path.relative() returns a path starting with '..' if the target is outside the base
           const relativeToSource = relative(absoluteSourcePath, absolutePath);
           if (relativeToSource.startsWith('..')) {
-            throw new Error(`include_relative: Path '${this.includePath}' resolves outside the site source directory`);
+            throw new Error(
+              `include_relative: Path '${this.includePath}' resolves outside the site source directory`
+            );
           }
-          
+
           // Check file existence and readability before attempting to read
           if (!existsSync(absolutePath)) {
             throw new Error(`include_relative: File not found: '${this.includePath}'`);
           }
-          
+
           // Check if it's a file and not a directory
           let stats;
           try {
@@ -1048,13 +1092,15 @@ export class Renderer {
               throw new Error(`include_relative: Permission denied: '${this.includePath}'`);
             }
             // Re-throw other stat errors
-            throw new Error(`include_relative: Failed to access file '${this.includePath}': ${statError instanceof Error ? statError.message : 'Unknown error'}`);
+            throw new Error(
+              `include_relative: Failed to access file '${this.includePath}': ${statError instanceof Error ? statError.message : 'Unknown error'}`
+            );
           }
-          
+
           if (!stats.isFile()) {
             throw new Error(`include_relative: Path is not a file: '${this.includePath}'`);
           }
-          
+
           // Read and render the file
           let content: string;
           try {
@@ -1062,11 +1108,15 @@ export class Renderer {
           } catch (readError) {
             // Provide specific error for read failures
             if ((readError as NodeJS.ErrnoException).code === 'EACCES') {
-              throw new Error(`include_relative: Permission denied reading file: '${this.includePath}'`);
+              throw new Error(
+                `include_relative: Permission denied reading file: '${this.includePath}'`
+              );
             }
-            throw new Error(`include_relative: Failed to read file '${this.includePath}': ${readError instanceof Error ? readError.message : 'Unknown error'}`);
+            throw new Error(
+              `include_relative: Failed to read file '${this.includePath}': ${readError instanceof Error ? readError.message : 'Unknown error'}`
+            );
           }
-          
+
           // Render the included content with the current context
           // Note: Jekyll's include_relative has full access to the current context
           // This is consistent with Jekyll's behavior where included files can access all variables
@@ -1079,7 +1129,9 @@ export class Renderer {
           }
           // For other errors (like Liquid rendering errors), wrap them
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-          throw new Error(`include_relative: Failed to include '${this.includePath}': ${errorMessage}`);
+          throw new Error(
+            `include_relative: Failed to include '${this.includePath}': ${errorMessage}`
+          );
         }
       },
     });
@@ -1098,14 +1150,11 @@ export class Renderer {
       if (error instanceof Error) {
         // Extract line/column information if available
         const location = parseErrorLocation(error.message);
-        
-        throw new TemplateError(
-          `Liquid template error: ${error.message}`,
-          {
-            ...location,
-            cause: error,
-          }
-        );
+
+        throw new TemplateError(`Liquid template error: ${error.message}`, {
+          ...location,
+          cause: error,
+        });
       }
       throw error;
     }
@@ -1124,15 +1173,12 @@ export class Renderer {
       if (error instanceof Error) {
         // Extract line/column information if available
         const location = parseErrorLocation(error.message);
-        
-        throw new TemplateError(
-          `Failed to render file: ${error.message}`,
-          {
-            file: filepath,
-            ...location,
-            cause: error,
-          }
-        );
+
+        throw new TemplateError(`Failed to render file: ${error.message}`, {
+          file: filepath,
+          ...location,
+          cause: error,
+        });
       }
       throw error;
     }
@@ -1144,7 +1190,10 @@ export class Renderer {
    * @param additionalContext Optional additional context to merge (e.g., paginator)
    * @returns Rendered HTML output
    */
-  async renderDocument(document: Document, additionalContext?: Record<string, unknown>): Promise<string> {
+  async renderDocument(
+    document: Document,
+    additionalContext?: Record<string, unknown>
+  ): Promise<string> {
     // Create context with document data and site data
     const siteData = this.site.toJSON();
     const context: Record<string, unknown> = {
@@ -1159,12 +1208,12 @@ export class Renderer {
         tags: document.tags,
       },
       site: {
-        ...siteData.config,  // Flatten config into site for Jekyll compatibility
-        config: siteData.config,  // Also keep config for backward compatibility
-        data: siteData.data,  // Add data files
+        ...siteData.config, // Flatten config into site for Jekyll compatibility
+        config: siteData.config, // Also keep config for backward compatibility
+        data: siteData.data, // Add data files
         pages: siteData.pages,
         posts: siteData.posts,
-        static_files: siteData.static_files,  // Add static files
+        static_files: siteData.static_files, // Add static files
         collections: siteData.collections,
         source: siteData.source,
         destination: siteData.destination,
@@ -1189,7 +1238,7 @@ export class Renderer {
       }
       throw error;
     }
-    
+
     // If document is markdown, convert to HTML
     const isMarkdown = ['.md', '.markdown'].includes(document.extname.toLowerCase());
     if (isMarkdown) {
@@ -1204,7 +1253,7 @@ export class Renderer {
         );
       }
     }
-    
+
     // Update context with rendered content
     (context.page as Record<string, unknown>).content = content;
 
@@ -1303,16 +1352,13 @@ export class Renderer {
     } catch (error) {
       if (error instanceof TemplateError) {
         // Preserve the original error by re-throwing it with layout context
-        throw new TemplateError(
-          error.message,
-          {
-            file: layout.relativePath,
-            line: error.line,
-            column: error.column,
-            templateName: error.templateName || layout.basename,
-            cause: error, // Chain the original error
-          }
-        );
+        throw new TemplateError(error.message, {
+          file: layout.relativePath,
+          line: error.line,
+          column: error.column,
+          templateName: error.templateName || layout.basename,
+          cause: error, // Chain the original error
+        });
       }
       throw error;
     }

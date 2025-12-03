@@ -32,7 +32,7 @@ describe('FeedPlugin', () => {
     site = new Site(testSiteDir, config);
     renderer = new Renderer(site);
     plugin = new FeedPlugin();
-    
+
     // Register the plugin
     plugin.register(renderer, site);
   });
@@ -58,7 +58,9 @@ describe('FeedPlugin', () => {
 
     expect(feed).toContain('<title>Test Blog</title>');
     expect(feed).toContain('<subtitle>A test blog for feed generation</subtitle>');
-    expect(feed).toContain('<link href="https://example.com/feed.xml" rel="self" type="application/atom+xml"/>');
+    expect(feed).toContain(
+      '<link href="https://example.com/feed.xml" rel="self" type="application/atom+xml"/>'
+    );
     expect(feed).toContain('<link href="https://example.com/" rel="alternate" type="text/html"/>');
   });
 
@@ -75,13 +77,15 @@ describe('FeedPlugin', () => {
   it('should include generator tag', () => {
     const feed = plugin.generateFeed(site);
 
-    expect(feed).toContain('<generator uri="https://github.com/benbalter/jekyll.js" version="0.1.0">Jekyll.js</generator>');
+    expect(feed).toContain(
+      '<generator uri="https://github.com/benbalter/jekyll.js" version="0.1.0">Jekyll.js</generator>'
+    );
   });
 
   it('should include published posts in the feed', () => {
     const postFile = join(testSiteDir, '2024-01-01-test-post.md');
     writeFileSync(postFile, '---\ntitle: Test Post\ndate: 2024-01-01\n---\nPost content');
-    
+
     const post = new Document(postFile, testSiteDir, DocumentType.POST);
     post.url = '/2024/01/01/test-post.html';
     site.posts.push(post);
@@ -95,8 +99,11 @@ describe('FeedPlugin', () => {
 
   it('should include post published and updated dates', () => {
     const postFile = join(testSiteDir, '2024-01-01-test-post.md');
-    writeFileSync(postFile, '---\ntitle: Test Post\ndate: 2024-01-01T10:00:00Z\nlast_modified_at: 2024-01-02T15:00:00Z\n---\nContent');
-    
+    writeFileSync(
+      postFile,
+      '---\ntitle: Test Post\ndate: 2024-01-01T10:00:00Z\nlast_modified_at: 2024-01-02T15:00:00Z\n---\nContent'
+    );
+
     const post = new Document(postFile, testSiteDir, DocumentType.POST);
     post.url = '/2024/01/01/test-post.html';
     site.posts.push(post);
@@ -109,8 +116,11 @@ describe('FeedPlugin', () => {
 
   it('should include post categories', () => {
     const postFile = join(testSiteDir, '2024-01-01-test-post.md');
-    writeFileSync(postFile, '---\ntitle: Test Post\ndate: 2024-01-01\ncategories: [tech, programming]\n---\nContent');
-    
+    writeFileSync(
+      postFile,
+      '---\ntitle: Test Post\ndate: 2024-01-01\ncategories: [tech, programming]\n---\nContent'
+    );
+
     const post = new Document(postFile, testSiteDir, DocumentType.POST);
     post.url = '/2024/01/01/test-post.html';
     site.posts.push(post);
@@ -123,8 +133,11 @@ describe('FeedPlugin', () => {
 
   it('should include post excerpt', () => {
     const postFile = join(testSiteDir, '2024-01-01-test-post.md');
-    writeFileSync(postFile, '---\ntitle: Test Post\ndate: 2024-01-01\nexcerpt: This is a test excerpt\n---\nFull content');
-    
+    writeFileSync(
+      postFile,
+      '---\ntitle: Test Post\ndate: 2024-01-01\nexcerpt: This is a test excerpt\n---\nFull content'
+    );
+
     const post = new Document(postFile, testSiteDir, DocumentType.POST);
     post.url = '/2024/01/01/test-post.html';
     site.posts.push(post);
@@ -138,8 +151,11 @@ describe('FeedPlugin', () => {
     // Create 15 posts
     for (let i = 1; i <= 15; i++) {
       const postFile = join(testSiteDir, `2024-01-${i.toString().padStart(2, '0')}-post-${i}.md`);
-      writeFileSync(postFile, `---\ntitle: Post ${i}\ndate: 2024-01-${i.toString().padStart(2, '0')}\n---\nContent ${i}`);
-      
+      writeFileSync(
+        postFile,
+        `---\ntitle: Post ${i}\ndate: 2024-01-${i.toString().padStart(2, '0')}\n---\nContent ${i}`
+      );
+
       const post = new Document(postFile, testSiteDir, DocumentType.POST);
       post.url = `/2024/01/${i.toString().padStart(2, '0')}/post-${i}.html`;
       site.posts.push(post);
@@ -161,12 +177,12 @@ describe('FeedPlugin', () => {
 
   it('should respect custom posts limit', () => {
     site.config.feed = { posts_limit: 3 };
-    
+
     // Create 5 posts
     for (let i = 1; i <= 5; i++) {
       const postFile = join(testSiteDir, `2024-01-0${i}-post-${i}.md`);
       writeFileSync(postFile, `---\ntitle: Post ${i}\ndate: 2024-01-0${i}\n---\nContent ${i}`);
-      
+
       const post = new Document(postFile, testSiteDir, DocumentType.POST);
       post.url = `/2024/01/0${i}/post-${i}.html`;
       site.posts.push(post);
@@ -182,7 +198,7 @@ describe('FeedPlugin', () => {
   it('should escape XML special characters', () => {
     const postFile = join(testSiteDir, '2024-01-01-test-post.md');
     writeFileSync(postFile, '---\ntitle: Test & "Quotes" <script>\ndate: 2024-01-01\n---\nContent');
-    
+
     const post = new Document(postFile, testSiteDir, DocumentType.POST);
     post.url = '/2024/01/01/test-post.html';
     site.posts.push(post);
@@ -198,7 +214,7 @@ describe('FeedPlugin', () => {
     writeFileSync(post1File, '---\ntitle: Old Post\ndate: 2024-01-01\n---\nOld content');
     const post1 = new Document(post1File, testSiteDir, DocumentType.POST);
     post1.url = '/2024/01/01/old-post.html';
-    
+
     const post2File = join(testSiteDir, '2024-01-15-new-post.md');
     writeFileSync(post2File, '---\ntitle: New Post\ndate: 2024-01-15\n---\nNew content');
     const post2 = new Document(post2File, testSiteDir, DocumentType.POST);

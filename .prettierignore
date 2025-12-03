@@ -1,0 +1,9 @@
+# Prettier ignore file
+dist/
+node_modules/
+coverage/
+*.md
+*.json
+*.yml
+*.yaml
+test-fixtures/

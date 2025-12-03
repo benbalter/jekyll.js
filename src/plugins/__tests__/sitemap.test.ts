@@ -26,7 +26,7 @@ describe('SitemapPlugin', () => {
     site = new Site(testSiteDir, config);
     renderer = new Renderer(site);
     plugin = new SitemapPlugin();
-    
+
     // Register the plugin
     plugin.register(renderer, site);
   });
@@ -43,7 +43,7 @@ describe('SitemapPlugin', () => {
     // Create a simple page
     const pageFile = join(testSiteDir, 'index.html');
     writeFileSync(pageFile, '---\ntitle: Home\n---\nContent');
-    
+
     const page = new Document(pageFile, testSiteDir, DocumentType.PAGE);
     page.url = '/';
     site.pages.push(page);
@@ -58,7 +58,7 @@ describe('SitemapPlugin', () => {
   it('should include pages in the sitemap', () => {
     const pageFile = join(testSiteDir, 'about.html');
     writeFileSync(pageFile, '---\ntitle: About\n---\nContent');
-    
+
     const page = new Document(pageFile, testSiteDir, DocumentType.PAGE);
     page.url = '/about.html';
     site.pages.push(page);
@@ -71,7 +71,7 @@ describe('SitemapPlugin', () => {
   it('should include posts in the sitemap', () => {
     const postFile = join(testSiteDir, '2024-01-01-test-post.md');
     writeFileSync(postFile, '---\ntitle: Test Post\n---\nContent');
-    
+
     const post = new Document(postFile, testSiteDir, DocumentType.POST);
     post.url = '/2024/01/01/test-post.html';
     site.posts.push(post);
@@ -84,7 +84,7 @@ describe('SitemapPlugin', () => {
   it('should include lastmod date for posts', () => {
     const postFile = join(testSiteDir, '2024-01-01-test-post.md');
     writeFileSync(postFile, '---\ntitle: Test Post\ndate: 2024-01-01\n---\nContent');
-    
+
     const post = new Document(postFile, testSiteDir, DocumentType.POST);
     post.url = '/2024/01/01/test-post.html';
     site.posts.push(post);
@@ -97,7 +97,7 @@ describe('SitemapPlugin', () => {
   it('should include changefreq and priority', () => {
     const pageFile = join(testSiteDir, 'index.html');
     writeFileSync(pageFile, '---\ntitle: Home\n---\nContent');
-    
+
     const page = new Document(pageFile, testSiteDir, DocumentType.PAGE);
     page.url = '/';
     site.pages.push(page);
@@ -110,8 +110,11 @@ describe('SitemapPlugin', () => {
 
   it('should respect custom sitemap settings in front matter', () => {
     const pageFile = join(testSiteDir, 'custom.html');
-    writeFileSync(pageFile, '---\ntitle: Custom\nsitemap:\n  changefreq: daily\n  priority: 0.9\n---\nContent');
-    
+    writeFileSync(
+      pageFile,
+      '---\ntitle: Custom\nsitemap:\n  changefreq: daily\n  priority: 0.9\n---\nContent'
+    );
+
     const page = new Document(pageFile, testSiteDir, DocumentType.PAGE);
     page.url = '/custom.html';
     site.pages.push(page);
@@ -125,7 +128,7 @@ describe('SitemapPlugin', () => {
   it('should exclude pages with sitemap: false', () => {
     const pageFile = join(testSiteDir, 'excluded.html');
     writeFileSync(pageFile, '---\ntitle: Excluded\nsitemap: false\n---\nContent');
-    
+
     const page = new Document(pageFile, testSiteDir, DocumentType.PAGE);
     page.url = '/excluded.html';
     site.pages.push(page);
@@ -138,7 +141,7 @@ describe('SitemapPlugin', () => {
   it('should escape XML special characters', () => {
     const pageFile = join(testSiteDir, 'test.html');
     writeFileSync(pageFile, '---\ntitle: Test\n---\nContent');
-    
+
     const page = new Document(pageFile, testSiteDir, DocumentType.PAGE);
     page.url = '/test?param=value&other=test';
     site.pages.push(page);

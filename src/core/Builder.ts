@@ -5,7 +5,15 @@ import { generatePagination, getPaginatedFilePath } from './Paginator';
 import { SassProcessor } from './SassProcessor';
 import { logger } from '../utils/logger';
 import { BuildError, FileSystemError, JekyllError } from '../utils/errors';
-import { mkdirSync, writeFileSync, existsSync, readdirSync, statSync, copyFileSync, readFileSync } from 'fs';
+import {
+  mkdirSync,
+  writeFileSync,
+  existsSync,
+  readdirSync,
+  statSync,
+  copyFileSync,
+  readFileSync,
+} from 'fs';
 import { join, dirname, extname, basename, relative, sep } from 'path';
 import { rmSync } from 'fs';
 import { registerPlugins } from '../plugins';
@@ -37,16 +45,16 @@ function pathMatchesOrInside(path: string, pattern: string): boolean {
 export interface BuilderOptions {
   /** Whether to show drafts (unpublished posts) */
   showDrafts?: boolean;
-  
+
   /** Whether to show future-dated posts */
   showFuture?: boolean;
-  
+
   /** Clean destination directory before build */
   clean?: boolean;
-  
+
   /** Verbose output */
   verbose?: boolean;
-  
+
   /** Enable incremental builds */
   incremental?: boolean;
 }
@@ -68,22 +76,28 @@ export class Builder {
    */
   constructor(site: Site, options: BuilderOptions = {}) {
     this.site = site;
-    
+
     // Get layout and include directories from site (includes theme directories)
     const layoutDirs = site.themeManager.getLayoutDirectories();
     const includeDirs = site.themeManager.getIncludeDirectories();
-    
+
     this.renderer = new Renderer(site, {
-      layoutsDir: layoutDirs.length > 0 ? layoutDirs : [join(site.source, site.config.layouts_dir || '_layouts')],
-      includesDir: includeDirs.length > 0 ? includeDirs : [join(site.source, site.config.includes_dir || '_includes')],
+      layoutsDir:
+        layoutDirs.length > 0
+          ? layoutDirs
+          : [join(site.source, site.config.layouts_dir || '_layouts')],
+      includesDir:
+        includeDirs.length > 0
+          ? includeDirs
+          : [join(site.source, site.config.includes_dir || '_includes')],
     });
-    
+
     // Initialize SASS processor
     this.sassProcessor = new SassProcessor({
       source: site.source,
       config: site.config,
     });
-    
+
     this.options = {
       showDrafts: false,
       showFuture: false,
@@ -92,13 +106,13 @@ export class Builder {
       incremental: false,
       ...options,
     };
-    
+
     // Configure logger based on options
     logger.setVerbose(this.options.verbose || false);
-    
+
     // Initialize cache manager
     this.cacheManager = new CacheManager(site.source);
-    
+
     // Register plugins
     registerPlugins(this.renderer, this.site);
   }
@@ -144,11 +158,11 @@ export class Builder {
       if (this.options.incremental) {
         const cacheStats = this.cacheManager.getStats();
         logger.info(`Using incremental build (${cacheStats.fileCount} files cached)`);
-        
+
         // Filter documents that need rebuilding
         pagesToRender = this.filterChangedDocuments(this.site.pages);
         postsToRender = this.filterChangedDocuments(this.site.posts);
-        
+
         // Filter collection documents
         collectionsToRender = new Map();
         for (const [name, docs] of this.site.collections) {
@@ -158,16 +172,18 @@ export class Builder {
           }
         }
 
-        const totalToRender = pagesToRender.length + postsToRender.length + 
+        const totalToRender =
+          pagesToRender.length +
+          postsToRender.length +
           Array.from(collectionsToRender.values()).reduce((sum, docs) => sum + docs.length, 0);
-        
+
         if (totalToRender === 0) {
           logger.success('No changes detected, skipping build');
           // Save cache in case it was newly initialized or loaded from old version
           this.cacheManager.save();
           return;
         }
-        
+
         logger.info(`Rebuilding ${totalToRender} changed files`);
       }
 
@@ -191,7 +207,9 @@ export class Builder {
 
       // Generate plugin output files (sitemap, feed, etc.)
       // In incremental mode, only regenerate if documents were rebuilt
-      const totalRendered = pagesToRender.length + postsToRender.length + 
+      const totalRendered =
+        pagesToRender.length +
+        postsToRender.length +
         Array.from(collectionsToRender.values()).reduce((sum, docs) => sum + docs.length, 0);
       if (!this.options.incremental || totalRendered > 0) {
         this.generatePluginFiles();
@@ -225,7 +243,7 @@ export class Builder {
     }
 
     const keepFiles = this.site.config.keep_files || [];
-    
+
     // If no keep_files, do a simple recursive delete
     if (keepFiles.length === 0) {
       logger.info(`Cleaning destination directory: ${this.site.destination}`);
@@ -241,7 +259,9 @@ export class Builder {
     }
 
     // Selective cleaning: delete everything except keep_files
-    logger.info(`Cleaning destination directory (keeping: ${keepFiles.join(', ')}): ${this.site.destination}`);
+    logger.info(
+      `Cleaning destination directory (keeping: ${keepFiles.join(', ')}): ${this.site.destination}`
+    );
     this.cleanDirectorySelectively(this.site.destination, keepFiles);
   }
 
@@ -269,7 +289,7 @@ export class Builder {
       const fullPath = join(dir, entry);
       const relPath = relativePath ? join(relativePath, entry) : entry;
       const normalizedRelPath = normalizePath(relPath);
-      
+
       // Check if this path should be kept
       const shouldKeep = normalizedKeepFiles.some((keepPattern) => {
         // Path matches or is inside a kept directory
@@ -285,10 +305,11 @@ export class Builder {
 
       if (shouldKeep) {
         // Check if this is a directory that contains something to keep
-        const containsKeptFile = normalizedKeepFiles.some((keepPattern) =>
-          pathMatchesOrInside(keepPattern, normalizedRelPath) && keepPattern !== normalizedRelPath
+        const containsKeptFile = normalizedKeepFiles.some(
+          (keepPattern) =>
+            pathMatchesOrInside(keepPattern, normalizedRelPath) && keepPattern !== normalizedRelPath
         );
-        
+
         if (containsKeptFile && statSync(fullPath).isDirectory()) {
           // Recurse into the directory
           this.cleanDirectorySelectively(fullPath, keepFiles, relPath);
@@ -301,7 +322,9 @@ export class Builder {
       try {
         rmSync(fullPath, { recursive: true, force: true });
       } catch (error) {
-        logger.warn(`Failed to delete ${relPath}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        logger.warn(
+          `Failed to delete ${relPath}: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
       }
     }
   }
@@ -363,7 +386,7 @@ export class Builder {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
-    
+
     // Get slug from basename (remove date prefix for posts)
     let slug = post.basename;
     const dateMatch = slug.match(/^\d{4}-\d{2}-\d{2}-(.*)/);
@@ -374,7 +397,7 @@ export class Builder {
     // Apply permalink pattern (default: /:categories/:year/:month/:day/:title.html)
     const categories = post.categories.join('/');
     const categoryPath = categories ? `/${categories}` : '';
-    
+
     return this.normalizeUrl(`${categoryPath}/${year}/${month}/${day}/${slug}.html`);
   }
 
@@ -384,12 +407,12 @@ export class Builder {
   private generatePageUrl(page: Document): string {
     // Get relative path from source
     let urlPath = page.relativePath;
-    
+
     // Remove extension and handle index files
     const ext = extname(urlPath);
     const base = basename(urlPath, ext);
     const dir = dirname(urlPath);
-    
+
     if (base === 'index') {
       urlPath = dir === '.' ? '/' : `/${dir}/`;
     } else {
@@ -419,13 +442,13 @@ export class Builder {
     if (!url.startsWith('/')) {
       url = '/' + url;
     }
-    
+
     // Replace backslashes with forward slashes
     url = url.replace(/\\/g, '/');
-    
+
     // Remove double slashes
     url = url.replace(/\/+/g, '/');
-    
+
     return url;
   }
 
@@ -490,7 +513,7 @@ export class Builder {
 
     // Generate pagination data
     const paginators = generatePagination(posts, this.site.config);
-    
+
     if (paginators.length === 0) {
       return;
     }
@@ -550,7 +573,7 @@ export class Builder {
    */
   private async renderCollections(collections?: Map<string, Document[]>): Promise<void> {
     const collectionsToRender = collections || this.site.collections;
-    
+
     for (const [collectionName, documents] of collectionsToRender) {
       const collectionConfig = this.site.config.collections?.[collectionName];
       const outputCollection = collectionConfig?.output !== false;
@@ -615,7 +638,9 @@ export class Builder {
         this.cacheManager.updateFile(doc.path, doc.relativePath, dependencies);
       }
 
-      logger.debug(`Rendered: ${doc.relativePath} → ${relative(this.site.destination, outputPath)}`);
+      logger.debug(
+        `Rendered: ${doc.relativePath} → ${relative(this.site.destination, outputPath)}`
+      );
     } catch (error) {
       // Wrap error with document context for structured error handling
       // The build() method will handle final error logging
@@ -639,7 +664,7 @@ export class Builder {
 
     // Convert URL to file path
     let filePath = doc.url;
-    
+
     // Remove leading slash
     if (filePath.startsWith('/')) {
       filePath = filePath.substring(1);
@@ -669,10 +694,10 @@ export class Builder {
       try {
         // Read the file
         const fileContent = readFileSync(file, 'utf-8');
-        
+
         // Parse front matter
         const parsed = matter(fileContent);
-        
+
         // Only process files with front matter (Jekyll convention)
         // We detect front matter by comparing content to original: if gray-matter removed
         // delimiters (---), the content will differ from the original file content.
@@ -827,7 +852,7 @@ export class Builder {
    */
   private generatePluginFiles(): void {
     const configuredPlugins = this.site.config.plugins || [];
-    
+
     // Generate sitemap if plugin is enabled
     if (configuredPlugins.length === 0 || configuredPlugins.includes('jekyll-sitemap')) {
       const sitemapPlugin = (this.site as any)._sitemapPlugin;
@@ -853,10 +878,10 @@ export class Builder {
           const feedContent = feedPlugin.generateFeed(this.site);
           const feedPath = this.site.config.feed?.path || '/feed.xml';
           const feedFilePath = join(this.site.destination, feedPath.replace(/^\//, ''));
-          
+
           // Ensure directory exists
           mkdirSync(dirname(feedFilePath), { recursive: true });
-          
+
           writeFileSync(feedFilePath, feedContent, 'utf-8');
           logger.debug(`Generated ${feedPath}`);
         } catch (error) {

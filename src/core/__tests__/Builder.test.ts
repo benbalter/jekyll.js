@@ -326,7 +326,7 @@ Custom permalink page`
       await builder.build();
 
       expect(existsSync(join(destDir, 'custom/about-us/index.html'))).toBe(true);
-      
+
       const content = readFileSync(join(destDir, 'custom/about-us/index.html'), 'utf-8');
       expect(content).toContain('Custom permalink page');
     });
@@ -396,7 +396,7 @@ Nested page content`
       await builder.build();
 
       expect(existsSync(join(destDir, 'blog/post.html'))).toBe(true);
-      
+
       const content = readFileSync(join(destDir, 'blog/post.html'), 'utf-8');
       expect(content).toContain('Nested page content');
     });
@@ -419,16 +419,21 @@ Post with categories`
       await builder.build();
 
       // Post should be at /tech/programming/2024/01/15/categorized-post.html
-      expect(existsSync(join(destDir, 'tech/programming/2024/01/15/categorized-post.html'))).toBe(true);
-      
-      const content = readFileSync(join(destDir, 'tech/programming/2024/01/15/categorized-post.html'), 'utf-8');
+      expect(existsSync(join(destDir, 'tech/programming/2024/01/15/categorized-post.html'))).toBe(
+        true
+      );
+
+      const content = readFileSync(
+        join(destDir, 'tech/programming/2024/01/15/categorized-post.html'),
+        'utf-8'
+      );
       expect(content).toContain('Post with categories');
     });
 
     it('should exclude files based on config', async () => {
       // Create files
       writeFileSync(join(testSiteDir, 'index.md'), '---\ntitle: Home\n---\nContent');
-      
+
       const draftDir = join(testSiteDir, 'drafts');
       mkdirSync(draftDir);
       writeFileSync(join(draftDir, 'draft.md'), '---\ntitle: Draft\n---\nDraft content');
@@ -441,7 +446,7 @@ Post with categories`
 
       // Index should be built
       expect(existsSync(join(destDir, 'index.html'))).toBe(true);
-      
+
       // Draft should not be built
       expect(existsSync(join(destDir, 'drafts/draft.html'))).toBe(false);
     });
@@ -494,16 +499,16 @@ title: Home
 
       const site = new Site(testSiteDir);
       const builder = new Builder(site, { incremental: true });
-      
+
       // First build
       await builder.build();
       expect(existsSync(join(destDir, 'index.html'))).toBe(true);
-      
+
       // Second build with no changes
       const site2 = new Site(testSiteDir);
       const builder2 = new Builder(site2, { incremental: true });
       await builder2.build();
-      
+
       // Should still work
       expect(existsSync(join(destDir, 'index.html'))).toBe(true);
     });
@@ -516,7 +521,7 @@ title: Page 1
 ---
 Content 1`
       );
-      
+
       writeFileSync(
         join(testSiteDir, 'page2.md'),
         `---
@@ -527,15 +532,15 @@ Content 2`
 
       const site = new Site(testSiteDir);
       const builder = new Builder(site, { incremental: true });
-      
+
       // First build
       await builder.build();
       expect(existsSync(join(destDir, 'page1.html'))).toBe(true);
       expect(existsSync(join(destDir, 'page2.html'))).toBe(true);
-      
+
       // Wait a bit for file system
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
       // Modify only page1
       writeFileSync(
         join(testSiteDir, 'page1.md'),
@@ -544,16 +549,16 @@ title: Page 1 Updated
 ---
 Updated content`
       );
-      
+
       // Second build with incremental
       const site2 = new Site(testSiteDir);
       const builder2 = new Builder(site2, { incremental: true });
       await builder2.build();
-      
+
       // Both pages should still exist
       expect(existsSync(join(destDir, 'page1.html'))).toBe(true);
       expect(existsSync(join(destDir, 'page2.html'))).toBe(true);
-      
+
       // Page1 should have updated content
       const page1Content = readFileSync(join(destDir, 'page1.html'), 'utf-8');
       expect(page1Content).toContain('Updated content');
@@ -608,10 +613,10 @@ Content`
 
       // .git should be preserved
       expect(existsSync(join(destDir, '.git/config'))).toBe(true);
-      
+
       // old-file.html should be removed
       expect(existsSync(join(destDir, 'old-file.html'))).toBe(false);
-      
+
       // New index.html should exist
       expect(existsSync(join(destDir, 'index.html'))).toBe(true);
     });
@@ -625,10 +630,7 @@ Content`
       writeFileSync(join(destDir, '.svn/entries'), 'svn entries');
       writeFileSync(join(destDir, 'old.html'), 'old content');
 
-      writeFileSync(
-        join(testSiteDir, 'index.md'),
-        '---\ntitle: Home\n---\nContent'
-      );
+      writeFileSync(join(testSiteDir, 'index.md'), '---\ntitle: Home\n---\nContent');
 
       const site = new Site(testSiteDir, {
         keep_files: ['.git', '.svn'],
@@ -639,7 +641,7 @@ Content`
       // Both directories should be preserved
       expect(existsSync(join(destDir, '.git/config'))).toBe(true);
       expect(existsSync(join(destDir, '.svn/entries'))).toBe(true);
-      
+
       // old.html should be removed
       expect(existsSync(join(destDir, 'old.html'))).toBe(false);
     });
@@ -650,10 +652,7 @@ Content`
       writeFileSync(join(destDir, 'uploads/images/photo.jpg'), 'image data');
       writeFileSync(join(destDir, 'old.html'), 'old content');
 
-      writeFileSync(
-        join(testSiteDir, 'index.md'),
-        '---\ntitle: Home\n---\nContent'
-      );
+      writeFileSync(join(testSiteDir, 'index.md'), '---\ntitle: Home\n---\nContent');
 
       const site = new Site(testSiteDir, {
         keep_files: ['uploads'],
@@ -663,7 +662,7 @@ Content`
 
       // uploads directory and its contents should be preserved
       expect(existsSync(join(destDir, 'uploads/images/photo.jpg'))).toBe(true);
-      
+
       // old.html should be removed
       expect(existsSync(join(destDir, 'old.html'))).toBe(false);
     });
@@ -688,7 +687,7 @@ Content`
 
       // Check that static_files were collected
       expect(site.static_files.length).toBe(3);
-      
+
       // Check that static files were copied
       expect(existsSync(join(destDir, 'assets/style.css'))).toBe(true);
       expect(existsSync(join(destDir, 'assets/script.js'))).toBe(true);
@@ -697,10 +696,7 @@ Content`
 
     it('should not include markdown/HTML files in static_files', async () => {
       // Create markdown and static files
-      writeFileSync(
-        join(testSiteDir, 'index.md'),
-        '---\ntitle: Home\n---\nContent'
-      );
+      writeFileSync(join(testSiteDir, 'index.md'), '---\ntitle: Home\n---\nContent');
       writeFileSync(join(testSiteDir, 'style.css'), 'body { margin: 0; }');
 
       const site = new Site(testSiteDir);
@@ -715,10 +711,7 @@ Content`
       // Create SASS and static files
       const cssDir = join(testSiteDir, 'css');
       mkdirSync(cssDir);
-      writeFileSync(
-        join(cssDir, 'main.scss'),
-        '---\n---\nbody { color: red; }'
-      );
+      writeFileSync(join(cssDir, 'main.scss'), '---\n---\nbody { color: red; }');
       writeFileSync(join(testSiteDir, 'app.js'), 'console.log("hello");');
 
       const site = new Site(testSiteDir);

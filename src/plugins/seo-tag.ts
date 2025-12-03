@@ -1,9 +1,9 @@
 /**
  * SEO Tag Plugin for Jekyll.js
- * 
+ *
  * Implements jekyll-seo-tag functionality
  * Generates SEO meta tags including Open Graph and Twitter Cards
- * 
+ *
  * @see https://github.com/jekyll/jekyll-seo-tag
  */
 
@@ -54,10 +54,11 @@ function generateSeoTags(page: any, site: Site): string {
   const pageType = page.layout === 'post' || page.date ? 'article' : 'website';
 
   // Title tag
-  const fullTitle = pageTitle && siteTitle && pageTitle !== siteTitle
-    ? `${pageTitle} | ${siteTitle}`
-    : pageTitle || siteTitle;
-  
+  const fullTitle =
+    pageTitle && siteTitle && pageTitle !== siteTitle
+      ? `${pageTitle} | ${siteTitle}`
+      : pageTitle || siteTitle;
+
   if (fullTitle) {
     tags.push(`<title>${escapeHtml(fullTitle)}</title>`);
   }
@@ -101,7 +102,7 @@ function generateSeoTags(page: any, site: Site): string {
   if (imageUrl) {
     tags.push(`<meta name="twitter:image" content="${escapeHtml(imageUrl)}">`);
   }
-  
+
   // Twitter handle if specified
   const twitterUsername = config.twitter?.username || config.twitter_username;
   if (twitterUsername) {
@@ -176,7 +177,7 @@ function generateJsonLd(
     if (imageUrl) {
       data.image = imageUrl;
     }
-    
+
     // Author information
     if (author) {
       const authorName = typeof author === 'string' ? author : author.name || '';
@@ -187,7 +188,7 @@ function generateJsonLd(
         };
       }
     }
-    
+
     // Publisher information
     if (config.title) {
       data.publisher = {
@@ -195,8 +196,8 @@ function generateJsonLd(
         name: config.title,
       };
       if (config.logo) {
-        const logoUrl = config.logo.startsWith('http') 
-          ? config.logo 
+        const logoUrl = config.logo.startsWith('http')
+          ? config.logo
           : `${config.url || ''}${config.baseurl || ''}${config.logo}`;
         data.publisher.logo = {
           '@type': 'ImageObject',

@@ -14,26 +14,24 @@ interface NewOptions {
 export async function newCommand(path: string, options: NewOptions): Promise<void> {
   try {
     const sitePath = resolve(path);
-    
+
     // Check if path already exists
     if (existsSync(sitePath) && !options.force) {
-      throw new Error(
-        `Path "${path}" already exists. Use --force to create anyway.`
-      );
+      throw new Error(`Path "${path}" already exists. Use --force to create anyway.`);
     }
 
     console.log(chalk.green(`Creating new Jekyll site at ${sitePath}`));
-    
+
     // Create directory structure
     mkdirSync(sitePath, { recursive: true });
-    
+
     if (!options.blank) {
       // Create standard Jekyll directory structure
       const dirs = ['_posts', '_drafts', '_layouts', '_includes', '_data'];
       dirs.forEach((dir) => {
         mkdirSync(join(sitePath, dir), { recursive: true });
       });
-      
+
       // Create default _config.yml
       const configContent = `# Welcome to Jekyll!
 #
@@ -55,7 +53,7 @@ exclude:
   - vendor
 `;
       writeFileSync(join(sitePath, '_config.yml'), configContent);
-      
+
       // Create default index.md
       const indexContent = `---
 layout: default
@@ -67,7 +65,7 @@ title: Home
 This is your new Jekyll site. Start editing to customize it.
 `;
       writeFileSync(join(sitePath, 'index.md'), indexContent);
-      
+
       // Create default layout
       const layoutContent = `<!DOCTYPE html>
 <html lang="en">
@@ -90,7 +88,7 @@ This is your new Jekyll site. Start editing to customize it.
 </html>
 `;
       writeFileSync(join(sitePath, '_layouts', 'default.html'), layoutContent);
-      
+
       // Create .gitignore
       const gitignoreContent = `_site
 .sass-cache
@@ -98,7 +96,7 @@ This is your new Jekyll site. Start editing to customize it.
 .jekyll-metadata
 `;
       writeFileSync(join(sitePath, '.gitignore'), gitignoreContent);
-      
+
       console.log(chalk.green('✓'), 'Created directory structure');
       console.log(chalk.green('✓'), 'Created default configuration');
       console.log(chalk.green('✓'), 'Created default layout and pages');
@@ -110,7 +108,7 @@ title: My Site
       writeFileSync(join(sitePath, '_config.yml'), configContent);
       console.log(chalk.green('✓'), 'Created blank site');
     }
-    
+
     console.log();
     console.log(chalk.blue('Next steps:'));
     console.log(`  cd ${path}`);

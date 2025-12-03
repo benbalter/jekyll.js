@@ -47,6 +47,7 @@ temp/
 
 # Jekyll build output
 _site/
+.jekyll-cache/
 
 # Environment
 .env

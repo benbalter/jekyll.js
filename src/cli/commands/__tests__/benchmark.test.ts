@@ -18,6 +18,43 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
   let useBundle = false;
 
   /**
+   * Formatting constants for consistent output
+   */
+  const SEPARATOR = '─'.repeat(50);
+  const TIME_PAD = 8;
+
+  /**
+   * Format a duration in milliseconds to a human-readable string
+   * @param ms - Duration in milliseconds
+   * @returns Formatted string with ms unit, right-padded for alignment
+   */
+  const formatTime = (ms: number): string => {
+    return `${ms.toString().padStart(TIME_PAD)}ms`;
+  };
+
+  /**
+   * Print a section header with decorative borders
+   * @param title - The title of the section
+   */
+  const printHeader = (title: string): void => {
+    console.log(`\n${SEPARATOR}`);
+    console.log(`  ${title}`);
+    console.log(`${SEPARATOR}`);
+  };
+
+  /**
+   * Print a key-value pair with consistent formatting
+   * @param label - The label for the value
+   * @param value - The value to display
+   * @param indent - Number of spaces to indent (default: 2)
+   */
+  const printStat = (label: string, value: string, indent: number = 2): void => {
+    const padding = ' '.repeat(indent);
+    const labelPad = 12;
+    console.log(`${padding}${label.padEnd(labelPad)} ${value}`);
+  };
+
+  /**
    * Helper function to clean up destination directories
    */
   const cleanupDirs = () => {
@@ -125,7 +162,8 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
       fixtureDir
     );
 
-    console.log(`\n📊 Jekyll TS build time: ${duration}ms`);
+    printHeader('📊 Jekyll TS Build Benchmark');
+    printStat('Duration:', formatTime(duration));
 
     // Verify output was created
     expect(existsSync(destDirTs)).toBe(true);
@@ -146,7 +184,7 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
       return;
     }
 
-    console.log('\n🏁 Running side-by-side benchmark...\n');
+    printHeader('🏁 Side-by-Side Benchmark');
 
     // Benchmark Jekyll TS
     const durationTs = await benchmarkBuild(
@@ -154,8 +192,6 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
       [jekyllTsBin, 'build', '-s', fixtureDir, '-d', destDirTs],
       fixtureDir
     );
-
-    console.log(`📊 Jekyll TS build time: ${durationTs}ms`);
 
     // Benchmark Ruby Jekyll
     const jekyllCommand = useBundle ? 'bundle' : 'jekyll';
@@ -166,20 +202,29 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
 
     const durationRuby = await benchmarkBuild(jekyllCommand, jekyllArgs, jekyllCwd);
 
-    console.log(`📊 Ruby Jekyll build time: ${durationRuby}ms`);
+    // Print build times
+    console.log('');
+    printStat('Jekyll TS:', formatTime(durationTs));
+    printStat('Ruby Jekyll:', formatTime(durationRuby));
 
-    // Calculate comparison
+    // Calculate and display comparison
     const difference = durationTs - durationRuby;
     const percentageDiff = durationRuby !== 0 ? (difference / durationRuby) * 100 : 0;
 
-    console.log('\n📈 Comparison:');
+    console.log('');
+    console.log(`  ${SEPARATOR}`);
     if (durationTs < durationRuby) {
-      console.log(
-        `   Jekyll TS is ${Math.abs(difference)}ms (${Math.abs(percentageDiff).toFixed(2)}%) faster`
-      );
+      const icon = '🚀';
+      console.log(`  ${icon} Jekyll TS is FASTER`);
+      console.log(`     by ${Math.abs(difference)}ms (${Math.abs(percentageDiff).toFixed(1)}%)`);
+    } else if (durationTs > durationRuby) {
+      const icon = '🐢';
+      console.log(`  ${icon} Jekyll TS is SLOWER`);
+      console.log(`     by ${difference}ms (${percentageDiff.toFixed(1)}%)`);
     } else {
-      console.log(`   Jekyll TS is ${difference}ms (${percentageDiff.toFixed(2)}%) slower`);
+      console.log(`  ⚖️  Performance is EQUAL`);
     }
+    console.log(`  ${SEPARATOR}`);
 
     // Verify both outputs were created
     expect(existsSync(destDirTs)).toBe(true);
@@ -197,7 +242,8 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
     const runs = 3;
     const durations: number[] = [];
 
-    console.log(`\n🔄 Running ${runs} builds to measure consistency...\n`);
+    printHeader(`🔄 Consistency Test (${runs} runs)`);
+    console.log('');
 
     for (let i = 0; i < runs; i++) {
       // Clean up before each run
@@ -210,7 +256,7 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
       );
 
       durations.push(duration);
-      console.log(`   Run ${i + 1}: ${duration}ms`);
+      printStat(`Run ${i + 1}:`, formatTime(duration));
     }
 
     // Calculate statistics
@@ -221,11 +267,17 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
       durations.reduce((sum, val) => sum + Math.pow(val - avg, 2), 0) / durations.length;
     const stdDev = Math.sqrt(variance);
 
-    console.log('\n📊 Statistics:');
-    console.log(`   Average: ${avg.toFixed(2)}ms`);
-    console.log(`   Min: ${min}ms`);
-    console.log(`   Max: ${max}ms`);
-    console.log(`   Std Dev: ${stdDev.toFixed(2)}ms`);
+    // Print statistics table
+    console.log('');
+    console.log(`  ${SEPARATOR}`);
+    console.log('  📊 Statistics');
+    console.log(`  ${SEPARATOR}`);
+    printStat('Average:', `${avg.toFixed(2).padStart(TIME_PAD)}ms`);
+    printStat('Minimum:', formatTime(min));
+    printStat('Maximum:', formatTime(max));
+    printStat('Std Dev:', `${stdDev.toFixed(2).padStart(TIME_PAD)}ms`);
+    printStat('Variance:', `${((stdDev / avg) * 100).toFixed(1).padStart(TIME_PAD - 1)}%`);
+    console.log(`  ${SEPARATOR}`);
 
     // Verify output was created on last run
     expect(existsSync(destDirTs)).toBe(true);

@@ -111,7 +111,7 @@ class JekyllLogger {
           } else {
             formattedValue = String(value);
           }
-        } catch (error) {
+        } catch (_error) {
           formattedValue = '[Complex Object]';
         }
         const prefix = this.colors ? chalk.gray(`  ${key}: `) : `  ${key}: `;

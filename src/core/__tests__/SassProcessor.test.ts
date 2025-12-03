@@ -4,12 +4,14 @@ import { join } from 'path';
 import * as os from 'os';
 
 describe('SassProcessor', () => {
-  // Use a truly isolated temp directory for each test run
-  const testDir = join(os.tmpdir(), 'jekyll-ts-sass-test-' + Date.now() + '-' + Math.random().toString(36).slice(2));
-  const sassDir = join(testDir, '_sass');
+  // Use a truly isolated temp directory for each test
+  let testDir: string;
+  let sassDir: string;
 
   beforeEach(() => {
-    // Create test directories
+    // Create unique test directories for each test
+    testDir = join(os.tmpdir(), 'jekyll-ts-sass-test-' + Date.now() + '-' + Math.random().toString(36).slice(2));
+    sassDir = join(testDir, '_sass');
     mkdirSync(testDir, { recursive: true });
     mkdirSync(sassDir, { recursive: true });
   });

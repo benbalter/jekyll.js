@@ -114,7 +114,7 @@ export async function highlightCode(
       });
       
       return html;
-    } catch (langError) {
+    } catch (_langError) {
       // If language is not supported, fall back to plain text
       logger.debug(`Language '${language}' not supported, falling back to plain text`);
       

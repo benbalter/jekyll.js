@@ -7,7 +7,7 @@
 export { SeoTagPlugin } from './seo-tag';
 export { SitemapPlugin } from './sitemap';
 export { FeedPlugin } from './feed';
-export { JemojiPlugin, emojify, getEmoji, hasEmoji, getEmojiNames } from './jemoji';
+export { JemojiPlugin, emojify, getEmoji, hasEmoji, findEmoji } from './jemoji';
 export { RedirectFromPlugin, RedirectInfo } from './redirect-from';
 export { AvatarPlugin, generateAvatarTag, getAvatarUrl } from './avatar';
 export { GitHubMetadataPlugin, GitHubMetadata, GitHubRepository } from './github-metadata';

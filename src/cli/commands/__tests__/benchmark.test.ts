@@ -107,6 +107,8 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
 
   /**
    * Helper function to benchmark a build command
+   * Runs in production mode (NODE_ENV=production, JEKYLL_ENV=production)
+   * to take advantage of caching and other production optimizations.
    * @param command - The command to execute (e.g., 'node', 'jekyll')
    * @param args - Array of command-line arguments
    * @param cwd - Current working directory for the command
@@ -120,6 +122,11 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
         cwd,
         stdio: 'pipe',
         shell: true,
+        env: {
+          ...process.env,
+          NODE_ENV: 'production',
+          JEKYLL_ENV: 'production',
+        },
       });
 
       let stdout = '';

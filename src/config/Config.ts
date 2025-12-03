@@ -107,9 +107,13 @@ export interface JekyllConfig {
     sass_dir?: string;
     style?: 'nested' | 'expanded' | 'compact' | 'compressed';
     source_comments?: boolean;
-    /** Additional directories to search for SASS imports */
+    /**
+     * Additional directories to search for SASS imports
+     */
     load_paths?: string[];
-    /** Control source map generation: 'always', 'never', or 'development' */
+    /**
+     * Control source map generation: 'always' (default), 'never', or 'development'
+     */
     sourcemap?: 'always' | 'never' | 'development';
   };
 

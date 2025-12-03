@@ -327,18 +327,24 @@ $color: blue
   });
 
   describe('sourcemap configuration', () => {
-    it('should generate source maps by default (sourcemap: always)', () => {
+    it('should compile SCSS with sourcemap: always (default)', () => {
       const processor = new SassProcessor({
         source: testDir,
         config: {},
       });
 
-      // The process method doesn't return sourcemaps directly,
-      // but we can verify the configuration was applied by checking the processor exists
-      expect(processor).toBeDefined();
+      const scss = '.test { color: blue; }';
+      const testFile = join(testDir, 'sourcemap-always.scss');
+      writeFileSync(testFile, scss);
+
+      const css = processor.process(testFile, scss);
+
+      // Verify CSS is generated correctly
+      expect(css).toContain('.test');
+      expect(css).toContain('color: blue');
     });
 
-    it('should respect sourcemap: never configuration', () => {
+    it('should compile SCSS with sourcemap: never configuration', () => {
       const processor = new SassProcessor({
         source: testDir,
         config: {
@@ -348,10 +354,17 @@ $color: blue
         },
       });
 
-      expect(processor).toBeDefined();
+      const scss = '.test { color: red; }';
+      const testFile = join(testDir, 'sourcemap-never.scss');
+      writeFileSync(testFile, scss);
+
+      const css = processor.process(testFile, scss);
+
+      expect(css).toContain('.test');
+      expect(css).toContain('color: red');
     });
 
-    it('should respect sourcemap: development configuration', () => {
+    it('should compile SCSS with sourcemap: development in dev environment', () => {
       const processor = new SassProcessor({
         source: testDir,
         config: {
@@ -362,10 +375,17 @@ $color: blue
         environment: 'development',
       });
 
-      expect(processor).toBeDefined();
+      const scss = '.dev-test { color: green; }';
+      const testFile = join(testDir, 'sourcemap-dev.scss');
+      writeFileSync(testFile, scss);
+
+      const css = processor.process(testFile, scss);
+
+      expect(css).toContain('.dev-test');
+      expect(css).toContain('color: green');
     });
 
-    it('should disable sourcemaps in production when sourcemap: development', () => {
+    it('should compile SCSS with sourcemap: development in production environment', () => {
       const processor = new SassProcessor({
         source: testDir,
         config: {
@@ -376,10 +396,17 @@ $color: blue
         environment: 'production',
       });
 
-      expect(processor).toBeDefined();
+      const scss = '.prod-test { color: yellow; }';
+      const testFile = join(testDir, 'sourcemap-prod.scss');
+      writeFileSync(testFile, scss);
+
+      const css = processor.process(testFile, scss);
+
+      expect(css).toContain('.prod-test');
+      expect(css).toContain('color: yellow');
     });
 
-    it('should support legacy source_comments option for backward compatibility', () => {
+    it('should compile SCSS with legacy source_comments option for backward compatibility', () => {
       const processor = new SassProcessor({
         source: testDir,
         config: {
@@ -389,7 +416,14 @@ $color: blue
         },
       });
 
-      expect(processor).toBeDefined();
+      const scss = '.legacy-test { color: purple; }';
+      const testFile = join(testDir, 'sourcemap-legacy.scss');
+      writeFileSync(testFile, scss);
+
+      const css = processor.process(testFile, scss);
+
+      expect(css).toContain('.legacy-test');
+      expect(css).toContain('color: purple');
     });
   });
 });

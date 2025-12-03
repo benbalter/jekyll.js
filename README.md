@@ -82,7 +82,7 @@ jekyll-ts build --incremental
 > 2. **Data file changes may not trigger rebuilds**: Changes to files in `_data/` may not automatically rebuild affected pages. Run a clean build if you update data files.
 > 3. **Include file changes are not tracked**: Edits to files in `_includes/` may not trigger rebuilds for pages that use them.
 > 4. **Layout inheritance chains may not be fully tracked**: Changes to parent layouts may not rebuild all dependent pages.
-> 5. **Static files and plugin outputs are always regenerated**: Sitemap, feed, and other plugin outputs are rebuilt on every build.
+> 5. **Static files are always copied**: Files in `assets/` or other static directories are copied on every build.
 > 
 > **When in doubt, run a clean build:** Use `jekyll-ts build` without `--incremental` to ensure your site is fully rebuilt.
 

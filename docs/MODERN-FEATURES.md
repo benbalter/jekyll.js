@@ -267,6 +267,114 @@ if (!result.success) {
 }
 ```
 
+## Modern Liquid Filters
+
+Jekyll.js includes several modern Liquid filters that enhance content processing while maintaining backwards compatibility:
+
+### Reading Time Filter
+
+Calculate estimated reading time for content:
+
+```liquid
+{{ content | reading_time }}
+```
+
+Returns the number of minutes to read the content (based on 200 words per minute by default):
+
+```liquid
+Reading time: {{ page.content | reading_time }} min
+```
+
+Custom words-per-minute:
+
+```liquid
+{{ content | reading_time: 250 }}
+```
+
+### Table of Contents Filter
+
+Generate a table of contents from HTML content:
+
+```liquid
+{% assign toc = content | toc %}
+<nav class="table-of-contents">
+  <ul>
+    {% for item in toc %}
+      <li class="toc-level-{{ item.level }}">
+        <a href="#{{ item.id }}">{{ item.text }}</a>
+      </li>
+    {% endfor %}
+  </ul>
+</nav>
+```
+
+Each TOC entry has:
+- `level`: Heading level (2-4)
+- `id`: The heading's ID attribute (generated from text if not present)
+- `text`: The heading text
+
+### Heading Anchors Filter
+
+Add anchor links to headings for easy linking:
+
+```liquid
+{{ content | heading_anchors }}
+```
+
+Transforms:
+```html
+<h2>Getting Started</h2>
+```
+
+Into:
+```html
+<h2 id="getting-started">Getting Started <a href="#getting-started" class="anchor" aria-hidden="true">#</a></h2>
+```
+
+### External Links Filter
+
+Automatically add `target="_blank"` and `rel="noopener noreferrer"` to external links for security and UX:
+
+```liquid
+{{ content | external_links }}
+```
+
+Internal links (same domain) are left unchanged. External links get security attributes added.
+
+Specify your site domain explicitly:
+
+```liquid
+{{ content | external_links: "mysite.com" }}
+```
+
+### Truncate Words Filter
+
+Truncate text to a specified number of words:
+
+```liquid
+{{ content | truncate_words: 50 }}
+```
+
+Custom ellipsis:
+
+```liquid
+{{ content | truncate_words: 50, "..." }}
+```
+
+### Auto Excerpt Filter
+
+Generate excerpts automatically:
+
+```liquid
+{{ content | auto_excerpt }}
+```
+
+This returns the first paragraph. For word-based excerpts:
+
+```liquid
+{{ content | auto_excerpt: 100 }}
+```
+
 ## Future Enhancements
 
 Potential future additions:

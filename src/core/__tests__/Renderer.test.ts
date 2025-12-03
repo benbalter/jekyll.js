@@ -1236,4 +1236,299 @@ title: Directory Test
       );
     });
   });
+
+  describe('Modern enhancement filters', () => {
+    beforeEach(() => {
+      site = new Site(testDir, { url: 'https://example.com', baseurl: '/blog' });
+    });
+
+    describe('reading_time filter', () => {
+      it('should calculate reading time for content', async () => {
+        const renderer = new Renderer(site);
+        // 200 words at 200 WPM = 1 minute
+        const words = Array(200).fill('word').join(' ');
+        const template = '{{ text | reading_time }}';
+        const result = await renderer.render(template, { text: words });
+        expect(result).toBe('1');
+      });
+
+      it('should return minimum of 1 minute for short content', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ text | reading_time }}';
+        const result = await renderer.render(template, { text: 'short text' });
+        expect(result).toBe('1');
+      });
+
+      it('should calculate reading time correctly for longer content', async () => {
+        const renderer = new Renderer(site);
+        // 600 words at 200 WPM = 3 minutes
+        const words = Array(600).fill('word').join(' ');
+        const template = '{{ text | reading_time }}';
+        const result = await renderer.render(template, { text: words });
+        expect(result).toBe('3');
+      });
+
+      it('should accept custom words per minute', async () => {
+        const renderer = new Renderer(site);
+        // 200 words at 100 WPM = 2 minutes
+        const words = Array(200).fill('word').join(' ');
+        const template = '{{ text | reading_time: 100 }}';
+        const result = await renderer.render(template, { text: words });
+        expect(result).toBe('2');
+      });
+
+      it('should strip HTML before counting words', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ text | reading_time }}';
+        const result = await renderer.render(template, { text: '<p>one two three</p>' });
+        expect(result).toBe('1');
+      });
+
+      it('should handle empty input', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ text | reading_time }}';
+        const result = await renderer.render(template, { text: '' });
+        expect(result).toBe('0');
+      });
+    });
+
+    describe('toc filter', () => {
+      it('should generate table of contents from HTML headings', async () => {
+        const renderer = new Renderer(site);
+        const html = '<h2>First</h2><p>Content</p><h3>Second</h3><h2>Third</h2>';
+        const template = '{% assign tocItems = content | toc %}{{ tocItems | size }}';
+        const result = await renderer.render(template, { content: html });
+        expect(result).toBe('3');
+      });
+
+      it('should extract heading levels correctly', async () => {
+        const renderer = new Renderer(site);
+        const html = '<h2>Level 2</h2><h3>Level 3</h3><h4>Level 4</h4>';
+        const template = '{% assign tocItems = content | toc %}{{ tocItems[0].level }}-{{ tocItems[1].level }}-{{ tocItems[2].level }}';
+        const result = await renderer.render(template, { content: html });
+        expect(result).toBe('2-3-4');
+      });
+
+      it('should extract heading text', async () => {
+        const renderer = new Renderer(site);
+        const html = '<h2>Introduction</h2><h3>Overview</h3>';
+        const template = '{% assign tocItems = content | toc %}{{ tocItems[0].text }}-{{ tocItems[1].text }}';
+        const result = await renderer.render(template, { content: html });
+        expect(result).toBe('Introduction-Overview');
+      });
+
+      it('should use existing id attributes', async () => {
+        const renderer = new Renderer(site);
+        const html = '<h2 id="custom-id">Heading</h2>';
+        const template = '{% assign tocItems = content | toc %}{{ tocItems[0].id }}';
+        const result = await renderer.render(template, { content: html });
+        expect(result).toBe('custom-id');
+      });
+
+      it('should generate id from text if not present', async () => {
+        const renderer = new Renderer(site);
+        const html = '<h2>Hello World</h2>';
+        const template = '{% assign tocItems = content | toc %}{{ tocItems[0].id }}';
+        const result = await renderer.render(template, { content: html });
+        expect(result).toBe('hello-world');
+      });
+
+      it('should handle headings with nested HTML tags', async () => {
+        const renderer = new Renderer(site);
+        const html = '<h2>Hello <em>World</em></h2><h3>Code: <code>example</code></h3>';
+        const template = '{% assign tocItems = content | toc %}{{ tocItems[0].text }}-{{ tocItems[1].text }}';
+        const result = await renderer.render(template, { content: html });
+        expect(result).toBe('Hello World-Code: example');
+      });
+
+      it('should return empty array for content without headings', async () => {
+        const renderer = new Renderer(site);
+        const html = '<p>No headings here</p>';
+        const template = '{% assign tocItems = content | toc %}{{ tocItems | size }}';
+        const result = await renderer.render(template, { content: html });
+        expect(result).toBe('0');
+      });
+
+      it('should handle empty input', async () => {
+        const renderer = new Renderer(site);
+        const template = '{% assign tocItems = content | toc %}{{ tocItems | size }}';
+        const result = await renderer.render(template, { content: '' });
+        expect(result).toBe('0');
+      });
+    });
+
+    describe('heading_anchors filter', () => {
+      it('should add anchor links to headings', async () => {
+        const renderer = new Renderer(site);
+        const html = '<h2>Hello World</h2>';
+        const template = '{{ content | heading_anchors }}';
+        const result = await renderer.render(template, { content: html });
+        expect(result).toContain('id="hello-world"');
+        expect(result).toContain('href="#hello-world"');
+        expect(result).toContain('class="anchor"');
+      });
+
+      it('should preserve existing id attributes', async () => {
+        const renderer = new Renderer(site);
+        const html = '<h2 id="custom">Hello</h2>';
+        const template = '{{ content | heading_anchors }}';
+        const result = await renderer.render(template, { content: html });
+        expect(result).toContain('id="custom"');
+        expect(result).toContain('href="#custom"');
+      });
+
+      it('should preserve nested HTML in headings', async () => {
+        const renderer = new Renderer(site);
+        const html = '<h2>Hello <em>World</em></h2>';
+        const template = '{{ content | heading_anchors }}';
+        const result = await renderer.render(template, { content: html });
+        expect(result).toContain('<em>World</em>');
+        expect(result).toContain('id="hello-world"');
+      });
+
+      it('should handle multiple headings', async () => {
+        const renderer = new Renderer(site);
+        const html = '<h2>First</h2><h3>Second</h3>';
+        const template = '{{ content | heading_anchors }}';
+        const result = await renderer.render(template, { content: html });
+        expect(result).toContain('href="#first"');
+        expect(result).toContain('href="#second"');
+      });
+
+      it('should not modify h1 headings', async () => {
+        const renderer = new Renderer(site);
+        const html = '<h1>Title</h1><h2>Subtitle</h2>';
+        const template = '{{ content | heading_anchors }}';
+        const result = await renderer.render(template, { content: html });
+        expect(result).toContain('<h1>Title</h1>');
+        expect(result).toContain('href="#subtitle"');
+      });
+
+      it('should handle empty input', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ content | heading_anchors }}';
+        const result = await renderer.render(template, { content: '' });
+        expect(result).toBe('');
+      });
+    });
+
+    describe('external_links filter', () => {
+      it('should add target="_blank" to external links', async () => {
+        const renderer = new Renderer(site);
+        const html = '<a href="https://google.com">Google</a>';
+        const template = '{{ content | external_links }}';
+        const result = await renderer.render(template, { content: html });
+        expect(result).toContain('target="_blank"');
+      });
+
+      it('should add rel="noopener noreferrer" to external links', async () => {
+        const renderer = new Renderer(site);
+        const html = '<a href="https://google.com">Google</a>';
+        const template = '{{ content | external_links }}';
+        const result = await renderer.render(template, { content: html });
+        expect(result).toContain('rel="noopener noreferrer"');
+      });
+
+      it('should not modify internal links', async () => {
+        const renderer = new Renderer(site);
+        const html = '<a href="https://example.com/page">Internal</a>';
+        const template = '{{ content | external_links }}';
+        const result = await renderer.render(template, { content: html });
+        expect(result).not.toContain('target="_blank"');
+      });
+
+      it('should handle custom site domain', async () => {
+        const renderer = new Renderer(site);
+        const html = '<a href="https://mysite.com/page">Internal</a>';
+        const template = '{{ content | external_links: "mysite.com" }}';
+        const result = await renderer.render(template, { content: html });
+        expect(result).not.toContain('target="_blank"');
+      });
+
+      it('should handle empty input', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ content | external_links }}';
+        const result = await renderer.render(template, { content: '' });
+        expect(result).toBe('');
+      });
+    });
+
+    describe('truncate_words filter', () => {
+      it('should truncate text to specified number of words', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ text | truncate_words: 3 }}';
+        const result = await renderer.render(template, { text: 'one two three four five' });
+        expect(result).toBe('one two three...');
+      });
+
+      it('should not truncate if text has fewer words', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ text | truncate_words: 10 }}';
+        const result = await renderer.render(template, { text: 'one two three' });
+        expect(result).toBe('one two three');
+      });
+
+      it('should use custom ellipsis', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ text | truncate_words: 2, "---" }}';
+        const result = await renderer.render(template, { text: 'one two three' });
+        expect(result).toBe('one two---');
+      });
+
+      it('should strip HTML before truncating', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ text | truncate_words: 2 }}';
+        const result = await renderer.render(template, { text: '<p>one two three</p>' });
+        expect(result).toBe('one two...');
+      });
+
+      it('should handle empty input', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ text | truncate_words: 5 }}';
+        const result = await renderer.render(template, { text: '' });
+        expect(result).toBe('');
+      });
+    });
+
+    describe('auto_excerpt filter', () => {
+      it('should extract first paragraph', async () => {
+        const renderer = new Renderer(site);
+        const text = 'First paragraph.\n\nSecond paragraph.';
+        const template = '{{ text | auto_excerpt }}';
+        const result = await renderer.render(template, { text });
+        expect(result).toBe('First paragraph.');
+      });
+
+      it('should extract first N words with word limit', async () => {
+        const renderer = new Renderer(site);
+        const text = 'one two three four five six';
+        const template = '{{ text | auto_excerpt: 3 }}';
+        const result = await renderer.render(template, { text });
+        expect(result).toBe('one two three...');
+      });
+
+      it('should not add ellipsis if text is shorter than limit', async () => {
+        const renderer = new Renderer(site);
+        const text = 'short text';
+        const template = '{{ text | auto_excerpt: 10 }}';
+        const result = await renderer.render(template, { text });
+        expect(result).toBe('short text');
+      });
+
+      it('should strip HTML', async () => {
+        const renderer = new Renderer(site);
+        const text = '<p>First paragraph.</p>\n\n<p>Second paragraph.</p>';
+        const template = '{{ text | auto_excerpt }}';
+        const result = await renderer.render(template, { text });
+        expect(result).toBe('First paragraph.');
+      });
+
+      it('should handle empty input', async () => {
+        const renderer = new Renderer(site);
+        const template = '{{ text | auto_excerpt }}';
+        const result = await renderer.render(template, { text: '' });
+        expect(result).toBe('');
+      });
+    });
+  });
 });

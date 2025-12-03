@@ -72,6 +72,9 @@ function sanitizeUsername(username: string): string {
   return String(username).replace(/[^a-zA-Z0-9_-]/g, '');
 }
 
+/** Multiplier for retina/high-DPI display support */
+const RETINA_MULTIPLIER = 2;
+
 /**
  * Generate an avatar image tag for a GitHub user
  * @param username GitHub username
@@ -86,8 +89,8 @@ export function generateAvatarTag(username: string, size: number = 40): string {
   }
   
   // Use GitHub's avatar service
-  // The @2x size provides a high-DPI version
-  const url = `https://avatars.githubusercontent.com/${sanitized}?v=4&s=${size * 2}`;
+  // The retina size provides a high-DPI version
+  const url = `https://avatars.githubusercontent.com/${sanitized}?v=4&s=${size * RETINA_MULTIPLIER}`;
   const escapedUrl = escapeHtml(url);
   const escapedUsername = escapeHtml(sanitized);
   

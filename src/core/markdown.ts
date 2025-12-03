@@ -8,13 +8,13 @@
 export interface MarkdownOptions {
   /** Enable emoji processing (converts :emoji: to unicode) */
   emoji?: boolean;
-  /** Enable GitHub-style mentions and references */
+  /** Enable GitHub-style @mentions (links @username to GitHub profiles) */
   githubMentions?:
     | boolean
     | {
-        /** GitHub repository (e.g., 'owner/repo') for linking issues/PRs */
+        /** GitHub repository (e.g., 'owner/repo') - used by remark-github but mentions are the only references processed */
         repository?: string;
-        /** Base URL for user mentions (default: 'https://github.com') */
+        /** Wrap mentions in strong tags (default: true in remark-github) */
         mentionStrong?: boolean;
       };
 }
@@ -119,9 +119,13 @@ async function getProcessor(options: MarkdownOptions): Promise<any> {
 
     // Custom buildUrl that only handles mentions, returning false for other types
     // This ensures we don't auto-link issues (#123), commits, or other GitHub references
-    const mentionsOnlyBuildUrl = (values: { type: string }) => {
+    // Type matches remark-github's BuildUrlValues which has type: 'commit' | 'compare' | 'issue' | 'mention'
+    const mentionsOnlyBuildUrl = (
+      values: { type: 'commit' | 'compare' | 'issue' | 'mention'; user: string }
+    ): string | false => {
       if (values.type === 'mention') {
-        return defaultBuildUrl(values as Parameters<typeof defaultBuildUrl>[0]);
+        // Type narrowing: when type is 'mention', values matches BuildUrlMentionValues
+        return defaultBuildUrl(values as { type: 'mention'; user: string });
       }
       return false;
     };

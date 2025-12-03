@@ -572,7 +572,7 @@ export class Builder {
   private async renderCollections(collections?: Map<string, Document[]>): Promise<void> {
     const collectionsToRender = collections || this.site.collections;
 
-    const collectionPromises: Promise<void>[] = [];
+    const collectionPromises: Promise<void[]>[] = [];
 
     for (const [collectionName, documents] of collectionsToRender) {
       const collectionConfig = this.site.config.collections?.[collectionName];
@@ -585,9 +585,7 @@ export class Builder {
 
       logger.info(`Rendering ${documents.length} documents from collection '${collectionName}'...`);
 
-      collectionPromises.push(
-        Promise.all(documents.map((doc) => this.renderDocument(doc))).then(() => {})
-      );
+      collectionPromises.push(Promise.all(documents.map((doc) => this.renderDocument(doc))));
     }
 
     await Promise.all(collectionPromises);

@@ -1,0 +1,6 @@
+---
+layout: default
+title: Tag Test
+tag: one
+---
+Post with single tag.

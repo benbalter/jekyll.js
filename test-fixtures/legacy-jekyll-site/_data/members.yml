@@ -1,0 +1,6 @@
+- name: Alice
+  role: Developer
+- name: Bob
+  role: Designer
+- name: Carol
+  role: Manager

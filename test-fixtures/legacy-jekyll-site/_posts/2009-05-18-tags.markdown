@@ -1,0 +1,6 @@
+---
+layout: default
+title: Tags Test
+tags: [one, two, three]
+---
+Post with multiple tags.

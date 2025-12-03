@@ -1,5 +1,5 @@
 import chalk from 'chalk';
-import { resolve, join } from 'path';
+import { resolve, join, isAbsolute } from 'path';
 import { loadConfig, validateConfig, printValidation } from '../../config';
 import { Site, Builder } from '../../core';
 import { DevServer } from '../../server';
@@ -26,7 +26,7 @@ export async function serveCommand(options: ServeOptions): Promise<void> {
     const sourcePath = resolve(options.source);
 
     // Resolve config path relative to source directory if it's a relative path
-    const configPath = options.config.startsWith('/')
+    const configPath = isAbsolute(options.config)
       ? options.config
       : resolve(sourcePath, options.config);
     const config = loadConfig(configPath, options.verbose);

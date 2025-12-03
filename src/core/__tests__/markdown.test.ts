@@ -194,20 +194,10 @@ describe('Markdown processing', () => {
   });
 
   describe('processMarkdownSync', () => {
-    it('should process markdown synchronously', () => {
-      const html = processMarkdownSync('# Test');
-      expect(html).toContain('<h1>Test</h1>');
-    });
-
-    it('should handle basic formatting', () => {
-      const html = processMarkdownSync('**bold** and *italic*');
-      expect(html).toContain('<strong>bold</strong>');
-      expect(html).toContain('<em>italic</em>');
-    });
-
-    it('should handle empty input', () => {
-      const html = processMarkdownSync('');
-      expect(html).toBe('');
+    it('should throw error as it is not supported', () => {
+      expect(() => processMarkdownSync('# Test')).toThrow(
+        'processMarkdownSync is not supported. Use processMarkdown instead.'
+      );
     });
   });
 });

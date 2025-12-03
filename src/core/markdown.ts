@@ -1,17 +1,13 @@
 /**
- * Markdown processing using markdown-it
+ * Markdown processing using Remark
  *
- * This module provides high-performance markdown processing optimized for Jekyll compatibility.
- * Uses markdown-it instead of remark for significantly faster processing:
- * - ~50x faster initialization (2ms vs 100ms+)
- * - ~7x faster per-document rendering
- *
- * Supports GitHub Flavored Markdown features including tables, strikethrough,
- * and fenced code blocks out of the box.
+ * This module provides optimized markdown processing using the Remark ecosystem.
+ * Key optimizations:
+ * - Module caching: Dynamic imports are cached after first load
+ * - Processor caching: Frozen processors are reused for repeated processing
+ * - Parallel module loading: Core modules are loaded simultaneously
+ * - Processor freezing: Processors are frozen after configuration for optimal performance
  */
-
-import MarkdownIt from 'markdown-it';
-import { emojify } from 'node-emoji';
 
 /**
  * Options for markdown processing
@@ -30,8 +26,20 @@ export interface MarkdownOptions {
       };
 }
 
-// Cached markdown-it instances for different option combinations
-const processorCache = new Map<string, MarkdownIt>();
+// Cached module imports to avoid repeated dynamic imports
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let cachedModules: {
+  unified: typeof import('unified').unified;
+  remarkParse: typeof import('remark-parse').default;
+  remarkGfm: typeof import('remark-gfm').default;
+  remarkHtml: typeof import('remark-html').default;
+  remarkGemoji?: typeof import('remark-gemoji').default;
+  remarkGithub?: typeof import('remark-github').default;
+} | null = null;
+
+// Cached frozen processors for different option combinations
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const processorCache = new Map<string, any>();
 
 /**
  * Generate a cache key for the given options
@@ -47,74 +55,120 @@ function getOptionsCacheKey(options: MarkdownOptions): string {
 }
 
 /**
- * Process @mentions in text (converts @username to GitHub profile links)
- * @param text Text to process
- * @param baseUrl Base URL for user profiles (default: 'https://github.com')
- * @returns Text with @mentions converted to links
+ * Load and cache the required modules
  */
-function processGitHubMentions(text: string, baseUrl: string = 'https://github.com'): string {
-  // Match @username patterns (GitHub usernames: alphanumeric and hyphens, 1-39 chars)
-  // Only match mentions that are preceded by whitespace or start of string
-  return text.replace(
-    /(^|[^\w])@([a-zA-Z0-9](?:[a-zA-Z0-9-]{0,37}[a-zA-Z0-9])?)/g,
-    (_match, prefix, username) => {
-      return `${prefix}<a href="${baseUrl}/${username}" class="user-mention">@${username}</a>`;
-    }
-  );
+async function loadModules(options: MarkdownOptions): Promise<typeof cachedModules> {
+  // If modules are already loaded, load optional modules if needed and return
+  if (cachedModules !== null) {
+    await loadOptionalModules(options);
+    return cachedModules;
+  }
+
+  // Load all core modules in parallel
+  const [{ unified }, { default: remarkParse }, { default: remarkGfm }, { default: remarkHtml }] =
+    await Promise.all([
+      import('unified'),
+      import('remark-parse'),
+      import('remark-gfm'),
+      import('remark-html'),
+    ]);
+
+  cachedModules = {
+    unified,
+    remarkParse,
+    remarkGfm,
+    remarkHtml,
+  };
+
+  // Load optional modules if needed
+  await loadOptionalModules(options);
+
+  return cachedModules;
 }
 
 /**
- * Get or create a cached markdown-it processor for the given options
+ * Load optional modules (emoji, GitHub mentions) if needed and not already cached
  */
-function getProcessor(options: MarkdownOptions): MarkdownIt {
+async function loadOptionalModules(options: MarkdownOptions): Promise<void> {
+  if (!cachedModules) return;
+
+  const loadPromises: Promise<void>[] = [];
+
+  if (options.emoji && !cachedModules.remarkGemoji) {
+    loadPromises.push(
+      import('remark-gemoji').then(({ default: remarkGemoji }) => {
+        cachedModules!.remarkGemoji = remarkGemoji;
+      })
+    );
+  }
+
+  if (options.githubMentions && !cachedModules.remarkGithub) {
+    loadPromises.push(
+      import('remark-github').then(({ default: remarkGithub }) => {
+        cachedModules!.remarkGithub = remarkGithub;
+      })
+    );
+  }
+
+  if (loadPromises.length > 0) {
+    await Promise.all(loadPromises);
+  }
+}
+
+/**
+ * Get or create a cached, frozen processor for the given options
+ * Frozen processors are optimized for repeated use
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function getProcessor(options: MarkdownOptions): Promise<any> {
   const cacheKey = getOptionsCacheKey(options);
 
   if (processorCache.has(cacheKey)) {
-    return processorCache.get(cacheKey)!;
+    return processorCache.get(cacheKey);
   }
 
-  // Create markdown-it instance with GFM-like features enabled
-  const md = new MarkdownIt({
-    html: true, // Enable HTML tags in source (Jekyll compatibility)
-    linkify: true, // Autoconvert URL-like text to links
-    typographer: true, // Enable smartypants-like substitutions
-    breaks: false, // Don't convert \n to <br> (Jekyll default)
-  });
+  const modules = await loadModules(options);
+  if (!modules) {
+    throw new Error('Failed to load markdown modules');
+  }
 
-  processorCache.set(cacheKey, md);
-  return md;
+  // Build the processor pipeline
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let processor: any = modules
+    .unified()
+    .use(modules.remarkParse) // Parse markdown
+    .use(modules.remarkGfm); // GitHub Flavored Markdown support
+
+  // Add emoji support if enabled (jemoji plugin)
+  if (options.emoji && modules.remarkGemoji) {
+    processor = processor.use(modules.remarkGemoji);
+  }
+
+  // Add GitHub mentions/references support if enabled (jekyll-mentions plugin)
+  if (options.githubMentions && modules.remarkGithub) {
+    const githubOptions = typeof options.githubMentions === 'object' ? options.githubMentions : {};
+    processor = processor.use(modules.remarkGithub, githubOptions);
+  }
+
+  // Add HTML output - SECURITY: No sanitization - matches Jekyll behavior, allows raw HTML
+  processor = processor.use(modules.remarkHtml, { sanitize: false });
+
+  // Freeze the processor to optimize for repeated use
+  // This tells unified that the processor configuration is complete
+  processor.freeze();
+
+  processorCache.set(cacheKey, processor);
+  return processor;
 }
 
 /**
- * Apply post-processing to markdown output (emoji and mentions)
- * @param html HTML output from markdown-it
- * @param options Markdown processing options
- * @returns Processed HTML
- */
-function applyPostProcessing(html: string, options: MarkdownOptions): string {
-  let result = html;
-
-  // Process emoji if enabled (jemoji plugin compatibility)
-  if (options.emoji) {
-    result = emojify(result);
-  }
-
-  // Process GitHub mentions if enabled (jekyll-mentions plugin compatibility)
-  if (options.githubMentions) {
-    result = processGitHubMentions(result, 'https://github.com');
-  }
-
-  return result;
-}
-
-/**
- * Process markdown content to HTML using markdown-it
+ * Process markdown content to HTML using Remark
  *
  * @param content Markdown content to process
  * @param options Optional markdown processing options
  * @returns HTML output
  *
- * @security WARNING: This function does NOT sanitize HTML output.
+ * @security WARNING: This function does NOT sanitize HTML output (sanitize: false).
  * Raw HTML in markdown is passed through unchanged to match Jekyll's behavior.
  *
  * **Security Implications:**
@@ -135,29 +189,37 @@ export async function processMarkdown(
   content: string,
   options: MarkdownOptions = {}
 ): Promise<string> {
-  const processor = getProcessor(options);
-  const html = processor.render(content);
-  return applyPostProcessing(html, options);
+  const processor = await getProcessor(options);
+  const result = await processor.process(content);
+  return String(result);
 }
 
 /**
  * Process markdown content to HTML synchronously
- * This is now supported thanks to markdown-it being synchronous.
- * @param content Markdown content to process
- * @param options Optional markdown processing options
- * @returns HTML output
+ * Note: This is not supported due to ESM module limitations
+ * Always throws an error. Use processMarkdown instead.
+ * @deprecated Use processMarkdown instead
+ * @param _content Markdown content (unused - function always throws)
+ * @param _options Markdown options (unused - function always throws)
+ * @throws {Error} Always throws - synchronous processing not supported
  */
-export function processMarkdownSync(content: string, options: MarkdownOptions = {}): string {
-  const processor = getProcessor(options);
-  const html = processor.render(content);
-  return applyPostProcessing(html, options);
+export function processMarkdownSync(_content: string, _options?: MarkdownOptions): never {
+  throw new Error('processMarkdownSync is not supported. Use processMarkdown instead.');
 }
 
 /**
- * Pre-initialize the default markdown processor.
- * Call this early in application startup to ensure the processor is ready
- * before processing any documents.
+ * Pre-initialize the markdown processor for optimal performance.
+ * Call this early in application startup to ensure modules are loaded
+ * and processor is cached before processing any documents.
+ *
+ * This function:
+ * - Loads all required Remark modules in parallel
+ * - Creates and freezes a processor with the given options
+ * - Caches the processor for reuse
+ *
+ * @param options Optional markdown processing options
+ * @returns Promise that resolves when initialization is complete
  */
-export function initMarkdownProcessor(options: MarkdownOptions = {}): void {
-  getProcessor(options);
+export async function initMarkdownProcessor(options: MarkdownOptions = {}): Promise<void> {
+  await getProcessor(options);
 }

@@ -481,4 +481,151 @@ About page`
       expect(existsSync(join(destDir, 'about.html'))).toBe(true);
     });
   });
+
+  describe('keep_files support', () => {
+    it('should preserve files listed in keep_files during clean', async () => {
+      // Create initial destination with some files
+      mkdirSync(destDir, { recursive: true });
+      mkdirSync(join(destDir, '.git'), { recursive: true });
+      writeFileSync(join(destDir, '.git/config'), 'git config');
+      writeFileSync(join(destDir, 'old-file.html'), 'old content');
+
+      // Create a simple page
+      writeFileSync(
+        join(testSiteDir, 'index.md'),
+        `---
+title: Home
+---
+Content`
+      );
+
+      const site = new Site(testSiteDir, {
+        keep_files: ['.git'],
+      });
+      const builder = new Builder(site, { clean: true });
+      await builder.build();
+
+      // .git should be preserved
+      expect(existsSync(join(destDir, '.git/config'))).toBe(true);
+      
+      // old-file.html should be removed
+      expect(existsSync(join(destDir, 'old-file.html'))).toBe(false);
+      
+      // New index.html should exist
+      expect(existsSync(join(destDir, 'index.html'))).toBe(true);
+    });
+
+    it('should preserve multiple files/directories in keep_files', async () => {
+      // Create initial destination with some files
+      mkdirSync(destDir, { recursive: true });
+      mkdirSync(join(destDir, '.git'), { recursive: true });
+      mkdirSync(join(destDir, '.svn'), { recursive: true });
+      writeFileSync(join(destDir, '.git/config'), 'git config');
+      writeFileSync(join(destDir, '.svn/entries'), 'svn entries');
+      writeFileSync(join(destDir, 'old.html'), 'old content');
+
+      writeFileSync(
+        join(testSiteDir, 'index.md'),
+        '---\ntitle: Home\n---\nContent'
+      );
+
+      const site = new Site(testSiteDir, {
+        keep_files: ['.git', '.svn'],
+      });
+      const builder = new Builder(site, { clean: true });
+      await builder.build();
+
+      // Both directories should be preserved
+      expect(existsSync(join(destDir, '.git/config'))).toBe(true);
+      expect(existsSync(join(destDir, '.svn/entries'))).toBe(true);
+      
+      // old.html should be removed
+      expect(existsSync(join(destDir, 'old.html'))).toBe(false);
+    });
+
+    it('should preserve nested keep_files paths', async () => {
+      // Create initial destination with nested structure
+      mkdirSync(join(destDir, 'uploads/images'), { recursive: true });
+      writeFileSync(join(destDir, 'uploads/images/photo.jpg'), 'image data');
+      writeFileSync(join(destDir, 'old.html'), 'old content');
+
+      writeFileSync(
+        join(testSiteDir, 'index.md'),
+        '---\ntitle: Home\n---\nContent'
+      );
+
+      const site = new Site(testSiteDir, {
+        keep_files: ['uploads'],
+      });
+      const builder = new Builder(site, { clean: true });
+      await builder.build();
+
+      // uploads directory and its contents should be preserved
+      expect(existsSync(join(destDir, 'uploads/images/photo.jpg'))).toBe(true);
+      
+      // old.html should be removed
+      expect(existsSync(join(destDir, 'old.html'))).toBe(false);
+    });
+  });
+
+  describe('static_files handling', () => {
+    it('should collect static files during build', async () => {
+      // Create static files
+      const assetsDir = join(testSiteDir, 'assets');
+      mkdirSync(assetsDir);
+      writeFileSync(join(assetsDir, 'style.css'), 'body { margin: 0; }');
+      writeFileSync(join(assetsDir, 'script.js'), 'console.log("hello");');
+
+      // Create an image
+      const imagesDir = join(assetsDir, 'images');
+      mkdirSync(imagesDir);
+      writeFileSync(join(imagesDir, 'logo.png'), 'fake-image-data');
+
+      const site = new Site(testSiteDir);
+      const builder = new Builder(site);
+      await builder.build();
+
+      // Check that static_files were collected
+      expect(site.static_files.length).toBe(3);
+      
+      // Check that static files were copied
+      expect(existsSync(join(destDir, 'assets/style.css'))).toBe(true);
+      expect(existsSync(join(destDir, 'assets/script.js'))).toBe(true);
+      expect(existsSync(join(destDir, 'assets/images/logo.png'))).toBe(true);
+    });
+
+    it('should not include markdown/HTML files in static_files', async () => {
+      // Create markdown and static files
+      writeFileSync(
+        join(testSiteDir, 'index.md'),
+        '---\ntitle: Home\n---\nContent'
+      );
+      writeFileSync(join(testSiteDir, 'style.css'), 'body { margin: 0; }');
+
+      const site = new Site(testSiteDir);
+      await site.read();
+
+      // Only CSS should be in static_files
+      expect(site.static_files.length).toBe(1);
+      expect(site.static_files[0]?.name).toBe('style.css');
+    });
+
+    it('should not include SASS/SCSS files in static_files', async () => {
+      // Create SASS and static files
+      const cssDir = join(testSiteDir, 'css');
+      mkdirSync(cssDir);
+      writeFileSync(
+        join(cssDir, 'main.scss'),
+        '---\n---\nbody { color: red; }'
+      );
+      writeFileSync(join(testSiteDir, 'app.js'), 'console.log("hello");');
+
+      const site = new Site(testSiteDir);
+      await site.read();
+
+      // Only JS should be in static_files
+      expect(site.static_files.length).toBe(1);
+      expect(site.static_files[0]?.name).toBe('app.js');
+    });
+  });
 });

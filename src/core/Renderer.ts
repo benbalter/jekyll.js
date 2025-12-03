@@ -675,6 +675,7 @@ export class Renderer {
         data: siteData.data,  // Add data files
         pages: siteData.pages,
         posts: siteData.posts,
+        static_files: siteData.static_files,  // Add static files
         collections: siteData.collections,
         source: siteData.source,
         destination: siteData.destination,

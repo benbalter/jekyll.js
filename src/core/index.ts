@@ -5,6 +5,7 @@
 
 export { Site, SiteConfig, createSiteFromConfig } from './Site';
 export { Document, DocumentType, FrontMatter } from './Document';
+export { StaticFile } from './StaticFile';
 export { Renderer, RendererOptions } from './Renderer';
 export { processMarkdown, processMarkdownSync } from './markdown';
 export { Builder, BuilderOptions } from './Builder';

@@ -429,5 +429,101 @@ collections:
       expect(json.data).toBeDefined();
       expect(json.data.info).toEqual({ version: '1.0' });
     });
+
+    it('should include static_files in JSON representation', async () => {
+      const assetsDir = join(testSiteDir, 'assets');
+      mkdirSync(assetsDir);
+      writeFileSync(join(assetsDir, 'style.css'), 'body { margin: 0; }');
+
+      const site = new Site(testSiteDir);
+      await site.read();
+
+      const json = site.toJSON();
+      expect(json.static_files).toBeDefined();
+      expect(Array.isArray(json.static_files)).toBe(true);
+      expect(json.static_files.length).toBeGreaterThan(0);
+      expect(json.static_files[0].name).toBe('style.css');
+    });
+  });
+
+  describe('static_files reading', () => {
+    it('should read static files from site directory', async () => {
+      // Create static files
+      const assetsDir = join(testSiteDir, 'assets');
+      mkdirSync(assetsDir);
+      writeFileSync(join(assetsDir, 'style.css'), 'body { margin: 0; }');
+      writeFileSync(join(assetsDir, 'script.js'), 'console.log("hello");');
+
+      const site = new Site(testSiteDir);
+      await site.read();
+
+      expect(site.static_files.length).toBe(2);
+      const names = site.static_files.map(sf => sf.name);
+      expect(names).toContain('style.css');
+      expect(names).toContain('script.js');
+    });
+
+    it('should include correct metadata for static files', async () => {
+      writeFileSync(join(testSiteDir, 'favicon.ico'), 'fake-icon-data');
+
+      const site = new Site(testSiteDir);
+      await site.read();
+
+      const favicon = site.static_files.find(sf => sf.name === 'favicon.ico');
+      expect(favicon).toBeDefined();
+      expect(favicon?.basename).toBe('favicon');
+      expect(favicon?.extname).toBe('.ico');
+      expect(favicon?.modified_time).toBeDefined();
+      expect(favicon?.modified_time.getTime()).toBeGreaterThan(0);
+      expect(favicon?.size).toBeGreaterThan(0);
+    });
+
+    it('should handle nested static files', async () => {
+      const nestedDir = join(testSiteDir, 'assets/images/icons');
+      mkdirSync(nestedDir, { recursive: true });
+      writeFileSync(join(nestedDir, 'icon.png'), 'fake-icon-data');
+
+      const site = new Site(testSiteDir);
+      await site.read();
+
+      const icon = site.static_files.find(sf => sf.name === 'icon.png');
+      expect(icon).toBeDefined();
+      expect(icon?.relativePath).toBe('assets/images/icons/icon.png');
+      expect(icon?.url).toBe('/assets/images/icons/icon.png');
+    });
+
+    it('should not include files from excluded directories', async () => {
+      const nodeModulesDir = join(testSiteDir, 'node_modules');
+      mkdirSync(nodeModulesDir);
+      writeFileSync(join(nodeModulesDir, 'package.json'), '{}');
+      
+      writeFileSync(join(testSiteDir, 'app.js'), 'console.log("hello");');
+
+      const site = new Site(testSiteDir);
+      await site.read();
+
+      // Only app.js should be in static_files, not node_modules contents
+      expect(site.static_files.length).toBe(1);
+      expect(site.static_files[0]?.name).toBe('app.js');
+    });
+
+    it('should not include files from underscore-prefixed directories', async () => {
+      const postsDir = join(testSiteDir, '_posts');
+      mkdirSync(postsDir);
+      writeFileSync(
+        join(postsDir, '2024-01-01-post.md'),
+        '---\ntitle: Post\n---\nContent'
+      );
+      
+      writeFileSync(join(testSiteDir, 'style.css'), 'body { margin: 0; }');
+
+      const site = new Site(testSiteDir);
+      await site.read();
+
+      // Only style.css should be in static_files
+      const staticFileNames = site.static_files.map(sf => sf.name);
+      expect(staticFileNames).toContain('style.css');
+      expect(staticFileNames).not.toContain('2024-01-01-post.md');
+    });
   });
 });

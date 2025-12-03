@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, statSync, readFileSync } from 'fs';
 import { join, resolve, extname, dirname, basename } from 'path';
 import { Document, DocumentType } from './Document';
+import { StaticFile } from './StaticFile';
 import { JekyllConfig, loadConfig } from '../config';
 import { ThemeManager } from './ThemeManager';
 import yaml from 'js-yaml';
@@ -57,8 +58,8 @@ export class Site {
   /** All includes in the site */
   public readonly includes: Map<string, Document> = new Map();
 
-  /** Static files (non-Jekyll files) */
-  public readonly staticFiles: string[] = [];
+  /** Static files (non-Jekyll files) - now contains StaticFile objects with metadata */
+  public readonly static_files: StaticFile[] = [];
 
   /** Theme manager for handling theme files */
   public readonly themeManager: ThemeManager;
@@ -122,6 +123,9 @@ export class Site {
 
     // Read pages (do this last to avoid picking up collection docs as pages)
     this.readPages();
+
+    // Read static files
+    this.readStaticFiles();
   }
 
   /**
@@ -336,6 +340,41 @@ export class Site {
   }
 
   /**
+   * Read all static files from the source directory
+   * Static files are non-Jekyll files (not markdown, HTML, SASS, or in special directories)
+   */
+  private readStaticFiles(): void {
+    const files = this.walkDirectory(this.source, true);
+    
+    for (const file of files) {
+      // Skip markdown, HTML, and SASS files - they're processed by Jekyll
+      if (this.isMarkdownOrHtml(file)) {
+        continue;
+      }
+      
+      // Skip SASS/SCSS files - they're processed by the SASS processor
+      const ext = extname(file).toLowerCase();
+      if (['.scss', '.sass'].includes(ext)) {
+        continue;
+      }
+      
+      // Skip files in special directories (underscore-prefixed)
+      if (this.isSpecialDirectory(file)) {
+        continue;
+      }
+      
+      // This is a static file
+      try {
+        const staticFile = new StaticFile(file, this.source);
+        this.static_files.push(staticFile);
+      } catch (error) {
+        // Log warning but don't fail - some files might have permission issues
+        console.warn(`Warning: Failed to read static file ${file}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    }
+  }
+
+  /**
    * Walk a directory recursively and return all file paths
    * @param dir Directory to walk
    * @param shallow If true, don't recurse into subdirectories that start with underscore
@@ -478,6 +517,7 @@ export class Site {
       data: this.data,
       pages: this.pages.map((p) => p.toJSON()),
       posts: this.posts.map((p) => p.toJSON()),
+      static_files: this.static_files.map((sf) => sf.toJSON()),
       collections: Object.fromEntries(
         Array.from(this.collections.entries()).map(([name, docs]) => [
           name,

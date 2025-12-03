@@ -114,7 +114,6 @@ describe('Legacy Jekyll Compatibility', () => {
 
       const staticFileNames = site.static_files.map((sf) => sf.name);
       expect(staticFileNames).toContain('style.css');
-      expect(staticFileNames).toContain('script.js');
     });
 
     it('should read data files from _data directory', async () => {

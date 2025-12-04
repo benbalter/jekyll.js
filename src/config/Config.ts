@@ -69,6 +69,13 @@ export interface JekyllConfig {
   // Conversion
   markdown_ext?: string;
 
+  /**
+   * File encoding for reading source files
+   * Default: 'utf-8'
+   * @example 'utf-8', 'utf-16', 'latin1', 'ascii'
+   */
+  encoding?: BufferEncoding;
+
   // Front matter defaults
   defaults?: Array<{
     scope: { path: string; type?: string };
@@ -210,27 +217,58 @@ export interface ConfigValidation {
 }
 
 /**
- * Load and parse Jekyll configuration from _config.yml
- * @param configPath Path to the configuration file (defaults to _config.yml in current directory)
- * @param verbose Whether to print verbose output
- * @returns Parsed configuration object
+ * Expand environment variables in a string
+ * Supports both ${VAR} and $VAR syntax
+ * @param value String that may contain environment variable references
+ * @returns String with environment variables expanded
  */
-export function loadConfig(
-  configPath: string = '_config.yml',
-  verbose: boolean = false
-): JekyllConfig {
+export function expandEnvVariables(value: string): string {
+  // Match ${VAR} or ${VAR:-default} syntax
+  return value.replace(/\$\{([^}:]+)(?::-([^}]*))?\}/g, (_, varName, defaultValue) => {
+    const envValue = process.env[varName];
+    if (envValue !== undefined) {
+      return envValue;
+    }
+    return defaultValue !== undefined ? defaultValue : '';
+  });
+}
+
+/**
+ * Recursively expand environment variables in config values
+ * @param config Configuration object or value
+ * @returns Configuration with expanded environment variables
+ */
+export function expandConfigEnvVariables(config: unknown): unknown {
+  if (typeof config === 'string') {
+    return expandEnvVariables(config);
+  }
+  if (Array.isArray(config)) {
+    return config.map((item) => expandConfigEnvVariables(item));
+  }
+  if (config !== null && typeof config === 'object') {
+    const result: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(config)) {
+      result[key] = expandConfigEnvVariables(value);
+    }
+    return result;
+  }
+  return config;
+}
+
+/**
+ * Load a single configuration file
+ * @param configPath Path to the configuration file
+ * @param verbose Whether to print verbose output
+ * @returns Parsed configuration object or null if file doesn't exist
+ */
+function loadSingleConfigFile(configPath: string, verbose: boolean = false): JekyllConfig | null {
   const resolvedPath = resolve(configPath);
 
-  if (verbose) {
-    console.log(chalk.blue('Loading configuration from:'), resolvedPath);
-  }
-
-  // Return defaults if file doesn't exist
   if (!existsSync(resolvedPath)) {
     if (verbose) {
-      console.log(chalk.yellow('Configuration file not found, using defaults'));
+      console.log(chalk.yellow(`Configuration file not found: ${resolvedPath}`));
     }
-    return getDefaultConfig(dirname(resolvedPath));
+    return null;
   }
 
   try {
@@ -245,14 +283,11 @@ export function loadConfig(
       });
     }
 
-    // Merge with defaults
-    const mergedConfig = mergeWithDefaults(config, dirname(resolvedPath));
-
     if (verbose) {
-      console.log(chalk.green('✓ Configuration loaded successfully'));
+      console.log(chalk.green('✓ Loaded:'), resolvedPath);
     }
 
-    return mergedConfig;
+    return config;
   } catch (error) {
     if (error instanceof ConfigError) {
       throw error;
@@ -280,6 +315,84 @@ export function loadConfig(
     }
     throw error;
   }
+}
+
+/**
+ * Load and parse Jekyll configuration from one or more config files
+ * Supports comma-separated list of config files (like Jekyll's --config option)
+ * Later files override earlier ones
+ * Environment variables in config values are expanded using ${VAR} or ${VAR:-default} syntax
+ *
+ * @param configPath Path(s) to configuration file(s), comma-separated for multiple files
+ * @param verbose Whether to print verbose output
+ * @returns Parsed and merged configuration object
+ *
+ * @example
+ * // Single config file
+ * loadConfig('_config.yml')
+ *
+ * // Multiple config files (later files override)
+ * loadConfig('_config.yml,_config.prod.yml')
+ *
+ * // Environment variables in config
+ * // _config.yml: url: ${SITE_URL:-http://localhost:4000}
+ */
+export function loadConfig(
+  configPath: string = '_config.yml',
+  verbose: boolean = false
+): JekyllConfig {
+  // Split by comma for multiple config files
+  const configPaths = configPath
+    .split(',')
+    .map((p) => p.trim())
+    .filter((p) => p.length > 0);
+
+  if (configPaths.length === 0) {
+    configPaths.push('_config.yml');
+  }
+
+  if (verbose) {
+    console.log(chalk.blue('Loading configuration from:'), configPaths.join(', '));
+  }
+
+  // Determine source path from first config file's directory
+  const firstConfigPath = resolve(configPaths[0] || '_config.yml');
+  const sourcePath = dirname(firstConfigPath);
+
+  // Load and merge all config files
+  let mergedUserConfig: JekyllConfig = {};
+  let anyConfigLoaded = false;
+
+  for (const path of configPaths) {
+    const resolvedPath = isAbsolute(path) ? path : resolve(sourcePath, path);
+    const config = loadSingleConfigFile(resolvedPath, verbose);
+
+    if (config) {
+      anyConfigLoaded = true;
+      // Use deep merge - later configs override earlier ones
+      mergedUserConfig = merge({}, mergedUserConfig, config);
+    }
+  }
+
+  // If no config files were loaded, use defaults
+  if (!anyConfigLoaded) {
+    if (verbose) {
+      console.log(chalk.yellow('No configuration files found, using defaults'));
+    }
+    return getDefaultConfig(sourcePath);
+  }
+
+  // Expand environment variables in config values
+  const expandedConfig = expandConfigEnvVariables(mergedUserConfig) as JekyllConfig;
+
+  // Merge with defaults
+  const mergedConfig = mergeWithDefaults(expandedConfig, sourcePath);
+
+  if (verbose) {
+    console.log(chalk.green('✓ Configuration loaded successfully'));
+  }
+
+  return mergedConfig;
 }
 
 /**
@@ -329,6 +442,10 @@ export function getDefaultConfig(sourcePath: string = '.'): JekyllConfig {
     // Markdown
     markdown: 'kramdown',
     highlighter: 'rouge',
+    markdown_ext: 'markdown,mkdown,mkdn,mkd,md',
+
+    // File encoding
+    encoding: 'utf-8',
 
     // Serving
     port: 4000,
@@ -495,6 +612,53 @@ export function validateConfig(config: JekyllConfig): ConfigValidation {
   // Validate timezone
   if (config.timezone && typeof config.timezone !== 'string') {
     errors.push('Timezone must be a string.');
+  }
+
+  // Validate timezone format (IANA timezone or UTC offset)
+  if (config.timezone && typeof config.timezone === 'string') {
+    // Check if it's a valid IANA timezone or UTC offset
+    // This is a basic validation - more thorough validation could use a timezone library
+    const validTimezonePattern = /^(UTC|GMT|[A-Za-z_]+\/[A-Za-z_]+|[+-]\d{2}:?\d{2})$/;
+    if (!validTimezonePattern.test(config.timezone) && config.timezone !== 'local') {
+      warnings.push(
+        `Timezone "${config.timezone}" may not be a valid IANA timezone identifier. ` +
+          `Examples: 'America/New_York', 'UTC', 'Europe/London'.`
+      );
+    }
+  }
+
+  // Validate encoding
+  if (config.encoding) {
+    const validEncodings: BufferEncoding[] = [
+      'ascii',
+      'utf8',
+      'utf-8',
+      'utf16le',
+      'ucs2',
+      'ucs-2',
+      'base64',
+      'base64url',
+      'latin1',
+      'binary',
+      'hex',
+    ];
+    if (!validEncodings.includes(config.encoding as BufferEncoding)) {
+      errors.push(
+        `Invalid encoding: "${config.encoding}". ` + `Valid options: ${validEncodings.join(', ')}.`
+      );
+    }
+  }
+
+  // Validate markdown_ext format
+  if (config.markdown_ext && typeof config.markdown_ext === 'string') {
+    const extensions = config.markdown_ext.split(',').map((ext) => ext.trim());
+    const invalidExtensions = extensions.filter((ext) => !/^[a-zA-Z0-9]+$/.test(ext));
+    if (invalidExtensions.length > 0) {
+      warnings.push(
+        `Invalid markdown extensions: "${invalidExtensions.join(', ')}". ` +
+          `Extensions should be alphanumeric without dots.`
+      );
+    }
   }
 
   // Validate liquid options

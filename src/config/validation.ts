@@ -73,6 +73,23 @@ export const JekyllConfigSchema = z
     // Conversion
     markdown_ext: z.string().optional(),
 
+    // File encoding
+    encoding: z
+      .enum([
+        'ascii',
+        'utf8',
+        'utf-8',
+        'utf16le',
+        'ucs2',
+        'ucs-2',
+        'base64',
+        'base64url',
+        'latin1',
+        'binary',
+        'hex',
+      ])
+      .optional(),
+
     // Front matter defaults
     defaults: z
       .array(

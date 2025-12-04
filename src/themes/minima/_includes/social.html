@@ -1,0 +1,25 @@
+{%- if site.minima.social_links -%}
+<ul class="social-media-list">
+  {%- for social in site.minima.social_links -%}
+  <li>
+    {%- if social.platform == 'github' -%}
+    <a href="https://github.com/{{ social.user_url | default: social.username }}"><svg class="svg-icon"><use xlink:href="{{ '/assets/minima-social-icons.svg#github' | relative_url }}"></use></svg> <span class="username">{{ social.username }}</span></a>
+    {%- elsif social.platform == 'twitter' -%}
+    <a href="https://twitter.com/{{ social.user_url | default: social.username }}"><svg class="svg-icon"><use xlink:href="{{ '/assets/minima-social-icons.svg#twitter' | relative_url }}"></use></svg> <span class="username">{{ social.username }}</span></a>
+    {%- elsif social.platform == 'linkedin' -%}
+    <a href="https://www.linkedin.com/in/{{ social.user_url | default: social.username }}"><svg class="svg-icon"><use xlink:href="{{ '/assets/minima-social-icons.svg#linkedin' | relative_url }}"></use></svg> <span class="username">{{ social.username }}</span></a>
+    {%- elsif social.platform == 'youtube' -%}
+    <a href="https://youtube.com/{{ social.user_url | default: social.username }}"><svg class="svg-icon"><use xlink:href="{{ '/assets/minima-social-icons.svg#youtube' | relative_url }}"></use></svg> <span class="username">{{ social.username }}</span></a>
+    {%- elsif social.platform == 'instagram' -%}
+    <a href="https://instagram.com/{{ social.user_url | default: social.username }}"><svg class="svg-icon"><use xlink:href="{{ '/assets/minima-social-icons.svg#instagram' | relative_url }}"></use></svg> <span class="username">{{ social.username }}</span></a>
+    {%- elsif social.platform == 'dribbble' -%}
+    <a href="https://dribbble.com/{{ social.user_url | default: social.username }}"><svg class="svg-icon"><use xlink:href="{{ '/assets/minima-social-icons.svg#dribbble' | relative_url }}"></use></svg> <span class="username">{{ social.username }}</span></a>
+    {%- elsif social.platform == 'facebook' -%}
+    <a href="https://www.facebook.com/{{ social.user_url | default: social.username }}"><svg class="svg-icon"><use xlink:href="{{ '/assets/minima-social-icons.svg#facebook' | relative_url }}"></use></svg> <span class="username">{{ social.username }}</span></a>
+    {%- elsif social.platform == 'rss' -%}
+    <a href="{{ '/feed.xml' | relative_url }}"><svg class="svg-icon"><use xlink:href="{{ '/assets/minima-social-icons.svg#rss' | relative_url }}"></use></svg> <span>RSS</span></a>
+    {%- endif -%}
+  </li>
+  {%- endfor -%}
+</ul>
+{%- endif -%}

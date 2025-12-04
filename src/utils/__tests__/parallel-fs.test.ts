@@ -172,8 +172,8 @@ describe('Parallel File System Utilities', () => {
 
       const results = await parallelMap(items, processor);
 
-      // Sort numerically (not as strings)
-      expect(results.sort((a, b) => a - b)).toEqual([2, 4, 6, 8, 10]);
+      // Results should be in input order
+      expect(results).toEqual([2, 4, 6, 8, 10]);
     });
 
     it('should respect concurrency limit', async () => {
@@ -191,9 +191,8 @@ describe('Parallel File System Utilities', () => {
 
       await parallelMap(items, processor, 3);
 
-      // Due to the simple implementation, concurrent tasks should be limited
-      // Note: The actual implementation may vary slightly, so we just verify results
-      expect(maxConcurrent).toBeLessThanOrEqual(10); // Should have some limiting effect
+      // The concurrency limit should be respected
+      expect(maxConcurrent).toBeLessThanOrEqual(3);
     });
 
     it('should handle empty array', async () => {

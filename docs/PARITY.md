@@ -61,7 +61,7 @@ The following features have been implemented with full compatibility with Ruby J
 | Feature | Jekyll.rb | Jekyll.js | Notes |
 |---------|-----------|-----------|-------|
 | Full Liquid syntax | ✅ | ✅ | All standard Liquid features |
-| Jekyll filters | ✅ | ✅ | 50+ filters implemented |
+| Jekyll filters | ✅ | ✅ | 60+ filters implemented |
 | Jekyll tags | ✅ | ✅ | `include`, `highlight`, `link`, `post_url` |
 | Layout inheritance | ✅ | ✅ | Nested layouts work correctly |
 | Front matter defaults | ✅ | ✅ | Path and type-based defaults |
@@ -105,6 +105,46 @@ The following features have been implemented with full compatibility with Ruby J
 | `jekyll-seo-tag` | ✅ | ✅ | SEO meta tags, JSON-LD, Open Graph |
 | `jekyll-sitemap` | ✅ | ✅ | XML sitemap generation |
 | `jekyll-feed` | ✅ | ✅ | Atom/RSS feed generation |
+| `jekyll-jemoji` | ✅ | ✅ | Emoji support |
+| `jekyll-github-metadata` | ✅ | ✅ | GitHub repository metadata |
+| `jekyll-mentions` | ✅ | ✅ | @mention links |
+| `jekyll-redirect-from` | ✅ | ✅ | Redirect pages |
+| `jekyll-avatar` | ✅ | ✅ | GitHub avatar helper |
+
+### Pagination ✅
+
+| Feature | Jekyll.rb | Jekyll.js | Notes |
+|--------|-----------|-----------|-------|
+| `paginate` config | ✅ | ✅ | Posts per page |
+| `paginate_path` config | ✅ | ✅ | Custom URL pattern |
+| `paginator.posts` | ✅ | ✅ | Posts on current page |
+| `paginator.total_posts` | ✅ | ✅ | Total number of posts |
+| `paginator.total_pages` | ✅ | ✅ | Total number of pages |
+| `paginator.page` | ✅ | ✅ | Current page number |
+| `paginator.per_page` | ✅ | ✅ | Posts per page |
+| `paginator.previous_page` | ✅ | ✅ | Previous page number |
+| `paginator.next_page` | ✅ | ✅ | Next page number |
+| `paginator.previous_page_path` | ✅ | ✅ | Previous page URL |
+| `paginator.next_page_path` | ✅ | ✅ | Next page URL |
+
+### Theme Support ✅
+
+| Feature | Jekyll.rb | Jekyll.js | Notes |
+|--------|-----------|-----------|-------|
+| Theme loading | ✅ | ✅ | npm packages instead of gems |
+| Layout inheritance | ✅ | ✅ | Site files override theme |
+| Include inheritance | ✅ | ✅ | Site files override theme |
+| Theme assets | ✅ | ✅ | _sass, assets directories |
+
+### SASS/SCSS Processing ✅
+
+| Feature | Jekyll.rb | Jekyll.js | Notes |
+|--------|-----------|-----------|-------|
+| `.scss` compilation | ✅ | ✅ | Full SASS support |
+| `.sass` compilation | ✅ | ✅ | Indented syntax support |
+| `_sass/` partials | ✅ | ✅ | Import directory |
+| `sass.sass_dir` config | ✅ | ✅ | Custom partial directory |
+| `sass.style` config | ✅ | ✅ | compressed, expanded, etc. |
 
 ### Liquid Filters (Complete List) ✅
 
@@ -179,6 +219,7 @@ The following features have been implemented with full compatibility with Ruby J
 
 - `{% include %}` - Include partials with parameters
 - `{% include_relative %}` - Include relative to current file
+- `{% include_cached %}` - Include with caching
 - `{% highlight %}` - Syntax highlighting
 - `{% link %}` - Link to pages
 - `{% post_url %}` - Link to posts
@@ -388,14 +429,18 @@ Most Jekyll sites work immediately:
 - ✅ Basic blogs with posts and pages
 - ✅ Documentation sites with collections
 - ✅ Portfolio sites with custom layouts
-- ✅ Sites using SEO, sitemap, or feed plugins
+- ✅ Sites using SEO, sitemap, feed, jemoji, mentions, redirect-from, or avatar plugins
+- ✅ Sites using data files (`_data` directory with YAML/JSON)
+- ✅ Sites using front matter defaults
+- ✅ Sites using pagination
+- ✅ Sites using SASS/SCSS
 
 ### Sites Requiring Minor Changes
 
 Some sites need small adjustments:
-- 🟡 Sites with Ruby plugins → Find TypeScript alternatives
-- 🟡 Sites with gem themes → Use npm themes or extract theme
-- 🟡 Sites with SASS → SASS support included
+- 🟡 Sites with Ruby plugins → Find TypeScript alternatives or check if reimplemented
+- 🟡 Sites with gem themes → Use npm themes or extract theme files
+- 🟡 Sites using CSV/TSV data files → Convert to YAML/JSON
 
 ---
 
@@ -403,10 +448,11 @@ Some sites need small adjustments:
 
 Jekyll.js provides:
 
-1. **Full Parity** with Ruby Jekyll for core features
+1. **Full Parity** with Ruby Jekyll for core features (88% implemented)
 2. **Backwards-Compatible Improvements** that are opt-in
 3. **Modern JavaScript Ecosystem** integration
 4. **Zero Ruby Dependencies** for Node.js environments
+5. **8 Built-in Plugins** reimplemented in TypeScript
 
 Existing Jekyll sites can migrate with minimal or no changes, while gaining access to modern JavaScript tooling and optional enhancements.
 
@@ -422,7 +468,7 @@ Existing Jekyll sites can migrate with minimal or no changes, while gaining acce
 
 ---
 
-**Last Updated**: 2025-12-03  
+**Last Updated**: 2025-12-04  
 **Jekyll.js Version**: 0.1.0  
 **Target Jekyll.rb Version**: 4.3.x  
 **Maintained by**: @benbalter

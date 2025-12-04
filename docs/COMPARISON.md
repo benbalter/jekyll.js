@@ -19,12 +19,12 @@ Side-by-side comparison of jekyll.js (TypeScript) and Jekyll.rb (Ruby) features.
 | Core Features | 8/8 (100%) | 0 | 0 |
 | Content Types | 7/7 (100%) | 0 | 0 |
 | Templating | 7/7 (100%) | 0 | 0 |
-| Build Features | 6/8 (75%) | 2 | 0 |
-| Assets & Styling | 1/5 (20%) | 4 | 0 |
-| Plugins | 3/4 (75%) | 1 | 0 |
-| Advanced Features | 0/7 (0%) | 7 | 0 |
+| Build Features | 7/8 (88%) | 1 | 0 |
+| Assets & Styling | 4/5 (80%) | 1 | 0 |
+| Plugins | 8/9 (89%) | 1 | 0 |
+| Advanced Features | 4/7 (57%) | 3 | 0 |
 
-**Overall**: 32/46 features (70%) implemented, 14 planned, 0 blocked
+**Overall**: 45/51 features (88%) implemented, 6 planned, 0 blocked
 
 ---
 
@@ -54,8 +54,8 @@ Side-by-side comparison of jekyll.js (TypeScript) and Jekyll.rb (Ruby) features.
 | Collections | ✅ | ✅ | ✅ Working |
 | Layouts | ✅ | ✅ | ✅ Working |
 | Includes | ✅ | ✅ | ✅ Working |
-| Data files (_data) | ✅ | ✅ | ✅ Working |
-| Static files | ✅ | 🟡 | 🟡 Basic support |
+| Data files (_data) | ✅ | ✅ | ✅ Working (YAML, JSON) |
+| Static files | ✅ | ✅ | ✅ Working |
 
 ---
 
@@ -65,9 +65,9 @@ Side-by-side comparison of jekyll.js (TypeScript) and Jekyll.rb (Ruby) features.
 |---------|-----------|-----------|--------|
 | Liquid syntax | ✅ | ✅ | ✅ Full support |
 | Jekyll filters (basic) | ✅ | ✅ | ✅ Date, URL, array, string |
-| Jekyll filters (advanced) | ✅ | ✅ | ✅ Math, truncate, find, etc. |
+| Jekyll filters (advanced) | ✅ | ✅ | ✅ 60+ filters implemented |
 | Jekyll tags (basic) | ✅ | ✅ | ✅ include, highlight, raw |
-| Jekyll tags (advanced) | ✅ | ✅ | ✅ include_relative |
+| Jekyll tags (advanced) | ✅ | ✅ | ✅ include_relative, include_cached |
 | Layout inheritance | ✅ | ✅ | ✅ Nested layouts |
 | Front matter defaults | ✅ | ✅ | ✅ Working |
 
@@ -80,8 +80,8 @@ Side-by-side comparison of jekyll.js (TypeScript) and Jekyll.rb (Ruby) features.
 | Basic build | ✅ | ✅ | ✅ Complete |
 | Custom source/destination | ✅ | ✅ | ✅ -s, -d flags |
 | Watch mode | ✅ | ✅ | ✅ --watch flag |
-| Incremental builds | ✅ | ✅ | ✅ --incremental flag |
-| Configuration files | ✅ | 🟡 | 🟡 Single file only |
+| Incremental builds | ✅ | ✅ | ✅ --incremental flag with cache |
+| Configuration files | ✅ | ✅ | ✅ --config option |
 | Multiple configs | ✅ | 🔴 | 🔴 Planned v0.4.0 |
 | Environment variables | ✅ | 🔴 | 🔴 Planned v0.4.0 |
 | Profiling | ✅ | 🔴 | 🔴 Future |
@@ -105,11 +105,11 @@ Side-by-side comparison of jekyll.js (TypeScript) and Jekyll.rb (Ruby) features.
 
 | Feature | Jekyll.rb | jekyll.js | Gap Analysis |
 |---------|-----------|-----------|--------------|
-| Static assets | ✅ | 🟡 | 🟡 Basic copying |
-| SASS/SCSS | ✅ | 🔴 | 🔴 High priority v0.2.0 |
-| CSS minification | ✅ | 🔴 | 🔴 Via SASS config |
-| Source maps | ✅ | 🔴 | 🔴 Via SASS |
-| Asset pipeline | ✅ | 🔴 | 🔴 Planned v0.3.0 |
+| Static assets | ✅ | ✅ | ✅ Full copying |
+| SASS/SCSS | ✅ | ✅ | ✅ sass package |
+| CSS output styles | ✅ | ✅ | ✅ compressed, expanded |
+| Source maps | ✅ | 🔴 | 🔴 Planned |
+| Asset pipeline | ✅ | 🟡 | 🟡 Basic implementation |
 
 ---
 
@@ -120,7 +120,12 @@ Side-by-side comparison of jekyll.js (TypeScript) and Jekyll.rb (Ruby) features.
 | jekyll-seo-tag | ✅ | ✅ | ✅ Reimplemented |
 | jekyll-sitemap | ✅ | ✅ | ✅ Reimplemented |
 | jekyll-feed | ✅ | ✅ | ✅ Reimplemented |
-| jekyll-paginate | ✅ | 🔴 | 🔴 Planned v0.3.0 |
+| jekyll-jemoji | ✅ | ✅ | ✅ Reimplemented |
+| jekyll-github-metadata | ✅ | ✅ | ✅ Reimplemented |
+| jekyll-mentions | ✅ | ✅ | ✅ Reimplemented |
+| jekyll-redirect-from | ✅ | ✅ | ✅ Reimplemented |
+| jekyll-avatar | ✅ | ✅ | ✅ Reimplemented |
+| jekyll-paginate | ✅ | ✅ | ✅ Built-in pagination |
 | Ruby plugins | ✅ | ⚫ | ⚫ Not supported |
 | Custom TS plugins | N/A | 🔴 | 🔴 Planned v1.0.0 |
 
@@ -132,10 +137,10 @@ Side-by-side comparison of jekyll.js (TypeScript) and Jekyll.rb (Ruby) features.
 
 | Feature | Jekyll.rb | jekyll.js | Priority |
 |---------|-----------|-----------|----------|
-| Pagination | ✅ | 🔴 | 🔴 High - v0.3.0 |
-| Themes | ✅ | 🔴 | 🔴 High - v0.3.0 |
-| Categories | ✅ | 🟡 | 🟡 Basic support |
-| Tags | ✅ | 🟡 | 🟡 Basic support |
+| Pagination | ✅ | ✅ | ✅ Implemented |
+| Themes | ✅ | ✅ | ✅ npm-based |
+| Categories | ✅ | ✅ | ✅ Full support |
+| Tags | ✅ | ✅ | ✅ Full support |
 | i18n/Localization | ✅ | 🔴 | 🔴 Low - v1.0.0+ |
 | Math (LaTeX) | ✅ via plugin | 🔴 | 🔴 Low - v1.0.0+ |
 | Search | ✅ via plugin | 🔴 | 🔴 Future |
@@ -157,15 +162,18 @@ Side-by-side comparison of jekyll.js (TypeScript) and Jekyll.rb (Ruby) features.
 | includes_dir | ✅ | ✅ | ✅ Full |
 | **Content** |
 | permalink | ✅ | ✅ | ✅ Full |
-| paginate | ✅ | 🔴 | 🔴 Config exists, not used |
+| paginate | ✅ | ✅ | ✅ Full |
+| paginate_path | ✅ | ✅ | ✅ Full |
 | timezone | ✅ | 🔴 | 🔴 Planned v0.4.0 |
 | **Processing** |
 | exclude, include | ✅ | ✅ | ✅ Full |
-| keep_files | ✅ | 🟡 | 🟡 Partial |
+| keep_files | ✅ | ✅ | ✅ Full |
 | **Plugins** |
-| plugins | ✅ | 🟡 | 🟡 List only, not loaded |
+| plugins | ✅ | ✅ | ✅ Full |
 | **Defaults** |
 | defaults | ✅ | ✅ | ✅ Full |
+| **Theme** |
+| theme | ✅ | ✅ | ✅ Full (npm-based) |
 | **SASS** |
 | sass.sass_dir | ✅ | ✅ | ✅ Full |
 | sass.style | ✅ | ✅ | ✅ Full |
@@ -178,7 +186,7 @@ Side-by-side comparison of jekyll.js (TypeScript) and Jekyll.rb (Ruby) features.
 
 ### Liquid Filters
 
-#### Implemented in jekyll.js ✅
+#### Implemented in jekyll.js ✅ (60+ filters)
 
 **Date Filters:**
 - `date` - Format date with strftime format
@@ -193,9 +201,9 @@ Side-by-side comparison of jekyll.js (TypeScript) and Jekyll.rb (Ruby) features.
 
 **Array Filters:**
 - `where` - Filter by property
-- `where_exp` - Filter by expression (basic)
+- `where_exp` - Filter by expression
 - `group_by` - Group by property
-- `group_by_exp` - Group by expression (basic)
+- `group_by_exp` - Group by expression
 - `array_to_sentence_string` - Array to sentence
 - `sort` - Sort array
 - `sort_natural` - Natural sort (case-insensitive)
@@ -203,7 +211,7 @@ Side-by-side comparison of jekyll.js (TypeScript) and Jekyll.rb (Ruby) features.
 - `sample` - Random element(s)
 - `push`, `pop`, `shift`, `unshift` - Array manipulation
 - `find` - Find element by property
-- `find_exp` - Find element by expression (basic)
+- `find_exp` - Find element by expression
 - `first`, `last` - First/last element
 - `reverse` - Reverse array
 - `compact` - Remove nil values
@@ -249,6 +257,13 @@ Side-by-side comparison of jekyll.js (TypeScript) and Jekyll.rb (Ruby) features.
 **Type Filters:**
 - `to_integer` - Convert to integer
 
+**Modern Filters (Backwards-compatible):**
+- `reading_time` - Estimated reading time
+- `toc` - Generate table of contents
+- `heading_anchors` - Add anchor links to headings
+- `external_links` - Add target="_blank" to external links
+- `auto_excerpt` - Generate excerpts automatically
+
 #### Remaining to implement 🟡
 
 **Type Filters:**
@@ -260,11 +275,12 @@ Side-by-side comparison of jekyll.js (TypeScript) and Jekyll.rb (Ruby) features.
 
 #### Implemented ✅
 
-- `{% include %}` - Include partials
+- `{% include %}` - Include partials with parameters
+- `{% include_cached %}` - Include with caching
 - `{% include_relative %}` - Include relative to current file
-- `{% highlight %}` - Syntax highlighting
-- `{% link %}` - Link to pages (basic)
-- `{% post_url %}` - Link to posts (basic)
+- `{% highlight %}` - Syntax highlighting (with Shiki support)
+- `{% link %}` - Link to pages
+- `{% post_url %}` - Link to posts
 - `{% raw %}` - Disable Liquid processing (built into liquidjs)
 
 #### Built-in from liquidjs 
@@ -313,30 +329,33 @@ Side-by-side comparison of jekyll.js (TypeScript) and Jekyll.rb (Ruby) features.
 - Basic blogs with posts and pages
 - Portfolio sites with collections
 - Documentation sites with layouts/includes
-- Sites using supported plugins (SEO, sitemap, feed)
+- Sites using supported plugins (SEO, sitemap, feed, jemoji, mentions, redirect-from, avatar, github-metadata)
+- Sites using data files (`_data` directory with YAML/JSON)
+- Sites using front matter defaults
+- Sites using pagination
+- Sites using SASS/SCSS
+- Sites using themes (npm-based)
 
 **Example compatible sites:**
 - Simple blog (posts, pages, layouts)
 - Portfolio (collections, custom permalinks)
-- Documentation (nested includes, front matter)
+- Documentation (nested includes, front matter, data files)
 
 ### Sites Needing Minor Changes 🟡
 
 **Small adjustments required:**
-- Sites with complex Liquid filters → Use workarounds
-- Sites with custom layouts → Path adjustments
-- Sites with specific permalinks → Mostly work
+- Sites using CSV/TSV data files → Use YAML/JSON
+- Sites using gem-based themes → Use npm-based themes
+- Sites with specific unsupported Liquid filters → Check alternatives
 
 **Migration effort**: < 1 hour
 
 ### Sites Needing Major Changes 🔴
 
 **Significant work required:**
-- Sites using SASS/SCSS → Wait for v0.2.0 or convert CSS
-- Sites using pagination → Wait for v0.3.0
-- Sites using themes → Wait for v0.3.0 or extract theme
-- Sites using data files → Wait for v0.2.0 or inline data
 - Sites using Ruby plugins → Reimplement in TypeScript
+- Sites using i18n/localization → Wait for v1.0.0+
+- Sites using math (KaTeX/MathJax) → Wait for v1.0.0+
 
 **Migration effort**: Varies (wait for features or significant rewrite)
 
@@ -380,13 +399,10 @@ Side-by-side comparison of jekyll.js (TypeScript) and Jekyll.rb (Ruby) features.
 ### When to Use Jekyll.rb
 
 ✅ Use Jekyll.rb if:
-- You need maximum compatibility
-- You're using complex Ruby plugins
+- You need maximum compatibility with Ruby plugins
 - You're using GitHub Pages (built-in support)
-- You have existing Jekyll.rb sites
-- You need mature theme ecosystem
-- You need pagination (until v0.3.0)
-- You need SASS/SCSS (until v0.2.0)
+- You need i18n/localization support
+- You have complex Ruby plugin dependencies
 
 ### When to Use jekyll.js
 
@@ -394,10 +410,11 @@ Side-by-side comparison of jekyll.js (TypeScript) and Jekyll.rb (Ruby) features.
 - You want to avoid Ruby dependency
 - You're in a Node.js environment
 - You want TypeScript integration
-- You're starting a new simple site
+- You're starting a new site
 - You value modern JavaScript tooling
-- You want to contribute to an early project
-- Your site doesn't need advanced features yet
+- You want built-in features like syntax highlighting with Shiki
+- Your site uses common plugins (SEO, sitemap, feed, jemoji, etc.)
+- You need npm-based theme management
 
 ### Hybrid Approach
 
@@ -417,19 +434,19 @@ We maintain compatibility tests with:
 
 1. **Basic Blog**
    - Status: ✅ Working
-   - Features: Posts, pages, layouts, includes
+   - Features: Posts, pages, layouts, includes, data files
 
 2. **Portfolio Site**
    - Status: ✅ Working
-   - Features: Collections, custom permalinks
+   - Features: Collections, custom permalinks, SASS
 
 3. **Documentation Site**
-   - Status: 🟡 Mostly working
-   - Issues: Some advanced features missing
+   - Status: ✅ Working
+   - Features: Collections, data files, nested layouts
 
 4. **E-commerce Site**
-   - Status: 🔴 Not working
-   - Issues: Needs pagination, data files, plugins
+   - Status: 🟡 Mostly working
+   - Issues: Complex Ruby plugins need reimplementation
 
 5. **Multi-language Site**
    - Status: 🔴 Not working
@@ -440,38 +457,38 @@ We maintain compatibility tests with:
 | Aspect | Score | Grade |
 |--------|-------|-------|
 | Core Features | 8/8 | A+ |
-| Content Processing | 6/7 | B+ |
-| Templating | 4/7 | C+ |
-| Build System | 5/8 | C+ |
-| Dev Experience | 5/7 | B |
-| **Overall** | **28/37** | **B-** |
+| Content Processing | 7/7 | A+ |
+| Templating | 7/7 | A+ |
+| Build System | 7/8 | A |
+| Dev Experience | 6/7 | A- |
+| **Overall** | **35/37** | **A** |
 
 ---
 
 ## Roadmap Alignment
 
-### Short Term (v0.2.0 - Q1 2025)
+### Short Term (v0.2.0 - Completed ✅)
 
-Focus on high-priority features:
-- Data files
-- Watch mode
-- SASS/SCSS
-- Front matter defaults
-- Additional Liquid filters
+Completed high-priority features:
+- ✅ Data files
+- ✅ Watch mode
+- ✅ SASS/SCSS
+- ✅ Front matter defaults
+- ✅ Additional Liquid filters
 
-**Target compatibility**: 70%
+**Target compatibility**: 88% ✅
 
-### Medium Term (v0.3.0 - Q2 2025)
+### Medium Term (v0.3.0 - Completed ✅)
 
-Add advanced features:
-- Pagination
-- Theme support
-- Incremental builds
-- Asset pipeline
+Added advanced features:
+- ✅ Pagination
+- ✅ Theme support
+- ✅ Incremental builds
+- ✅ Asset pipeline
 
-**Target compatibility**: 85%
+**Target compatibility**: 88% ✅
 
-### Long Term (v1.0.0 - Q4 2025)
+### Long Term (v1.0.0 - In Progress)
 
 Achieve production-ready status:
 - Custom plugin system
@@ -524,6 +541,6 @@ Achieve production-ready status:
 
 ---
 
-**Last Updated**: 2025-12-03  
+**Last Updated**: 2025-12-04  
 **Comparison Version**: Jekyll.rb 4.3.x vs jekyll.js 0.1.0  
 **Maintained by**: @benbalter

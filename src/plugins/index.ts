@@ -62,11 +62,7 @@ export {
 } from './generator';
 
 // Export converter plugin system
-export {
-  ConverterPlugin,
-  isConverterPlugin,
-  ConverterPriority,
-} from './converter';
+export { ConverterPlugin, isConverterPlugin, ConverterPriority } from './converter';
 
 // Export modern functionality modules - these are exported separately to avoid
 // importing ESM-only dependencies (like shiki) at the top level

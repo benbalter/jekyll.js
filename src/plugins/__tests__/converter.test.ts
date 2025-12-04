@@ -2,11 +2,7 @@
  * Tests for Converter Plugin System
  */
 
-import {
-  ConverterPlugin,
-  isConverterPlugin,
-  ConverterPriority,
-} from '../converter';
+import { ConverterPlugin, isConverterPlugin, ConverterPriority } from '../converter';
 import { PluginRegistry } from '../index';
 import { Site } from '../../core/Site';
 import { Document, DocumentType } from '../../core/Document';

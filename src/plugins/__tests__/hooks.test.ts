@@ -2,13 +2,7 @@
  * Tests for Plugin Hooks System
  */
 
-import {
-  Hooks,
-  PluginHooks,
-  SiteHookContext,
-  DocumentHookContext,
-  VALID_HOOKS,
-} from '../hooks';
+import { Hooks, PluginHooks, SiteHookContext, DocumentHookContext, VALID_HOOKS } from '../hooks';
 import { Site } from '../../core/Site';
 import { Renderer } from '../../core/Renderer';
 import { Document, DocumentType } from '../../core/Document';
@@ -69,9 +63,33 @@ describe('Plugin Hooks System', () => {
     it('should trigger hooks in priority order', async () => {
       const callOrder: string[] = [];
 
-      Hooks.register('site', 'after_init', () => { callOrder.push('low'); }, 'low-priority', 90);
-      Hooks.register('site', 'after_init', () => { callOrder.push('high'); }, 'high-priority', 10);
-      Hooks.register('site', 'after_init', () => { callOrder.push('normal'); }, 'normal-priority', 50);
+      Hooks.register(
+        'site',
+        'after_init',
+        () => {
+          callOrder.push('low');
+        },
+        'low-priority',
+        90
+      );
+      Hooks.register(
+        'site',
+        'after_init',
+        () => {
+          callOrder.push('high');
+        },
+        'high-priority',
+        10
+      );
+      Hooks.register(
+        'site',
+        'after_init',
+        () => {
+          callOrder.push('normal');
+        },
+        'normal-priority',
+        50
+      );
 
       const site = new Site(testSiteDir);
       await Hooks.trigger('site', 'after_init', { site });

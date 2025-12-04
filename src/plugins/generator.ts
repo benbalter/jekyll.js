@@ -72,7 +72,10 @@ export interface GeneratorPlugin {
    * @param renderer The renderer instance (for template rendering if needed)
    * @returns Generated files and/or documents, or void if modifying site in place
    */
-  generate(site: Site, renderer: Renderer): GeneratorResult | Promise<GeneratorResult> | void | Promise<void>;
+  generate(
+    site: Site,
+    renderer: Renderer
+  ): GeneratorResult | Promise<GeneratorResult> | void | Promise<void>;
 }
 
 /**

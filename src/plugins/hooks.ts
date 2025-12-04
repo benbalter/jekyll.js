@@ -167,7 +167,11 @@ class HooksRegistry {
    * @param event Hook event
    * @param context Context to pass to callbacks
    */
-  async trigger<T extends HookContext>(owner: HookOwner, event: HookEvent, context: T): Promise<void> {
+  async trigger<T extends HookContext>(
+    owner: HookOwner,
+    event: HookEvent,
+    context: T
+  ): Promise<void> {
     const hookId: HookIdentifier = `${owner}:${event}`;
     const registeredHooks = this.hooks.get(hookId);
 
@@ -320,12 +324,7 @@ export class PluginHooks {
   /**
    * Register a generic hook
    */
-  on(
-    owner: HookOwner,
-    event: HookEvent,
-    callback: HookCallback,
-    priority?: number
-  ): void {
+  on(owner: HookOwner, event: HookEvent, callback: HookCallback, priority?: number): void {
     Hooks.register(owner, event, callback, this.pluginName, priority);
   }
 }

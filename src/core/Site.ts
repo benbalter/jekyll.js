@@ -1,5 +1,4 @@
 import { existsSync, readdirSync, statSync, readFileSync } from 'fs';
-import { readdir, stat } from 'fs/promises';
 import { join, resolve, extname, dirname, basename } from 'path';
 import { Document, DocumentType } from './Document';
 import { StaticFile } from './StaticFile';
@@ -7,6 +6,7 @@ import { JekyllConfig, loadConfig } from '../config';
 import { ThemeManager } from './ThemeManager';
 import { logger } from '../utils/logger';
 import { FileSystemError } from '../utils/errors';
+import { walkDirectoryAsync } from '../utils/parallel-fs';
 import yaml from 'js-yaml';
 
 /**
@@ -141,7 +141,7 @@ export class Site {
 
     // Process all layout directories in parallel
     const layoutPromises = layoutDirs.map(async (layoutsDir) => {
-      const files = await this.walkDirectoryAsync(layoutsDir);
+      const files = await this.walkSiteDirectoryAsync(layoutsDir);
       return { layoutsDir, files };
     });
 
@@ -175,7 +175,7 @@ export class Site {
 
     // Process all include directories in parallel
     const includePromises = includeDirs.map(async (includesDir) => {
-      const files = await this.walkDirectoryAsync(includesDir);
+      const files = await this.walkSiteDirectoryAsync(includesDir);
       return { includesDir, files };
     });
 
@@ -213,7 +213,7 @@ export class Site {
       return;
     }
 
-    const files = await this.walkDirectoryAsync(postsDir);
+    const files = await this.walkSiteDirectoryAsync(postsDir);
     const markdownFiles = files.filter((file) => this.isMarkdownOrHtml(file));
 
     // Create documents in parallel batches
@@ -251,7 +251,7 @@ export class Site {
         return { collectionName, documents: [] };
       }
 
-      const files = await this.walkDirectoryAsync(collectionDir);
+      const files = await this.walkSiteDirectoryAsync(collectionDir);
       const markdownFiles = files.filter((file) => this.isMarkdownOrHtml(file));
 
       // Create documents in parallel batches
@@ -279,7 +279,7 @@ export class Site {
    * Pages are any markdown or HTML files not in special directories
    */
   private async readPagesAsync(): Promise<void> {
-    const files = await this.walkDirectoryAsync(this.source, true);
+    const files = await this.walkSiteDirectoryAsync(this.source, true);
     const pageFiles = files.filter(
       (file) => this.isMarkdownOrHtml(file) && !this.isSpecialDirectory(file)
     );
@@ -300,7 +300,7 @@ export class Site {
    * Static files are non-Jekyll files (not markdown, HTML, SASS, or in special directories)
    */
   private async readStaticFilesAsync(): Promise<void> {
-    const files = await this.walkDirectoryAsync(this.source, true);
+    const files = await this.walkSiteDirectoryAsync(this.source, true);
 
     // Filter to static files only
     const staticFilePaths = files.filter((file) => {
@@ -399,69 +399,17 @@ export class Site {
 
   /**
    * Walk a directory recursively and return all file paths - async version
-   * Uses parallel file operations for better performance on large sites
+   * Uses the shared walkDirectoryAsync from parallel-fs for better code reuse
    * @param dir Directory to walk
    * @param shallow If true, don't recurse into subdirectories that start with underscore
    */
-  private async walkDirectoryAsync(dir: string, shallow = false): Promise<string[]> {
-    const files: string[] = [];
-
-    if (!existsSync(dir)) {
-      return files;
-    }
-
-    try {
-      const entries = await readdir(dir);
-
-      // Process entries in parallel
-      const entryPromises = entries.map(async (entry) => {
-        const fullPath = join(dir, entry);
-
-        try {
-          const stats = await stat(fullPath);
-
-          if (stats.isDirectory()) {
-            // Skip excluded directories
-            if (this.shouldExclude(fullPath)) {
-              return [];
-            }
-
-            // For shallow walks, skip underscore directories except at root
-            const rootDir = resolve(this.config.source ?? process.cwd());
-            const currentDir = resolve(dir);
-            if (shallow && entry.startsWith('_') && currentDir !== rootDir) {
-              return [];
-            }
-
-            // Recursively walk subdirectory
-            return this.walkDirectoryAsync(fullPath, shallow);
-          } else if (stats.isFile()) {
-            // Skip excluded files
-            if (this.shouldExclude(fullPath)) {
-              return [];
-            }
-
-            return [fullPath];
-          }
-        } catch {
-          // Skip files that can't be stat'd
-          return [];
-        }
-
-        return [];
-      });
-
-      const results = await Promise.all(entryPromises);
-
-      for (const result of results) {
-        files.push(...result);
-      }
-    } catch {
-      // Directory can't be read
-      return files;
-    }
-
-    return files;
+  private walkSiteDirectoryAsync(dir: string, shallow = false): Promise<string[]> {
+    const rootDir = resolve(this.config.source ?? process.cwd());
+    return walkDirectoryAsync(dir, {
+      shouldExclude: (path: string) => this.shouldExclude(path),
+      shallow,
+      rootDir,
+    });
   }
 
   /**

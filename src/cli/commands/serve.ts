@@ -89,10 +89,13 @@ export async function serveCommand(options: ServeOptions): Promise<void> {
     });
 
     // Build the site
+    const startTime = Date.now();
     await builder.build();
+    const buildTime = ((Date.now() - startTime) / 1000).toFixed(3);
 
     console.log(chalk.green('✓'), 'Site built successfully!');
     console.log('  Output:', destPath);
+    console.log(`  Done in ${buildTime} seconds.`);
 
     // Start the development server
     console.log(chalk.green('\nStarting server...'));

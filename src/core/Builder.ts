@@ -16,7 +16,7 @@ import {
   copyFileSync,
   readFileSync,
 } from 'fs';
-import { join, dirname, extname, basename, relative, sep, resolve } from 'path';
+import { join, dirname, extname, basename, relative, sep, resolve, normalize } from 'path';
 import { rmSync } from 'fs';
 import { registerPlugins, PluginRegistry, Hooks } from '../plugins';
 import { CacheManager } from './CacheManager';
@@ -1098,10 +1098,13 @@ export class Builder {
         // Handle generated files
         if (result?.files) {
           for (const file of result.files) {
-            const outputPath = join(this.site.destination, file.path);
+            // Use path.normalize to canonicalize the path, then resolve relative to destination
+            // This properly handles ../, ./, and multiple slashes
+            const outputPath = join(this.site.destination, normalize(file.path));
             const resolvedPath = resolve(outputPath);
 
             // Security check: Ensure the output path is within the destination directory
+            // This check is the primary security mechanism - it validates the final resolved path
             if (!isPathWithinBase(this.site.destination, resolvedPath)) {
               logger.warn(
                 `Security warning: Generator '${generator.name}' tried to write outside destination: ${file.path}`
@@ -1118,14 +1121,9 @@ export class Builder {
           }
         }
 
-        // Handle generated documents (future enhancement - add to site for rendering)
-        if (result?.documents && result.documents.length > 0) {
-          logger.debug(
-            `Generator '${generator.name}' created ${result.documents.length} documents`
-          );
-          // Documents would be added to site.pages or collections here
-          // This is a future enhancement
-        }
+        // TODO: Implement document handling for generators
+        // This will allow generators to create documents that go through the render pipeline
+        // For now, generators can only create static files or modify the site in place
       } catch (error) {
         logger.warn(
           `Generator '${generator.name}' failed: ${error instanceof Error ? error.message : String(error)}`

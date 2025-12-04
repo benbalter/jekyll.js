@@ -69,13 +69,13 @@ const DEFAULT_CONCURRENCY = 10;
 /**
  * Process items in parallel with a concurrency limit
  * @param items Items to process
- * @param processor Async function to process each item
+ * @param processor Async function to process each item (receives item and index)
  * @param concurrency Maximum number of concurrent operations
  * @returns Array of results in input order
  */
 export async function parallelMap<T, R>(
   items: T[],
-  processor: (item: T) => Promise<R>,
+  processor: (item: T, index: number) => Promise<R>,
   concurrency: number = DEFAULT_CONCURRENCY
 ): Promise<R[]> {
   const results: (R | undefined)[] = new Array(items.length);
@@ -83,7 +83,7 @@ export async function parallelMap<T, R>(
   let index = 0;
 
   const enqueue = (i: number, item: T): Promise<void> => {
-    const promise = processor(item).then((result) => {
+    const promise = processor(item, i).then((result) => {
       results[i] = result;
     });
     const wrapped = promise.finally(() => {
@@ -294,9 +294,12 @@ export async function batchProcess<T, R>(
     const batch = items.slice(batchStart, batchEnd);
 
     // Process batch items with concurrency control
+    // Capture batchStart for use in async context
+    const currentBatchStart = batchStart;
     const batchResults = await parallelMap(
-      batch.map((item, localIndex) => ({ item, globalIndex: batchStart + localIndex })),
-      async ({ item, globalIndex }) => {
+      batch,
+      async (item: T, localIndex: number) => {
+        const globalIndex = currentBatchStart + localIndex;
         try {
           const result = await processor(item);
           return { globalIndex, result, error: null };
@@ -386,7 +389,8 @@ export class MemoryTracker {
       totalHeapUsed += sample.heapUsed;
     }
 
-    const avgHeapUsed = this.samples.length > 0 ? totalHeapUsed / this.samples.length : 0;
+    // Division is safe here since we already checked samples.length > 0 above
+    const avgHeapUsed = totalHeapUsed / this.samples.length;
     const memoryDelta = endMemory && startMemory ? endMemory.heapUsed - startMemory.heapUsed : 0;
 
     return {

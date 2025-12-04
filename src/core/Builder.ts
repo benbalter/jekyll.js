@@ -20,6 +20,16 @@ import { rmSync } from 'fs';
 import { registerPlugins } from '../plugins';
 import { CacheManager } from './CacheManager';
 import matter from 'gray-matter';
+import {
+  minifyHtml,
+  isHtmlMinificationEnabled,
+  getHtmlMinificationOptions,
+} from '../plugins/html-minifier';
+import {
+  injectResourceHints,
+  isResourceHintsEnabled,
+  getResourceHintsOptions,
+} from '../plugins/resource-hints';
 
 /**
  * Normalize path separators to forward slashes for consistent comparison
@@ -704,7 +714,10 @@ export class Builder {
   private async renderDocument(doc: Document): Promise<void> {
     try {
       // Render the document
-      const html = await this.renderer.renderDocument(doc);
+      let html = await this.renderer.renderDocument(doc);
+
+      // Apply modern features (opt-in via config)
+      html = await this.applyModernFeatures(html);
 
       // Get output path
       const outputPath = this.getOutputPath(doc);
@@ -759,6 +772,32 @@ export class Builder {
         }
       );
     }
+  }
+
+  /**
+   * Apply modern JS/SSG features to rendered HTML (opt-in via config)
+   * Features include HTML minification and resource hints injection
+   * @param html Rendered HTML content
+   * @returns Processed HTML content
+   */
+  private async applyModernFeatures(html: string): Promise<string> {
+    let processedHtml = html;
+
+    // Apply resource hints (preload/prefetch) if enabled
+    // This should run before minification to ensure hints are properly placed
+    if (isResourceHintsEnabled(this.site.config)) {
+      const resourceHintsOptions = getResourceHintsOptions(this.site.config);
+      processedHtml = injectResourceHints(processedHtml, resourceHintsOptions);
+    }
+
+    // Apply HTML minification if enabled
+    if (isHtmlMinificationEnabled(this.site.config)) {
+      const minificationOptions = getHtmlMinificationOptions(this.site.config);
+      const result = await minifyHtml(processedHtml, minificationOptions);
+      processedHtml = result.html;
+    }
+
+    return processedHtml;
   }
 
   /**

@@ -18,6 +18,12 @@ export { MentionsPlugin, mentionify } from './mentions';
 // Users should import these directly when needed:
 // import { highlightCode } from 'jekyll-ts/plugins/syntax-highlighting';
 // import { optimizeImage } from 'jekyll-ts/plugins/image-optimization';
+// import { minifyHtml } from 'jekyll-ts/plugins/html-minifier';
+// import { injectResourceHints } from 'jekyll-ts/plugins/resource-hints';
+
+// Re-export modern feature modules
+export * from './html-minifier';
+export * from './resource-hints';
 
 import { Renderer } from '../core/Renderer';
 import { Site } from '../core/Site';

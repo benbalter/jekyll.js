@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, statSync, readFileSync } from 'fs';
 import { readdir, stat } from 'fs/promises';
-import { join, resolve, extname, dirname, basename } from 'path';
+import { join, resolve, extname, dirname, basename, relative } from 'path';
 import { Document, DocumentType } from './Document';
 import { StaticFile } from './StaticFile';
 import { JekyllConfig, loadConfig } from '../config';
@@ -86,20 +86,38 @@ export class Site {
     }
 
     // Merge default excludes with user-provided excludes
+    // Ruby Jekyll default excludes: https://github.com/jekyll/jekyll/blob/master/lib/jekyll/configuration.rb
     const defaultExcludes = [
-      '_site',
       '.sass-cache',
       '.jekyll-cache',
-      '.jekyll-metadata',
+      'gemfiles',
+      'Gemfile',
+      'Gemfile.lock',
       'node_modules',
-      'vendor',
+      'vendor/bundle/',
+      'vendor/cache/',
+      'vendor/gems/',
+      'vendor/ruby/',
     ];
     const mergedExcludes = [...defaultExcludes, ...(config.exclude || [])];
+
+    // Resolve destination path
+    const resolvedDest = config.destination
+      ? resolve(config.destination)
+      : join(this.source, '_site');
+
+    // Auto-exclude destination directory if it's inside source (Ruby Jekyll behavior)
+    const relativeDest = relative(this.source, resolvedDest);
+    if (relativeDest.length > 0 && !relativeDest.startsWith('..')) {
+      if (!mergedExcludes.includes(relativeDest)) {
+        mergedExcludes.push(relativeDest);
+      }
+    }
 
     this.config = {
       ...config,
       source: this.source,
-      destination: config.destination || join(this.source, '_site'),
+      destination: resolvedDest,
       exclude: mergedExcludes,
       include: config.include || [],
     };

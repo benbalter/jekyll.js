@@ -223,7 +223,13 @@ export interface ConfigValidation {
  * @returns String with environment variables expanded
  */
 export function expandEnvVariables(value: string): string {
-  // Match ${VAR} or ${VAR:-default} syntax
+  // Regex pattern explanation:
+  // \$\{         - matches literal ${
+  // ([^}:]+)     - capture group 1: variable name (any chars except } and :)
+  // (?::-([^}]*))? - optional non-capturing group for default value:
+  //   :-         - literal :-
+  //   ([^}]*)    - capture group 2: default value (any chars except })
+  // \}           - matches literal }
   return value.replace(/\$\{([^}:]+)(?::-([^}]*))?\}/g, (_, varName, defaultValue) => {
     const envValue = process.env[varName];
     if (envValue !== undefined) {
@@ -356,6 +362,8 @@ export function loadConfig(
   }
 
   // Determine source path from first config file's directory
+  // This is consistent with Jekyll's behavior where all config files are resolved
+  // relative to the first config file's directory (typically the site root)
   const firstConfigPath = resolve(configPaths[0] || '_config.yml');
   const sourcePath = dirname(firstConfigPath);
 
@@ -364,6 +372,8 @@ export function loadConfig(
   let anyConfigLoaded = false;
 
   for (const path of configPaths) {
+    // Resolve relative paths against the source path (first config's directory)
+    // Absolute paths are used as-is
     const resolvedPath = isAbsolute(path) ? path : resolve(sourcePath, path);
     const config = loadSingleConfigFile(resolvedPath, verbose);
 
@@ -657,13 +667,15 @@ export function validateConfig(config: JekyllConfig): ConfigValidation {
   }
 
   // Validate markdown_ext format
+  // Extensions can contain alphanumeric characters, hyphens, and underscores
+  // Examples: md, markdown, mkd, rmd, Rmd
   if (config.markdown_ext && typeof config.markdown_ext === 'string') {
     const extensions = config.markdown_ext.split(',').map((ext) => ext.trim());
-    const invalidExtensions = extensions.filter((ext) => !/^[a-zA-Z0-9]+$/.test(ext));
+    const invalidExtensions = extensions.filter((ext) => !/^[a-zA-Z0-9_-]+$/.test(ext));
     if (invalidExtensions.length > 0) {
       warnings.push(
         `Invalid markdown extensions: "${invalidExtensions.join(', ')}". ` +
-          `Extensions should be alphanumeric without dots.`
+          `Extensions should contain only letters, numbers, hyphens, or underscores (without dots).`
       );
     }
   }

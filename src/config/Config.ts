@@ -218,7 +218,7 @@ export interface ConfigValidation {
 
 /**
  * Expand environment variables in a string
- * Supports both ${VAR} and $VAR syntax
+ * Supports ${VAR} and ${VAR:-default} syntax for environment variable expansion
  * @param value String that may contain environment variable references
  * @returns String with environment variables expanded
  */
@@ -616,14 +616,21 @@ export function validateConfig(config: JekyllConfig): ConfigValidation {
 
   // Validate timezone format (IANA timezone or UTC offset)
   if (config.timezone && typeof config.timezone === 'string') {
-    // Check if it's a valid IANA timezone or UTC offset
-    // This is a basic validation - more thorough validation could use a timezone library
-    const validTimezonePattern = /^(UTC|GMT|[A-Za-z_]+\/[A-Za-z_]+|[+-]\d{2}:?\d{2})$/;
-    if (!validTimezonePattern.test(config.timezone) && config.timezone !== 'local') {
-      warnings.push(
-        `Timezone "${config.timezone}" may not be a valid IANA timezone identifier. ` +
-          `Examples: 'America/New_York', 'UTC', 'Europe/London'.`
-      );
+    // Try to validate timezone using Intl.DateTimeFormat
+    // This validates against the system's supported IANA timezones
+    try {
+      // Attempt to create a DateTimeFormat with the timezone
+      // This will throw if the timezone is invalid
+      Intl.DateTimeFormat(undefined, { timeZone: config.timezone });
+    } catch {
+      // Basic fallback pattern check for common formats
+      const validTimezonePattern = /^(UTC|GMT|local|[A-Za-z_]+\/[A-Za-z_]+|[+-]\d{2}:?\d{2})$/;
+      if (!validTimezonePattern.test(config.timezone)) {
+        warnings.push(
+          `Timezone "${config.timezone}" may not be a valid IANA timezone identifier. ` +
+            `Examples: 'America/New_York', 'UTC', 'Europe/London'.`
+        );
+      }
     }
   }
 

@@ -93,10 +93,13 @@ export async function buildCommand(options: BuildOptions): Promise<void> {
     });
 
     // Build the site
+    const startTime = Date.now();
     await builder.build();
+    const buildTime = ((Date.now() - startTime) / 1000).toFixed(3);
 
     logger.success('Site built successfully!');
     console.log('  Output:', destPath);
+    console.log(`  Done in ${buildTime} seconds.`);
 
     if (config.watch) {
       // Start file watcher for automatic rebuilds

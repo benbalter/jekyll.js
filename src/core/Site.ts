@@ -1,5 +1,4 @@
 import { existsSync, readdirSync, statSync, readFileSync } from 'fs';
-import { readdir, stat } from 'fs/promises';
 import { join, resolve, extname, dirname, basename, relative } from 'path';
 import { Document, DocumentType } from './Document';
 import { StaticFile } from './StaticFile';

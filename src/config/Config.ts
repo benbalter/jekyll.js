@@ -224,25 +224,62 @@ export interface ConfigValidation {
  * @returns String with environment variables expanded
  */
 export function expandEnvVariables(value: string): string {
-  // Regex pattern explanation:
-  // \$\{         - matches literal ${
-  // ([^}:]+)     - capture group 1: variable name (any chars except } and :)
-  // (?::-([^}]*))? - optional non-capturing group for default value:
-  //   :-         - literal :-
-  //   ([^}]*)    - capture group 2: default value (any chars except })
-  // \}           - matches literal }
-  return value.replace(/\$\{([^}:]+)(?::-([^}]*))?\}/g, (match, varName, defaultValue) => {
-    // Validate that variable name is not empty or whitespace-only
-    if (!varName || varName.trim() === '') {
-      // Return the original match unchanged if varName is empty
-      return match;
+  // Use a simple iterative approach to avoid ReDoS vulnerabilities
+  // that can occur with nested quantifiers in regex patterns
+  let result = '';
+  let i = 0;
+
+  while (i < value.length) {
+    // Check for ${
+    if (i < value.length - 1 && value[i] === '$' && value[i + 1] === '{') {
+      const startIndex = i;
+      i += 2; // Skip past ${
+
+      // Find the closing }
+      const closingIndex = value.indexOf('}', i);
+      if (closingIndex === -1) {
+        // No closing }, append the rest and break
+        result += value.substring(startIndex);
+        break;
+      }
+
+      // Extract content between ${ and }
+      const content = value.substring(i, closingIndex);
+
+      // Check for :- separator (default value syntax)
+      const separatorIndex = content.indexOf(':-');
+      let varName: string;
+      let defaultValue: string | undefined;
+
+      if (separatorIndex !== -1) {
+        varName = content.substring(0, separatorIndex);
+        defaultValue = content.substring(separatorIndex + 2);
+      } else {
+        varName = content;
+        defaultValue = undefined;
+      }
+
+      // Validate that variable name is not empty or whitespace-only
+      if (!varName || varName.trim() === '') {
+        // Return the original match unchanged if varName is empty
+        result += value.substring(startIndex, closingIndex + 1);
+      } else {
+        const envValue = process.env[varName];
+        if (envValue !== undefined) {
+          result += envValue;
+        } else {
+          result += defaultValue !== undefined ? defaultValue : '';
+        }
+      }
+
+      i = closingIndex + 1;
+    } else {
+      result += value[i];
+      i++;
     }
-    const envValue = process.env[varName];
-    if (envValue !== undefined) {
-      return envValue;
-    }
-    return defaultValue !== undefined ? defaultValue : '';
-  });
+  }
+
+  return result;
 }
 
 /**

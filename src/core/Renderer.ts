@@ -223,17 +223,8 @@ export class Renderer {
       return array.filter((item) => item && item[key] === value);
     });
 
-    this.liquid.registerFilter(
-      'where_exp',
-      (array: any[], _variable: string, _expression: string) => {
-        if (!Array.isArray(array)) return [];
-        // TODO: Implement full expression evaluation
-        // For now, this is a placeholder that returns the full array
-        // A complete implementation would parse and evaluate the expression
-        logger.warn('where_exp filter has limited support - returning all items');
-        return array;
-      }
-    );
+    // Note: where_exp filter uses liquidjs built-in implementation which fully supports
+    // Jekyll-compatible expression evaluation (e.g., item.property == value, contains, and/or)
 
     this.liquid.registerFilter('group_by', (array: any[], property: string) => {
       if (!Array.isArray(array)) return [];
@@ -254,16 +245,8 @@ export class Renderer {
       }));
     });
 
-    this.liquid.registerFilter(
-      'group_by_exp',
-      (array: any[], _variable: string, _expression: string) => {
-        if (!Array.isArray(array)) return [];
-        // TODO: Implement full expression evaluation for grouping
-        // For now, this is a placeholder that returns empty array
-        logger.warn('group_by_exp filter is not yet implemented - returning empty array');
-        return [];
-      }
-    );
+    // Note: group_by_exp filter uses liquidjs built-in implementation which fully supports
+    // Jekyll-compatible expression evaluation for grouping
 
     this.liquid.registerFilter('xml_escape', (input: string) => {
       if (!input) return '';

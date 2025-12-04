@@ -285,7 +285,7 @@ The Renderer aims for compatibility with Jekyll 4.x Liquid templates. Most commo
 ### Fully Supported
 - All date filters
 - URL filters (relative_url, absolute_url)
-- Basic array filters (where, group_by)
+- Array filters (where, where_exp, group_by, group_by_exp)
 - String manipulation filters (including `markdownify` using `markdown-it`)
 - Include tag
 - Include relative tag
@@ -294,11 +294,9 @@ The Renderer aims for compatibility with Jekyll 4.x Liquid templates. Most commo
 - Layout rendering
 
 ### Simplified/Partial Support
-- `where_exp` and `group_by_exp` (basic implementation without full expression parsing)
 - `link` and `post_url` tags (basic implementation)
 
 ### Planned
-- Full expression evaluation for `where_exp` and `group_by_exp`
 - More Jekyll tags (e.g., `gist`, `figure`)
 - Pagination support
 - Additional filters as needed

@@ -49,7 +49,9 @@ export async function buildCommand(options: BuildOptions): Promise<void> {
     const destPath =
       options.destination !== undefined
         ? resolve(options.destination)
-        : (config.destination ? resolve(config.destination) : join(sourcePath, '_site'));
+        : config.destination
+          ? resolve(config.destination)
+          : join(sourcePath, '_site');
 
     // Apply CLI flags to config
     if (options.drafts) {

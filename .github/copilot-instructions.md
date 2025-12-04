@@ -217,6 +217,7 @@ The project is successful when:
 - **Lint**: `npm run lint` - Run ESLint on source files
 - **Lint Fix**: `npm run lint:fix` - Auto-fix linting issues where possible
 - **Format**: `npm run format` - Format all TypeScript files with Prettier
+- **Format Fix**: `npm run format:fix` - Auto-fix formatting issues (alias for format)
 - **Format Check**: `npm run format:check` - Check if files are formatted correctly
 - **Test**: `npm test` - Run all tests with Jest
 - **Test Watch**: `npm run test:watch` - Run tests in watch mode
@@ -232,8 +233,8 @@ The project is successful when:
 1. **Linting**: All code must pass ESLint checks (`npm run lint`)
    - Fix warnings about `any` types where possible
    - Use strict TypeScript types
-2. **Formatting**: All code must be formatted with Prettier (`npm run format`)
-   - Always run `npm run format` before committing
+2. **Formatting**: All code must be formatted with Prettier (`npm run format:fix`)
+   - Always run `npm run format:fix` before committing
    - Check formatting with `npm run format:check`
 3. **Testing**: All tests must pass (`npm test`)
    - Write tests for new features
@@ -314,13 +315,13 @@ Every PR should meet these criteria:
 1. Make focused, surgical changes
 2. Follow existing patterns in the codebase
 3. Write or update tests alongside code changes
-4. Run `npm run lint`, `npm run format`, and `npm test` frequently
+4. Run `npm run lint`, `npm run format:fix`, and `npm test` frequently
 5. Build with `npm run build` to catch TypeScript errors
 
 ### Before Submitting
 1. Run full test suite: `npm test`
 2. Run linter: `npm run lint`
-3. Format code: `npm run format`
+3. Format code: `npm run format:fix`
 4. Build the project: `npm run build`
 5. Verify changes work as expected
 6. Review your changes for unnecessary modifications

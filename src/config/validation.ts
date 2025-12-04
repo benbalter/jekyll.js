@@ -351,14 +351,19 @@ export function getDefaultConfig(): ValidatedJekyllConfig {
     host: 'localhost',
     livereload: true,
 
-    // Build
+    // Build - Ruby Jekyll default excludes
+    // See: https://github.com/jekyll/jekyll/blob/master/lib/jekyll/configuration.rb
     exclude: [
-      '.git',
-      '.gitignore',
+      '.sass-cache',
+      '.jekyll-cache',
+      'gemfiles',
+      'Gemfile',
+      'Gemfile.lock',
       'node_modules',
-      'package.json',
-      'package-lock.json',
-      'README.md',
+      'vendor/bundle/',
+      'vendor/cache/',
+      'vendor/gems/',
+      'vendor/ruby/',
     ],
 
     // Modern features (opt-in)

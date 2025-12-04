@@ -44,7 +44,7 @@ describe('Site', () => {
       expect(site.config.title).toBe('My Site');
       expect(site.destination).toBe(join(testSiteDir, 'dist'));
       expect(site.config.exclude).toContain('custom-exclude');
-      expect(site.config.exclude).toContain('_site'); // Default excludes are still there
+      expect(site.config.exclude).toContain('dist'); // Auto-excluded because it's the destination
     });
 
     it('should throw FileSystemError when source directory does not exist', () => {
@@ -508,6 +508,69 @@ collections:
       const staticFileNames = site.static_files.map((sf) => sf.name);
       expect(staticFileNames).toContain('style.css');
       expect(staticFileNames).not.toContain('2024-01-01-post.md');
+    });
+
+    it('should treat files with front matter as pages not static files', async () => {
+      // Create a .txt file with front matter - should be treated as a page
+      writeFileSync(join(testSiteDir, 'robots.txt'), '---\nlayout: null\n---\nUser-agent: *');
+
+      // Create a .xml file with front matter - should be treated as a page
+      writeFileSync(join(testSiteDir, 'feed.xml'), '---\nlayout: null\n---\n<?xml version="1.0"?>');
+
+      // Create a .txt file without front matter - should be a static file
+      writeFileSync(join(testSiteDir, 'plain.txt'), 'Plain text without front matter');
+
+      // Create a .css file without front matter - should be a static file
+      writeFileSync(join(testSiteDir, 'style.css'), 'body { margin: 0; }');
+
+      const site = new Site(testSiteDir);
+      await site.read();
+
+      // Files with front matter should be pages
+      const pageNames = site.pages.map((p) => p.basename + p.extname);
+      expect(pageNames).toContain('robots.txt');
+      expect(pageNames).toContain('feed.xml');
+
+      // Files without front matter should be static files
+      const staticFileNames = site.static_files.map((sf) => sf.name);
+      expect(staticFileNames).toContain('plain.txt');
+      expect(staticFileNames).toContain('style.css');
+
+      // Files with front matter should NOT be static files
+      expect(staticFileNames).not.toContain('robots.txt');
+      expect(staticFileNames).not.toContain('feed.xml');
+    });
+
+    it('should not treat files with incomplete front matter as pages', async () => {
+      // Create a file that starts with --- but has no closing ---
+      writeFileSync(
+        join(testSiteDir, 'incomplete.txt'),
+        '---\nThis starts with dashes but has no closing marker'
+      );
+
+      // Create a file that starts with --- in content (not front matter)
+      writeFileSync(
+        join(testSiteDir, 'dashes.txt'),
+        '---Something that looks like but is not front matter'
+      );
+
+      // Create a proper front matter file for comparison
+      writeFileSync(join(testSiteDir, 'proper.txt'), '---\nlayout: null\n---\nProper front matter');
+
+      const site = new Site(testSiteDir);
+      await site.read();
+
+      // Only proper front matter file should be a page
+      const pageNames = site.pages.map((p) => p.basename + p.extname);
+      expect(pageNames).toContain('proper.txt');
+      expect(pageNames).not.toContain('incomplete.txt');
+      expect(pageNames).not.toContain('dashes.txt');
+
+      // Incomplete front matter files should be static files
+      const staticFileNames = site.static_files.map((sf) => sf.name);
+      expect(staticFileNames).toContain('incomplete.txt');
+      expect(staticFileNames).toContain('dashes.txt');
+      expect(staticFileNames).not.toContain('proper.txt');
     });
   });
 });

@@ -111,8 +111,10 @@ Quick reference for feature implementation status in jekyll.js compared to Jekyl
 | jekyll-mentions | ✅ | v0.1.0 | @mention links |
 | jekyll-redirect-from | ✅ | v0.1.0 | Redirect pages |
 | jekyll-avatar | ✅ | v0.1.0 | GitHub avatar helper |
-| Custom TS Plugins | 🔴 | v1.0.0 | Plugin API not yet defined |
+| npm Plugin System | ✅ | v0.1.0 | Load plugins from npm packages |
 | Ruby Plugins | ⚫ | N/A | Not supported - requires TS rewrite |
+
+> 📖 See [PLUGINS.md](./PLUGINS.md) for detailed plugin documentation and how to create custom plugins.
 
 ---
 

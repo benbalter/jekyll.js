@@ -233,4 +233,172 @@ describe('Integration: Theme Support', () => {
       expect(includeDirs[1]).toContain('my-theme');
     });
   });
+
+  describe('Theme data merging', () => {
+    beforeAll(() => {
+      // Create theme data directory with data files
+      mkdirSync(join(siteDir, 'my-theme', '_data'), { recursive: true });
+      writeFileSync(
+        join(siteDir, 'my-theme', '_data', 'navigation.yml'),
+        'main:\n  - title: Home\n    url: /\n  - title: About\n    url: /about/'
+      );
+      writeFileSync(
+        join(siteDir, 'my-theme', '_data', 'theme_settings.yml'),
+        'color_scheme: dark\nfont: Arial'
+      );
+
+      // Create site data directory with some data files
+      mkdirSync(join(siteDir, '_data'), { recursive: true });
+      writeFileSync(
+        join(siteDir, '_data', 'navigation.yml'),
+        'main:\n  - title: Home\n    url: /\n  - title: Blog\n    url: /blog/'
+      );
+      writeFileSync(join(siteDir, '_data', 'site_settings.yml'), 'analytics_id: UA-123456');
+    });
+
+    it('should merge theme data with site data', async () => {
+      const site = new Site(siteDir, {
+        theme: 'my-theme',
+        source: siteDir,
+      });
+
+      await site.read();
+
+      // Site data should override theme data for navigation
+      expect(site.data.navigation).toBeDefined();
+      expect(site.data.navigation.main).toHaveLength(2);
+      expect(site.data.navigation.main[1].title).toBe('Blog'); // Site override
+
+      // Theme-only data should be present
+      expect(site.data.theme_settings).toBeDefined();
+      expect(site.data.theme_settings.color_scheme).toBe('dark');
+
+      // Site-only data should be present
+      expect(site.data.site_settings).toBeDefined();
+      expect(site.data.site_settings.analytics_id).toBe('UA-123456');
+    });
+  });
+
+  describe('Theme package.json metadata', () => {
+    beforeAll(() => {
+      // Create package.json in theme
+      const packageJson = {
+        name: 'jekyll-theme-my-theme',
+        version: '2.0.0',
+        description: 'A beautiful Jekyll theme for integration testing',
+        author: {
+          name: 'Test Author',
+          email: 'test@example.com',
+        },
+        license: 'MIT',
+        homepage: 'https://example.com/my-theme',
+        keywords: ['jekyll', 'theme', 'test'],
+      };
+      writeFileSync(
+        join(siteDir, 'my-theme', 'package.json'),
+        JSON.stringify(packageJson, null, 2)
+      );
+    });
+
+    it('should read theme metadata from package.json', () => {
+      const site = new Site(siteDir, {
+        theme: 'my-theme',
+        source: siteDir,
+      });
+
+      const metadata = site.themeManager.getThemeMetadata();
+      expect(metadata).not.toBeNull();
+      expect(metadata?.name).toBe('jekyll-theme-my-theme');
+      expect(metadata?.version).toBe('2.0.0');
+      expect(metadata?.description).toBe('A beautiful Jekyll theme for integration testing');
+      expect(metadata?.author).toEqual({ name: 'Test Author', email: 'test@example.com' });
+      expect(metadata?.license).toBe('MIT');
+      expect(metadata?.homepage).toBe('https://example.com/my-theme');
+      expect(metadata?.keywords).toEqual(['jekyll', 'theme', 'test']);
+    });
+  });
+
+  describe('Theme _config.yml defaults', () => {
+    beforeAll(() => {
+      // Create _config.yml in theme with default settings
+      const themeConfig = `
+# Theme default configuration
+author:
+  name: Theme Author
+  bio: A bio from the theme
+social:
+  twitter: theme_twitter
+  github: theme_github
+defaults:
+  - scope:
+      path: ""
+      type: "posts"
+    values:
+      layout: post
+      comments: true
+`;
+      writeFileSync(join(siteDir, 'my-theme', '_config.yml'), themeConfig);
+    });
+
+    it('should read theme default configuration from _config.yml', () => {
+      const site = new Site(siteDir, {
+        theme: 'my-theme',
+        source: siteDir,
+      });
+
+      const defaults = site.themeManager.getThemeDefaults();
+      expect(defaults).not.toBeNull();
+      expect(defaults?.author).toEqual({ name: 'Theme Author', bio: 'A bio from the theme' });
+      expect(defaults?.social).toEqual({ twitter: 'theme_twitter', github: 'theme_github' });
+      expect(defaults?.defaults).toHaveLength(1);
+      const firstDefault = defaults?.defaults?.[0];
+      expect(firstDefault?.values.comments).toBe(true);
+    });
+  });
+
+  describe('Theme static files', () => {
+    beforeAll(() => {
+      // Create some static files in theme assets
+      mkdirSync(join(siteDir, 'my-theme', 'assets', 'css'), { recursive: true });
+      mkdirSync(join(siteDir, 'my-theme', 'assets', 'js'), { recursive: true });
+      mkdirSync(join(siteDir, 'my-theme', 'assets', 'images'), { recursive: true });
+
+      writeFileSync(
+        join(siteDir, 'my-theme', 'assets', 'css', 'theme.css'),
+        'body { background: #fff; }'
+      );
+      writeFileSync(
+        join(siteDir, 'my-theme', 'assets', 'js', 'theme.js'),
+        'console.log("Theme JS loaded");'
+      );
+      writeFileSync(
+        join(siteDir, 'my-theme', 'assets', 'images', 'logo.png'),
+        'PNG binary content placeholder'
+      );
+
+      // Create site assets that should override theme
+      mkdirSync(join(siteDir, 'assets', 'css'), { recursive: true });
+      writeFileSync(
+        join(siteDir, 'assets', 'css', 'theme.css'),
+        'body { background: #f0f0f0; }' // Override theme CSS
+      );
+    });
+
+    it('should list theme static files excluding site overrides', () => {
+      const site = new Site(siteDir, {
+        theme: 'my-theme',
+        source: siteDir,
+      });
+
+      const themeFiles = site.themeManager.getThemeStaticFiles(siteDir);
+      const relativePaths = themeFiles.map((f) => f.relativePath.replace(/\\/g, '/'));
+
+      // theme.css should NOT be included (overridden by site)
+      expect(relativePaths).not.toContain('assets/css/theme.css');
+
+      // theme.js and logo.png should be included
+      expect(relativePaths).toContain('assets/js/theme.js');
+      expect(relativePaths).toContain('assets/images/logo.png');
+    });
+  });
 });

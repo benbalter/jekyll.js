@@ -116,7 +116,7 @@ describe('path-security', () => {
     });
 
     it('should handle double-encoded paths', () => {
-      // %252e = encoded '%' + '2e' = '..'
+      // %252e = double-encoded '.' (decodes to %2e, then to '.')
       expect(sanitizeUrlPath('/%252e%252e/secret')).toBe('%2e%2e/secret');
     });
 

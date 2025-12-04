@@ -5,6 +5,7 @@ import { generatePagination, getPaginatedFilePath } from './Paginator';
 import { SassProcessor } from './SassProcessor';
 import { logger } from '../utils/logger';
 import { BuildError, FileSystemError, JekyllError } from '../utils/errors';
+import { PerformanceTimer, BuildTimings } from '../utils/timer';
 import {
   mkdirSync,
   writeFileSync,
@@ -57,6 +58,9 @@ export interface BuilderOptions {
 
   /** Enable incremental builds */
   incremental?: boolean;
+
+  /** Enable performance timing for benchmarks */
+  timing?: boolean;
 }
 
 /**
@@ -68,6 +72,7 @@ export class Builder {
   private sassProcessor: SassProcessor;
   private options: BuilderOptions;
   private cacheManager: CacheManager;
+  private timer: PerformanceTimer | null = null;
 
   /**
    * Create a new Builder instance
@@ -104,8 +109,14 @@ export class Builder {
       clean: true,
       verbose: false,
       incremental: false,
+      timing: false,
       ...options,
     };
+
+    // Initialize timer if timing is enabled
+    if (this.options.timing) {
+      this.timer = new PerformanceTimer();
+    }
 
     // Configure logger based on options
     logger.setVerbose(this.options.verbose || false);
@@ -119,21 +130,40 @@ export class Builder {
 
   /**
    * Build the entire site
+   * @returns Build timings if timing is enabled, otherwise undefined
    */
-  async build(): Promise<void> {
+  async build(): Promise<BuildTimings | undefined> {
     logger.section('Building Site');
+
+    // Start the timer if timing is enabled
+    if (this.timer) {
+      this.timer.start();
+    }
 
     try {
       // Read all site files
       logger.info('Reading site files...');
-      await this.site.read();
+      if (this.timer) {
+        await this.timer.timeAsync(
+          'Read site files',
+          () => this.site.read(),
+          () =>
+            `${this.site.pages.length} pages, ${this.site.posts.length} posts, ${this.site.static_files.length} static files`
+        );
+      } else {
+        await this.site.read();
+      }
       logger.debug(`Found ${this.site.pages.length} pages, ${this.site.posts.length} posts`, {
         collections: Array.from(this.site.collections.keys()).join(', '),
       });
 
       // Clean destination directory if needed (skip for incremental)
       if (this.options.clean && !this.options.incremental) {
-        this.cleanDestination();
+        if (this.timer) {
+          this.timer.timeSync('Clean destination', () => this.cleanDestination());
+        } else {
+          this.cleanDestination();
+        }
       }
 
       // Ensure destination exists
@@ -148,7 +178,11 @@ export class Builder {
 
       // Generate URLs for all documents
       logger.info('Generating URLs...');
-      this.generateUrls();
+      if (this.timer) {
+        this.timer.timeSync('Generate URLs', () => this.generateUrls());
+      } else {
+        this.generateUrls();
+      }
 
       // Determine what needs to be rebuilt
       let pagesToRender = this.site.pages;
@@ -181,29 +215,73 @@ export class Builder {
           logger.success('No changes detected, skipping build');
           // Save cache in case it was newly initialized or loaded from old version
           this.cacheManager.save();
-          return;
+          return this.timer?.getTimings();
         }
 
         logger.info(`Rebuilding ${totalToRender} changed files`);
       }
 
       // Render pages
-      await this.renderPages(pagesToRender);
+      if (this.timer) {
+        await this.timer.timeAsync(
+          'Render pages',
+          () => this.renderPages(pagesToRender),
+          () => `${pagesToRender.length} pages`
+        );
+      } else {
+        await this.renderPages(pagesToRender);
+      }
 
       // Render posts
-      await this.renderPosts(postsToRender);
+      if (this.timer) {
+        await this.timer.timeAsync(
+          'Render posts',
+          () => this.renderPosts(postsToRender),
+          () => `${this.getFilteredPosts(postsToRender).length} posts`
+        );
+      } else {
+        await this.renderPosts(postsToRender);
+      }
 
       // Render pagination pages if enabled
-      await this.renderPagination();
+      if (this.timer) {
+        await this.timer.timeAsync('Render pagination', () => this.renderPagination());
+      } else {
+        await this.renderPagination();
+      }
 
       // Render collections
-      await this.renderCollections(collectionsToRender);
+      if (this.timer) {
+        const collectionCount = Array.from(collectionsToRender.values()).reduce(
+          (sum, docs) => sum + docs.length,
+          0
+        );
+        await this.timer.timeAsync(
+          'Render collections',
+          () => this.renderCollections(collectionsToRender),
+          () => `${collectionCount} documents`
+        );
+      } else {
+        await this.renderCollections(collectionsToRender);
+      }
 
       // Process SASS/SCSS files
-      this.processSassFiles();
+      if (this.timer) {
+        this.timer.timeSync('Process SASS/SCSS', () => this.processSassFiles());
+      } else {
+        this.processSassFiles();
+      }
 
       // Copy static files
-      this.copyStaticFiles();
+      if (this.timer) {
+        this.timer.timeSync(
+          'Copy static files',
+          () => this.copyStaticFiles(),
+          () => `${this.site.static_files.length} files`
+        );
+      } else {
+        this.copyStaticFiles();
+      }
 
       // Generate plugin output files (sitemap, feed, etc.)
       // In incremental mode, only regenerate if documents were rebuilt
@@ -212,7 +290,11 @@ export class Builder {
         postsToRender.length +
         Array.from(collectionsToRender.values()).reduce((sum, docs) => sum + docs.length, 0);
       if (!this.options.incremental || totalRendered > 0) {
-        this.generatePluginFiles();
+        if (this.timer) {
+          this.timer.timeSync('Generate plugin files', () => this.generatePluginFiles());
+        } else {
+          this.generatePluginFiles();
+        }
       }
 
       // Save cache if incremental mode is enabled
@@ -221,6 +303,9 @@ export class Builder {
       }
 
       logger.success(`Site built successfully to ${this.site.destination}`);
+
+      // Return timings if timing is enabled
+      return this.timer?.getTimings();
     } catch (error) {
       // Re-throw specific errors as-is, or log and exit
       if (error instanceof JekyllError) {
@@ -853,8 +938,8 @@ export class Builder {
   private generatePluginFiles(): void {
     const configuredPlugins = this.site.config.plugins || [];
 
-    // Generate sitemap if plugin is enabled
-    if (configuredPlugins.length === 0 || configuredPlugins.includes('jekyll-sitemap')) {
+    // Generate sitemap if plugin is explicitly enabled
+    if (configuredPlugins.includes('jekyll-sitemap')) {
       const sitemapPlugin = (this.site as any)._sitemapPlugin;
       if (sitemapPlugin) {
         try {
@@ -870,8 +955,8 @@ export class Builder {
       }
     }
 
-    // Generate feed if plugin is enabled
-    if (configuredPlugins.length === 0 || configuredPlugins.includes('jekyll-feed')) {
+    // Generate feed if plugin is explicitly enabled
+    if (configuredPlugins.includes('jekyll-feed')) {
       const feedPlugin = (this.site as any)._feedPlugin;
       if (feedPlugin) {
         try {
@@ -928,5 +1013,13 @@ export class Builder {
    */
   getSite(): Site {
     return this.site;
+  }
+
+  /**
+   * Get the build timing statistics (only available if timing option is enabled)
+   * @returns Build timing statistics or undefined if timing is not enabled
+   */
+  getTimings(): BuildTimings | undefined {
+    return this.timer?.getTimings();
   }
 }

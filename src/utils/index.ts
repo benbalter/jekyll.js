@@ -23,7 +23,13 @@ export {
   readFilesParallel,
   statFilesParallel,
   parallelMap,
+  batchProcess,
+  getMemoryStats,
+  formatBytes,
+  MemoryTracker,
   type WalkOptions,
+  type MemoryStats,
+  type BatchProcessorOptions,
 } from './parallel-fs';
 export {
   ProgressIndicator,

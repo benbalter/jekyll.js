@@ -14,6 +14,8 @@ interface BuildOptions {
   watch?: boolean;
   verbose?: boolean;
   incremental?: boolean;
+  debug?: boolean;
+  profile?: boolean;
 }
 
 /**
@@ -21,8 +23,15 @@ interface BuildOptions {
  * Generates the static site from source to destination
  */
 export async function buildCommand(options: BuildOptions): Promise<void> {
-  // Configure logger
-  logger.setVerbose(options.verbose || false);
+  // Configure logger - debug mode enables verbose
+  const isDebug = options.debug || false;
+  const isVerbose = options.verbose || isDebug;
+  logger.setVerbose(isVerbose);
+
+  // Set DEBUG env var if debug mode is enabled
+  if (isDebug) {
+    process.env.DEBUG = '1';
+  }
 
   try {
     // Resolve source directory from CLI option (defaults to '.')
@@ -33,12 +42,20 @@ export async function buildCommand(options: BuildOptions): Promise<void> {
       ? options.config
       : resolve(sourcePath, options.config);
 
+    if (isDebug) {
+      logger.section('Debug Mode');
+      console.log(chalk.cyan('  🔧 Debug mode enabled'));
+      console.log(chalk.gray('  Node version:'), process.version);
+      console.log(chalk.gray('  Platform:'), process.platform);
+      console.log(chalk.gray('  Working directory:'), process.cwd());
+    }
+
     logger.debug('Loading configuration', { path: configPath });
-    const config = loadConfig(configPath, options.verbose);
+    const config = loadConfig(configPath, isVerbose);
 
     // Validate configuration
     const validation = validateConfig(config);
-    printValidation(validation, options.verbose);
+    printValidation(validation, isVerbose);
 
     if (!validation.valid) {
       throw new Error('Configuration validation failed. Please fix the errors above.');
@@ -67,7 +84,7 @@ export async function buildCommand(options: BuildOptions): Promise<void> {
       config.incremental = true;
     }
 
-    if (options.verbose) {
+    if (isVerbose) {
       logger.section('Configuration');
       console.log('  Source:', sourcePath);
       console.log('  Destination:', destPath);
@@ -76,6 +93,8 @@ export async function buildCommand(options: BuildOptions): Promise<void> {
       if (config.future) console.log('  Future:', 'enabled');
       if (config.watch) console.log('  Watch:', 'enabled');
       if (config.incremental) console.log('  Incremental:', 'enabled');
+      if (isDebug) console.log('  Debug:', 'enabled');
+      if (options.profile) console.log('  Profile:', 'enabled');
     }
 
     // Update config with final paths
@@ -88,18 +107,32 @@ export async function buildCommand(options: BuildOptions): Promise<void> {
       showDrafts: options.drafts,
       showFuture: options.future,
       clean: true,
-      verbose: options.verbose,
+      verbose: isVerbose,
       incremental: options.incremental,
+      timing: options.profile || isDebug,
     });
 
     // Build the site
     const startTime = Date.now();
-    await builder.build();
+    const timings = await builder.build();
     const buildTime = ((Date.now() - startTime) / 1000).toFixed(3);
 
     logger.success('Site built successfully!');
     console.log('  Output:', destPath);
     console.log(`  Done in ${buildTime} seconds.`);
+
+    // Show timing profile if enabled
+    if ((options.profile || isDebug) && timings) {
+      logger.section('Build Profile');
+      const sortedOps = timings.getMostCostlyOperations();
+      console.log(chalk.gray('  Operation timings (sorted by duration):'));
+      for (const op of sortedOps) {
+        const duration = (op.duration / 1000).toFixed(3);
+        const details = op.details ? chalk.gray(` (${op.details})`) : '';
+        console.log(`    ${chalk.cyan(op.name)}: ${duration}s${details}`);
+      }
+      console.log(chalk.gray(`\n  Total: ${(timings.totalDuration / 1000).toFixed(3)}s`));
+    }
 
     if (config.watch) {
       // Start file watcher for automatic rebuilds
@@ -107,7 +140,7 @@ export async function buildCommand(options: BuildOptions): Promise<void> {
         source: sourcePath,
         destination: destPath,
         builder,
-        verbose: options.verbose,
+        verbose: isVerbose,
       });
 
       watcher.start();

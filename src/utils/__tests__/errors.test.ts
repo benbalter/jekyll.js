@@ -13,6 +13,8 @@ import {
   wrapError,
   parseErrorLocation,
 } from '../errors';
+import { writeFileSync, mkdirSync, rmSync } from 'fs';
+import { join } from 'path';
 
 describe('JekyllError', () => {
   it('should create a basic error', () => {
@@ -43,6 +45,14 @@ describe('JekyllError', () => {
     expect(error.cause).toBe(cause);
   });
 
+  it('should include suggestion', () => {
+    const error = new JekyllError('Test error', {
+      suggestion: 'Try fixing this specific issue',
+    });
+
+    expect(error.suggestion).toBe('Try fixing this specific issue');
+  });
+
   it('should format message with file context', () => {
     const error = new JekyllError('Test error', {
       file: 'test.md',
@@ -66,6 +76,95 @@ describe('JekyllError', () => {
     expect(formatted).toContain('Wrapped error');
     expect(formatted).toContain('Caused by: Original error');
   });
+
+  describe('getEnhancedMessage', () => {
+    it('should include suggestion in enhanced message', () => {
+      const error = new JekyllError('Test error', {
+        suggestion: 'Try this fix',
+      });
+
+      const enhanced = error.getEnhancedMessage();
+      expect(enhanced).toContain('Test error');
+      expect(enhanced).toContain('💡 Suggestion:');
+      expect(enhanced).toContain('Try this fix');
+    });
+  });
+
+  describe('source snippet generation', () => {
+    const testDir = join(__dirname, 'temp-test-files');
+
+    beforeEach(() => {
+      mkdirSync(testDir, { recursive: true });
+    });
+
+    afterEach(() => {
+      rmSync(testDir, { recursive: true, force: true });
+    });
+
+    it('should generate source snippet for existing file', () => {
+      const testFile = join(testDir, 'test-source.md');
+      const content = `line 1
+line 2
+line 3 with error
+line 4
+line 5`;
+      writeFileSync(testFile, content);
+
+      const error = new JekyllError('Error on line 3', {
+        file: testFile,
+        line: 3,
+      });
+
+      expect(error.sourceSnippet).toBeDefined();
+      expect(error.sourceSnippet).toContain('line 3 with error');
+      expect(error.sourceSnippet).toContain('>'); // Error line marker
+    });
+
+    it('should include column marker in source snippet', () => {
+      const testFile = join(testDir, 'test-column.md');
+      const content = `line 1
+line 2 with error at column
+line 3`;
+      writeFileSync(testFile, content);
+
+      const error = new JekyllError('Error at column 10', {
+        file: testFile,
+        line: 2,
+        column: 10,
+      });
+
+      expect(error.sourceSnippet).toBeDefined();
+      expect(error.sourceSnippet).toContain('^'); // Column marker
+    });
+
+    it('should not generate snippet for non-existent file', () => {
+      const error = new JekyllError('File missing', {
+        file: '/nonexistent/path/file.md',
+        line: 1,
+      });
+
+      expect(error.sourceSnippet).toBeUndefined();
+    });
+
+    it('should include snippet in enhanced message', () => {
+      const testFile = join(testDir, 'test-enhanced.md');
+      const content = `---
+title: Test
+---
+Content here`;
+      writeFileSync(testFile, content);
+
+      const error = new JekyllError('Error in front matter', {
+        file: testFile,
+        line: 2,
+        suggestion: 'Check YAML syntax',
+      });
+
+      const enhanced = error.getEnhancedMessage();
+      expect(enhanced).toContain('title: Test');
+      expect(enhanced).toContain('💡 Suggestion:');
+    });
+  });
 });
 
 describe('ConfigError', () => {
@@ -80,6 +179,28 @@ describe('ConfigError', () => {
     expect(error.name).toBe('ConfigError');
     expect(error.file).toBe('_config.yml');
   });
+
+  it('should auto-generate suggestion for YAML errors', () => {
+    const error = new ConfigError('YAML parse error');
+
+    expect(error.suggestion).toBeDefined();
+    expect(error.suggestion).toContain('YAML');
+  });
+
+  it('should auto-generate suggestion for missing config', () => {
+    const error = new ConfigError('Config file not found');
+
+    expect(error.suggestion).toBeDefined();
+    expect(error.suggestion).toContain('configuration file');
+  });
+
+  it('should use custom suggestion when provided', () => {
+    const error = new ConfigError('Custom error', {
+      suggestion: 'Custom fix',
+    });
+
+    expect(error.suggestion).toBe('Custom fix');
+  });
 });
 
 describe('FrontMatterError', () => {
@@ -92,6 +213,20 @@ describe('FrontMatterError', () => {
     expect(error).toBeInstanceOf(JekyllError);
     expect(error).toBeInstanceOf(FrontMatterError);
     expect(error.name).toBe('FrontMatterError');
+  });
+
+  it('should auto-generate suggestion for YAML errors', () => {
+    const error = new FrontMatterError('Invalid YAML syntax');
+
+    expect(error.suggestion).toBeDefined();
+    expect(error.suggestion).toContain('YAML');
+  });
+
+  it('should auto-generate suggestion for date errors', () => {
+    const error = new FrontMatterError('Invalid date format');
+
+    expect(error.suggestion).toBeDefined();
+    expect(error.suggestion).toContain('ISO 8601');
   });
 });
 
@@ -118,6 +253,34 @@ describe('TemplateError', () => {
     const formatted = error.getFormattedMessage();
     expect(formatted).toContain('Template: default');
     expect(formatted).toContain('layout.html');
+  });
+
+  it('should auto-generate suggestion for undefined variables', () => {
+    const error = new TemplateError('undefined variable');
+
+    expect(error.suggestion).toBeDefined();
+    expect(error.suggestion).toContain('variable');
+  });
+
+  it('should auto-generate suggestion for include errors', () => {
+    const error = new TemplateError('include not found');
+
+    expect(error.suggestion).toBeDefined();
+    expect(error.suggestion).toContain('_includes');
+  });
+
+  it('should auto-generate suggestion for syntax errors', () => {
+    const error = new TemplateError('unexpected token');
+
+    expect(error.suggestion).toBeDefined();
+    expect(error.suggestion).toContain('Liquid syntax');
+  });
+
+  it('should auto-generate suggestion for circular references', () => {
+    const error = new TemplateError('circular reference detected');
+
+    expect(error.suggestion).toBeDefined();
+    expect(error.suggestion).toContain('circular');
   });
 });
 
@@ -152,6 +315,20 @@ describe('FileSystemError', () => {
     expect(error).toBeInstanceOf(JekyllError);
     expect(error).toBeInstanceOf(FileSystemError);
     expect(error.name).toBe('FileSystemError');
+  });
+
+  it('should auto-generate suggestion for permission errors', () => {
+    const error = new FileSystemError('Permission denied');
+
+    expect(error.suggestion).toBeDefined();
+    expect(error.suggestion).toContain('permission');
+  });
+
+  it('should auto-generate suggestion for not found errors', () => {
+    const error = new FileSystemError('File not found ENOENT');
+
+    expect(error.suggestion).toBeDefined();
+    expect(error.suggestion).toContain('does not exist');
   });
 });
 

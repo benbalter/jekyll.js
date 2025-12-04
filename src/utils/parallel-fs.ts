@@ -64,11 +64,7 @@ export async function parallelMap<T, R>(
       const completed = executing.filter(
         (p) => (p as unknown as { _resolved?: boolean })._resolved
       );
-      executing.splice(
-        0,
-        executing.length,
-        ...executing.filter((p) => !completed.includes(p))
-      );
+      executing.splice(0, executing.length, ...executing.filter((p) => !completed.includes(p)));
     }
   }
 

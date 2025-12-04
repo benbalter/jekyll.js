@@ -130,9 +130,73 @@ export interface JekyllConfig {
   // Strict front matter
   strict_front_matter?: boolean;
 
+  // Modern JS/SSG features (Jekyll.js specific, opt-in)
+  modern?: {
+    // Syntax highlighting with Shiki
+    syntaxHighlighting?: {
+      enabled?: boolean;
+      theme?: string;
+      showLineNumbers?: boolean;
+    };
+    // Image optimization with Sharp
+    imageOptimization?: {
+      enabled?: boolean;
+      quality?: number;
+      generateWebP?: boolean;
+      generateAVIF?: boolean;
+      responsiveSizes?: number[];
+    };
+    // HTML minification
+    htmlMinification?: {
+      enabled?: boolean;
+      removeComments?: boolean;
+      collapseWhitespace?: boolean;
+      keepClosingSlash?: boolean;
+      minifyCSS?: boolean;
+      minifyJS?: boolean;
+      removeOptionalTags?: boolean;
+      removeAttributeQuotes?: boolean;
+      collapseBooleanAttributes?: boolean;
+      removeEmptyAttributes?: boolean;
+      processConditionalComments?: boolean;
+      sortAttributes?: boolean;
+      sortClassName?: boolean;
+    };
+    // Resource hints (preload/prefetch)
+    resourceHints?: {
+      enabled?: boolean;
+      preloadStyles?: boolean;
+      preloadFonts?: boolean;
+      preloadHeroImages?: boolean;
+      preconnectOrigins?: string[];
+      prefetchUrls?: string[];
+      dnsPrefetchDomains?: string[];
+      customPreloads?: Array<{
+        href: string;
+        rel: 'preload' | 'prefetch' | 'preconnect' | 'dns-prefetch';
+        as?: 'style' | 'script' | 'font' | 'image' | 'fetch' | 'document';
+        type?: string;
+        crossorigin?: 'anonymous' | 'use-credentials' | '';
+        media?: string;
+      }>;
+    };
+    // Performance features
+    performance?: {
+      parallelProcessing?: boolean;
+      cacheEnabled?: boolean;
+    };
+  };
+
+  // Feed plugin configuration
+  feed?: {
+    path?: string;
+    posts_limit?: number;
+  };
+
   // Additional user-defined keys
   // Custom configuration values should be simple types (string, number, boolean, arrays, objects)
   // Used for custom site metadata, theme settings, or plugin configuration
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any;
 }
 

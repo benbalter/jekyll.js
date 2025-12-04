@@ -10,6 +10,7 @@ import { format, parseISO, formatISO, formatRFC7231, isValid } from 'date-fns';
 import striptags from 'striptags';
 import { dirname, join, resolve, normalize, relative } from 'path';
 import { readFileSync, existsSync, statSync } from 'fs';
+import { PluginRegistry, Hooks } from '../plugins';
 
 /**
  * Renderer configuration options
@@ -1278,20 +1279,64 @@ export class Renderer {
       throw error;
     }
 
-    // If document is markdown, convert to HTML
-    const isMarkdown = ['.md', '.markdown'].includes(document.extname.toLowerCase());
-    if (isMarkdown) {
+    // Trigger documents:pre_render hook before conversion
+    // Note: Hooks should not modify content at this stage; modifications should be done in post_render
+    await Hooks.trigger('documents', 'pre_render', {
+      document,
+      site: this.site,
+      renderer: this,
+      content,
+    });
+
+    // Helper to check if document is markdown
+    const isMarkdownDocument = (ext: string): boolean =>
+      ['.md', '.markdown'].includes(ext.toLowerCase());
+
+    // Check if there's a custom converter plugin for this document type
+    const converter = PluginRegistry.findConverter(document.extname.toLowerCase());
+    if (converter) {
       try {
-        content = await processMarkdown(content, this.markdownOptions);
+        content = await converter.convert(content, document, this.site);
       } catch (err) {
-        // Log the error but don't fail the build - markdown processing can be fragile
-        // The content remains as-is (Liquid-rendered), which may already contain HTML
         logger.warn(
-          `Failed to process markdown for '${document.relativePath}': ${err instanceof Error ? err.message : String(err)}. Document will be rendered with Liquid-processed content only.`,
+          `Failed to convert '${document.relativePath}' using converter '${converter.name}': ${err instanceof Error ? err.message : String(err)}. Falling back to default processing.`,
           { file: document.relativePath }
         );
+        // Fall back to built-in markdown processing if converter fails
+        if (isMarkdownDocument(document.extname)) {
+          try {
+            content = await processMarkdown(content, this.markdownOptions);
+          } catch (mdErr) {
+            logger.warn(
+              `Failed to process markdown for '${document.relativePath}': ${mdErr instanceof Error ? mdErr.message : String(mdErr)}.`,
+              { file: document.relativePath }
+            );
+          }
+        }
+      }
+    } else {
+      // Use built-in markdown processing if no custom converter
+      if (isMarkdownDocument(document.extname)) {
+        try {
+          content = await processMarkdown(content, this.markdownOptions);
+        } catch (err) {
+          // Log the error but don't fail the build - markdown processing can be fragile
+          // The content remains as-is (Liquid-rendered), which may already contain HTML
+          logger.warn(
+            `Failed to process markdown for '${document.relativePath}': ${err instanceof Error ? err.message : String(err)}. Document will be rendered with Liquid-processed content only.`,
+            { file: document.relativePath }
+          );
+        }
       }
     }
+
+    // Trigger documents:post_render hook after conversion but before layout
+    await Hooks.trigger('documents', 'post_render', {
+      document,
+      site: this.site,
+      renderer: this,
+      content,
+    });
 
     // Update context with rendered content
     (context.page as Record<string, unknown>).content = content;

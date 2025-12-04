@@ -7,7 +7,7 @@
  * @see https://github.com/jekyll/jekyll-feed
  */
 
-import { Plugin } from './index';
+import { Plugin, GeneratorPlugin, GeneratorResult, GeneratorPriority } from './index';
 import { Renderer } from '../core/Renderer';
 import { Site } from '../core/Site';
 import { Document } from '../core/Document';
@@ -29,13 +29,14 @@ function getFeedUrlInfo(site: Site): { siteUrl: string; feedPath: string; feedUr
 
 /**
  * Feed Plugin implementation
+ * Implements both Plugin (for Liquid tags) and GeneratorPlugin interfaces
  */
-export class FeedPlugin implements Plugin {
+export class FeedPlugin implements Plugin, GeneratorPlugin {
   name = 'jekyll-feed';
+  priority = GeneratorPriority.LOW; // Run late but before sitemap
 
   register(renderer: Renderer, site: Site): void {
-    // Store a reference to generate feed during build
-    // This will be called by the Builder after all documents are processed
+    // Store a reference for backward compatibility with legacy builder code
     (site as any)._feedPlugin = this;
 
     // Register the feed_meta tag
@@ -47,6 +48,26 @@ export class FeedPlugin implements Plugin {
         return generateFeedMetaTag(site);
       },
     });
+  }
+
+  /**
+   * Generator interface - generates feed.xml file
+   */
+  generate(site: Site, _renderer: Renderer): GeneratorResult {
+    const { feedPath } = getFeedUrlInfo(site);
+    const content = this.generateFeed(site);
+    
+    // Remove leading slash for file path (destination expects relative path)
+    const filePath = feedPath.replace(/^\//, '');
+    
+    return {
+      files: [
+        {
+          path: filePath,
+          content,
+        },
+      ],
+    };
   }
 
   /**

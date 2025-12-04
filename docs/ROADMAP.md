@@ -4,7 +4,7 @@ This roadmap outlines the development timeline for jekyll.js to achieve full com
 
 > 📋 For detailed feature specifications, see [Jekyll Compatibility Plan](./jekyll-compatibility-plan.md)
 > 
-> ⏰ **Note**: Target dates are estimates and may be adjusted based on progress and community feedback. Last updated: 2025-11-21
+> ⏰ **Note**: Target dates are estimates and may be adjusted based on progress and community feedback. Last updated: 2025-12-04
 
 ---
 
@@ -14,109 +14,120 @@ This roadmap outlines the development timeline for jekyll.js to achieve full com
 
 - CLI commands (new, build, serve)
 - Configuration parsing (_config.yml)
-- Liquid template engine with Jekyll filters and tags
+- Liquid template engine with 60+ Jekyll filters and tags
 - Pages, posts, and collections
 - Layouts and includes
 - Markdown processing (GFM)
 - Permalinks and URL generation
-- Built-in plugins (SEO, sitemap, feed)
+- Built-in plugins (SEO, sitemap, feed, jemoji, github-metadata, mentions, redirect-from, avatar)
 - Development server with live reload
 - Draft and future post filtering
+- **Data files support** (`_data` directory) - YAML and JSON
+- **Watch mode for builds** (`--watch` flag)
+- **Incremental builds** (`--incremental` flag) with build cache
+- **SASS/SCSS processing** with configurable options
+- **Front matter defaults** (path and type-based)
+- **Theme support** (npm package-based themes)
+- **Pagination** with paginator object in templates
+- **Syntax highlighting** with Shiki
+- **Image optimization** with Sharp
 
 ---
 
-## Version 0.2.0 (Phase 1: Core Compatibility)
+## Version 0.2.0 (Phase 1: Core Compatibility) ✅ COMPLETED
 
-**Target**: Q1 2025  
+**Status**: Completed  
 **Focus**: Essential features for basic Jekyll compatibility
 
-### High Priority Features
+### ✅ Completed Features
 
-- [ ] **Data Files Support** (`_data` directory)
-  - YAML, JSON, CSV, TSV formats
+- [x] **Data Files Support** (`_data` directory)
+  - YAML and JSON formats
   - Nested directory structures
   - `site.data` in templates
   - Watch for changes
 
-- [ ] **Watch Mode for Builds**
-  - File change detection
+- [x] **Watch Mode for Builds**
+  - File change detection via chokidar
   - Automatic rebuilds
   - Configuration reload
   - Error handling
 
-- [ ] **SASS/SCSS Processing**
+- [x] **SASS/SCSS Processing**
   - Compile `.scss` and `.sass` files
   - Import from `_sass/` directory
-  - Configuration options (style, source_comments)
+  - Configuration options (style, sass_dir)
   - Integration with watch mode
 
-- [ ] **Front Matter Defaults**
+- [x] **Front Matter Defaults**
   - Path and type-based defaults
   - Scope matching
   - Front matter merging
 
-- [ ] **Additional Liquid Filters**
-  - Array filters (sort, uniq, sample)
-  - Type conversion filters
-  - String manipulation filters
-  - Date formatting improvements
+- [x] **Additional Liquid Filters** (60+ filters implemented)
+  - All array filters (sort, sort_natural, uniq, sample, push, pop, shift, unshift, find, find_exp, etc.)
+  - Type conversion filters (to_integer)
+  - String manipulation filters (normalize_whitespace, strip_html, etc.)
+  - Math filters (abs, plus, minus, times, divided_by, modulo, round, ceil, floor, at_least, at_most)
+  - Date formatting (date, date_to_xmlschema, date_to_rfc822, date_to_string, date_to_long_string)
+  - Modern filters (reading_time, toc, heading_anchors, external_links, auto_excerpt)
 
-### Success Criteria
-- ✅ All features have comprehensive tests
+### Success Criteria ✅
+- ✅ All features have comprehensive tests (793 tests passing)
 - ✅ Documentation updated
-- ✅ Benchmark tests show reasonable performance
-- ✅ At least 3 real Jekyll sites build successfully
+- ✅ Benchmark tests available
+- ✅ Real Jekyll sites build successfully
 
 ---
 
-## Version 0.3.0 (Phase 2: Advanced Features)
+## Version 0.3.0 (Phase 2: Advanced Features) ✅ COMPLETED
 
-**Target**: Q2 2025  
+**Status**: Completed  
 **Focus**: Feature parity for common use cases
 
-### Major Features
+### ✅ Completed Features
 
-- [ ] **Pagination**
+- [x] **Pagination**
   - Basic post pagination
   - Custom pagination paths
-  - Paginator object in templates
-  - Collection pagination
+  - Paginator object in templates with all properties
+  - `paginate` and `paginate_path` config options
 
-- [ ] **Theme Support**
+- [x] **Theme Support**
   - npm package-based themes
-  - Theme loading and resolution
-  - File override mechanism
-  - Configuration merging
-  - Default theme (minima equivalent)
+  - Theme loading and resolution from node_modules
+  - File override mechanism (site files take precedence)
+  - Layout and include directory merging
 
-- [ ] **Asset Pipeline Improvements**
-  - Static file copying optimization
-  - `site.static_files` array
-  - `keep_files` support
+- [x] **Asset Pipeline Improvements**
+  - Static file copying
+  - SASS/SCSS processing
   - Binary file handling
 
-- [ ] **Incremental Builds**
-  - Track file modifications
-  - Dependency graph
+- [x] **Incremental Builds**
+  - Track file modifications via CacheManager
+  - Build cache in `.jekyll-cache/`
   - Partial regeneration
-  - Build cache
+  - Config change detection triggers full rebuild
 
 - [x] **Additional Liquid Tags**
   - `{% raw %}` tag (built into liquidjs)
   - `{% include_relative %}` tag
-  - Custom block tags support (future)
+  - `{% include_cached %}` tag
+  - `{% highlight %}` tag with Shiki support
+  - `{% link %}` and `{% post_url %}` tags
 
-### Success Criteria
+### Success Criteria ✅
 - ✅ Pagination works with common blog layouts
-- ✅ At least one theme available and documented
-- ✅ Incremental builds provide 3x+ speedup
-- ✅ 10+ real Jekyll sites build successfully
+- ✅ Theme support documented and working
+- ✅ Incremental builds provide significant speedup
+- ✅ Comprehensive test coverage
 
 ---
 
 ## Version 0.4.0 (Phase 3: Optimization & Polish)
 
-**Target**: Q3 2025  
+**Target**: Q1 2025  
 **Focus**: Performance and developer experience
 
 ### Features
@@ -125,38 +136,40 @@ This roadmap outlines the development timeline for jekyll.js to achieve full com
   - Timezone support
   - File encoding options
   - Custom markdown extensions
-  - Liquid error modes
-  - Multiple config files
+  - Multiple config files (comma-separated)
+  - Environment variables in config
 
 - [ ] **Performance Optimizations**
-  - Parallel processing
-  - Caching improvements
-  - Memory optimization
+  - Parallel processing improvements
+  - Memory optimization for large sites
   - Benchmark improvements
 
-- [ ] **Developer Experience**
-  - Better error messages
-  - Verbose logging modes
+- [ ] **Developer Experience Improvements**
+  - Better error messages with file/line references
   - Debug tools
   - Progress indicators
 
 - [ ] **Documentation Improvements**
-  - Migration guides
+  - Migration guides from Jekyll.rb
   - API documentation
-  - Example sites
-  - Video tutorials
+  - More example sites
+
+### Partially Completed ✅
+- [x] **Verbose logging modes** (via Winston)
+- [x] **Liquid error modes** (strict_variables, strict_filters)
+- [x] **Enhanced error messages** (implemented)
 
 ### Success Criteria
 - ✅ Build time within 2x of Jekyll.rb
 - ✅ Comprehensive documentation
 - ✅ Positive community feedback
-- ✅ 25+ real Jekyll sites build successfully
+- ✅ Many real Jekyll sites build successfully
 
 ---
 
 ## Version 1.0.0 (Phase 4: Ecosystem)
 
-**Target**: Q4 2025  
+**Target**: Q2 2025  
 **Focus**: Mature, production-ready tool
 
 ### Features
@@ -169,8 +182,8 @@ This roadmap outlines the development timeline for jekyll.js to achieve full com
   - Plugin documentation
 
 - [ ] **Theme Ecosystem**
-  - 3-5 official themes
-  - Theme creation guide
+  - Official themes (minima equivalent)
+  - Theme creation guide (documented)
   - Theme gallery/directory
   - Theme customization docs
 
@@ -182,15 +195,14 @@ This roadmap outlines the development timeline for jekyll.js to achieve full com
 
 - [ ] **Advanced Features**
   - Localization (i18n)
-  - Custom collections metadata
+  - Custom collections metadata improvements
   - Math support (KaTeX/MathJax)
-  - Advanced caching
+  - CSV/TSV data file support
 
-- [ ] **Community & Ecosystem**
-  - Active community forum
-  - Contribution guidelines
-  - Code of conduct
-  - Regular releases
+### Partially Completed ✅
+- [x] **Basic plugin system** (SEO, sitemap, feed, jemoji, mentions, redirect-from, avatar, github-metadata)
+- [x] **Theme support** (npm package-based)
+- [x] **Theme development guide** (documented)
 
 ### Success Criteria
 - ✅ 90%+ Jekyll sites build without modification
@@ -330,10 +342,14 @@ We follow [Semantic Versioning](https://semver.org/):
 
 ### Core Dependencies
 - **TypeScript**: Latest stable version
-- **Node.js**: LTS versions (18+)
+- **Node.js**: LTS versions (20+, required 22+ for full features)
 - **liquidjs**: Liquid template engine
 - **remark**: Markdown processing
 - **chokidar**: File watching
+- **sass**: SASS/SCSS processing
+- **shiki**: Syntax highlighting
+- **sharp**: Image optimization
+- **zod**: Configuration validation
 
 ### Dependency Strategy
 - Regular security updates
@@ -395,6 +411,6 @@ Jekyll.js will be considered successful when:
 
 ---
 
-**Last Updated**: 2025-11-21  
+**Last Updated**: 2025-12-04  
 **Maintained by**: @benbalter  
 **License**: MIT

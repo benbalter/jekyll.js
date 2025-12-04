@@ -357,6 +357,6 @@ We welcome theme contributions! To add your theme to the official directory:
 
 ---
 
-**Last Updated:** 2025-11-21  
+**Last Updated:** 2025-12-04  
 **Maintained by:** Jekyll.js Team  
 **License:** MIT

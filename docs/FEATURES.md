@@ -42,8 +42,8 @@ Quick reference for feature implementation status in jekyll.js compared to Jekyl
 | Collections | ✅ | v0.1.0 | Custom content types |
 | Layouts | ✅ | v0.1.0 | Template inheritance |
 | Includes | ✅ | v0.1.0 | Reusable partials |
-| Data Files | 🔴 | v0.2.0 | `_data/` directory - **High Priority** |
-| Static Files | 🟡 | v0.1.0 | Basic copying, needs improvements |
+| Data Files | ✅ | v0.1.0 | `_data/` directory - YAML and JSON |
+| Static Files | ✅ | v0.1.0 | Copies files to destination |
 
 ---
 
@@ -53,11 +53,11 @@ Quick reference for feature implementation status in jekyll.js compared to Jekyl
 |---------|--------|---------|-------|
 | Liquid Engine | ✅ | v0.1.0 | Full Liquid syntax support |
 | Jekyll Filters (Basic) | ✅ | v0.1.0 | Date, URL, array, string filters |
-| Jekyll Filters (Advanced) | 🟡 | v0.2.0 | Some filters missing |
+| Jekyll Filters (Advanced) | ✅ | v0.1.0 | 60+ filters implemented |
 | Jekyll Tags (Basic) | ✅ | v0.1.0 | `include`, `highlight`, `link` |
-| Jekyll Tags (Advanced) | ✅ | v0.1.0 | `raw`, `include_relative`, `comment` |
+| Jekyll Tags (Advanced) | ✅ | v0.1.0 | `raw`, `include_relative`, `include_cached` |
 | Layout Inheritance | ✅ | v0.1.0 | Nested layouts work |
-| Front Matter Defaults | 🔴 | v0.2.0 | Path/type-based defaults |
+| Front Matter Defaults | ✅ | v0.1.0 | Path/type-based defaults |
 
 ---
 
@@ -66,8 +66,8 @@ Quick reference for feature implementation status in jekyll.js compared to Jekyl
 | Feature | Status | Version | Notes |
 |---------|--------|---------|-------|
 | Basic Build | ✅ | v0.1.0 | Site generation works |
-| Watch Mode | 🔴 | v0.2.0 | `--watch` flag - **High Priority** |
-| Incremental Builds | 🔴 | v0.3.0 | Only rebuild changed files |
+| Watch Mode | ✅ | v0.1.0 | `--watch` flag implemented |
+| Incremental Builds | ✅ | v0.1.0 | `--incremental` flag with build cache |
 | Verbose Output | ✅ | v0.1.0 | `--verbose` flag |
 | Custom Source/Dest | ✅ | v0.1.0 | `-s`, `-d` options |
 | Configuration File | ✅ | v0.1.0 | `--config` option |
@@ -81,7 +81,7 @@ Quick reference for feature implementation status in jekyll.js compared to Jekyl
 |---------|--------|---------|-------|
 | Static File Serving | ✅ | v0.1.0 | HTTP server works |
 | Live Reload | ✅ | v0.1.0 | WebSocket-based reload |
-| File Watching | 🟡 | v0.1.0 | Basic watching, needs polish |
+| File Watching | ✅ | v0.1.0 | Chokidar-based watching |
 | Custom Port/Host | ✅ | v0.1.0 | `-P`, `-H` options |
 | HTTPS Support | 🔴 | v0.4.0 | Not yet available |
 
@@ -91,11 +91,11 @@ Quick reference for feature implementation status in jekyll.js compared to Jekyl
 
 | Feature | Status | Version | Notes |
 |---------|--------|---------|-------|
-| Static Assets | 🟡 | v0.1.0 | Copies files, needs optimization |
-| SASS/SCSS | 🔴 | v0.2.0 | Not implemented - **High Priority** |
-| CSS Minification | 🔴 | v0.3.0 | SASS output styles |
-| Source Maps | 🔴 | v0.3.0 | For debugging |
-| Asset Pipeline | 🔴 | v0.3.0 | Advanced asset handling |
+| Static Assets | ✅ | v0.1.0 | Copies files to destination |
+| SASS/SCSS | ✅ | v0.1.0 | Full SASS processing with sass package |
+| CSS Output Styles | ✅ | v0.1.0 | compressed, expanded, etc. |
+| Source Maps | 🔴 | v0.4.0 | For debugging |
+| Asset Pipeline | 🟡 | v0.1.0 | Basic implementation |
 
 ---
 
@@ -106,6 +106,11 @@ Quick reference for feature implementation status in jekyll.js compared to Jekyl
 | jekyll-seo-tag | ✅ | v0.1.0 | SEO meta tags, JSON-LD |
 | jekyll-sitemap | ✅ | v0.1.0 | XML sitemap generation |
 | jekyll-feed | ✅ | v0.1.0 | Atom feed generation |
+| jekyll-jemoji | ✅ | v0.1.0 | Emoji support |
+| jekyll-github-metadata | ✅ | v0.1.0 | GitHub repository metadata |
+| jekyll-mentions | ✅ | v0.1.0 | @mention links |
+| jekyll-redirect-from | ✅ | v0.1.0 | Redirect pages |
+| jekyll-avatar | ✅ | v0.1.0 | GitHub avatar helper |
 | Custom TS Plugins | 🔴 | v1.0.0 | Plugin API not yet defined |
 | Ruby Plugins | ⚫ | N/A | Not supported - requires TS rewrite |
 
@@ -115,13 +120,13 @@ Quick reference for feature implementation status in jekyll.js compared to Jekyl
 
 | Feature | Status | Version | Notes |
 |---------|--------|---------|-------|
-| Pagination | 🔴 | v0.3.0 | Posts and collections - **High Priority** |
-| Themes | 🔴 | v0.3.0 | Gem-based equivalent |
+| Pagination | ✅ | v0.1.0 | Posts pagination with paginator object |
+| Themes | ✅ | v0.1.0 | npm package-based themes |
+| Categories | ✅ | v0.1.0 | Full support |
+| Tags | ✅ | v0.1.0 | Full support |
 | Localization (i18n) | 🔴 | v1.0.0+ | Multi-language support |
 | Math Support | 🔴 | v1.0.0+ | KaTeX/MathJax |
 | Search | 🔴 | Future | Site search functionality |
-| Categories | 🟡 | v0.1.0 | Basic support, needs improvement |
-| Tags | 🟡 | v0.1.0 | Basic support, needs improvement |
 
 ---
 
@@ -135,72 +140,103 @@ Quick reference for feature implementation status in jekyll.js compared to Jekyl
 | `collections` | ✅ | v0.1.0 | Collection definitions |
 | `permalink` | ✅ | v0.1.0 | URL patterns |
 | `exclude`, `include` | ✅ | v0.1.0 | File filters |
-| `plugins` | 🟡 | v0.1.0 | List support, loading TBD |
-| `defaults` | 🔴 | v0.2.0 | Front matter defaults |
-| `paginate` | 🔴 | v0.3.0 | Pagination settings |
-| `theme` | 🔴 | v0.3.0 | Theme selection |
+| `plugins` | ✅ | v0.1.0 | Plugin list support |
+| `defaults` | ✅ | v0.1.0 | Front matter defaults |
+| `paginate` | ✅ | v0.1.0 | Pagination settings |
+| `paginate_path` | ✅ | v0.1.0 | Pagination URL pattern |
+| `theme` | ✅ | v0.1.0 | Theme selection |
 | `timezone` | 🔴 | v0.4.0 | Date processing |
 | `encoding` | 🔴 | v0.4.0 | File encoding |
 | `markdown_ext` | 🔴 | v0.4.0 | Custom extensions |
-| `liquid` | 🟡 | v0.1.0 | Error modes |
-| `sass` | 🔴 | v0.2.0 | SASS configuration |
+| `liquid.strict_filters` | ✅ | v0.1.0 | Strict filter mode |
+| `liquid.strict_variables` | ✅ | v0.1.0 | Strict variable mode |
+| `sass.sass_dir` | ✅ | v0.1.0 | SASS directory |
+| `sass.style` | ✅ | v0.1.0 | Output style |
 
 ---
 
 ## Liquid Filters
 
-### ✅ Implemented
+### ✅ Implemented (60+ filters)
 
 **Date Filters:**
-- `date_to_xmlschema`
-- `date_to_rfc822`
-- `date_to_string`
-- `date_to_long_string`
+- `date` - Format date with strftime format
+- `date_to_xmlschema` - ISO 8601 format
+- `date_to_rfc822` - RFC 822 format
+- `date_to_string` - Short date
+- `date_to_long_string` - Long date
 
 **URL Filters:**
-- `relative_url`
-- `absolute_url`
+- `relative_url` - Prepend baseurl
+- `absolute_url` - Prepend full URL
 
 **Array Filters:**
-- `where`
-- `where_exp` (basic)
-- `group_by`
-- `group_by_exp` (basic)
-- `array_to_sentence_string`
+- `where` - Filter by property
+- `where_exp` - Filter by expression
+- `group_by` - Group by property
+- `group_by_exp` - Group by expression
+- `array_to_sentence_string` - Array to sentence
+- `sort` - Sort array
+- `sort_natural` - Natural sort (case-insensitive)
+- `uniq` - Remove duplicates
+- `sample` - Random element(s)
+- `push`, `pop`, `shift`, `unshift` - Array manipulation
+- `find` - Find element by property
+- `find_exp` - Find element by expression
+- `first`, `last` - First/last element
+- `reverse` - Reverse array
+- `compact` - Remove nil values
+- `concat` - Concatenate arrays
+- `map` - Map property from objects
+- `join` - Join array to string
+- `size` - Array/string length
 
 **String Filters:**
-- `xml_escape`
-- `cgi_escape`
-- `uri_escape`
-- `slugify`
-- `smartify`
-- `number_of_words`
-- `markdownify`
-- `jsonify`
-- `inspect`
-
-### 🔴 Planned (v0.2.0+)
-
-**Array Filters:**
-- `sort`
-- `sort_natural`
-- `uniq`
-- `sample`
-- `push`, `pop`, `shift`, `unshift`
-- `find`, `find_exp`
-
-**Type Filters:**
-- `to_integer`
-- `to_float`
-
-**String Filters:**
-- `normalize_whitespace`
+- `xml_escape` - XML escaping
+- `cgi_escape` - URL encoding
+- `uri_escape` - URI encoding
+- `slugify` - URL-friendly slug
+- `smartify` - Smart quotes
+- `number_of_words` - Word count
+- `markdownify` - Markdown to HTML
+- `jsonify` - JSON output
+- `inspect` - Debug output
+- `normalize_whitespace` - Whitespace normalization
+- `newline_to_br` - Newlines to HTML breaks
+- `strip_html` - Remove HTML tags
+- `strip_newlines` - Remove newlines
+- `truncate` - Truncate by length
+- `truncatewords` - Truncate by words
+- `upcase`, `downcase`, `capitalize` - Case conversion
+- `strip`, `lstrip`, `rstrip` - Trim whitespace
+- `prepend`, `append` - Add prefix/suffix
+- `remove`, `remove_first` - Remove substring
+- `replace`, `replace_first` - Replace substring
+- `split` - Split string to array
+- `escape_once` - HTML escape without double-escaping
+- `default` - Default value for nil/empty
 
 **Math Filters:**
-- `abs`
-- `plus`, `minus`, `times`, `divided_by`
-- `modulo`
-- `round`, `ceil`, `floor`
+- `abs` - Absolute value
+- `plus`, `minus`, `times`, `divided_by` - Arithmetic
+- `modulo` - Modulo operation
+- `round`, `ceil`, `floor` - Rounding
+- `at_least`, `at_most` - Min/max bounds
+
+**Type Filters:**
+- `to_integer` - Convert to integer
+
+**Modern Filters (Backwards-compatible enhancements):**
+- `reading_time` - Estimated reading time
+- `toc` - Generate table of contents
+- `heading_anchors` - Add anchor links to headings
+- `external_links` - Add target="_blank" to external links
+- `auto_excerpt` - Generate excerpts automatically
+
+### 🔴 Planned
+
+**Type Filters:**
+- `to_float` - Convert to float
 
 ---
 
@@ -208,15 +244,16 @@ Quick reference for feature implementation status in jekyll.js compared to Jekyl
 
 ### ✅ Implemented
 
-- `{% include %}` - Include partials
-- `{% highlight %}` - Syntax highlighting markup
-- `{% link %}` - Link to pages (basic)
-- `{% post_url %}` - Link to posts (basic)
-- `{% raw %}` - Disable Liquid processing (built into liquidjs)
+- `{% include %}` - Include partials with parameters
+- `{% include_cached %}` - Include with caching
 - `{% include_relative %}` - Include relative to current file
+- `{% highlight %}` - Syntax highlighting (with Shiki support)
+- `{% link %}` - Link to pages
+- `{% post_url %}` - Link to posts
+- `{% raw %}` - Disable Liquid processing (built into liquidjs)
 - `{% comment %}` - Multi-line comments (built into liquidjs)
 
-### 🔴 Planned (v0.3.0+)
+### 🔴 Planned
 
 - Custom block tag support for plugins
 
@@ -251,18 +288,19 @@ We test against various Jekyll sites:
 |-----------|--------|-------|
 | Basic blog | ✅ | Working |
 | Portfolio | ✅ | Working |
-| Documentation | 🟡 | Mostly working |
-| E-commerce | 🔴 | Advanced features needed |
-| Multi-language | 🔴 | i18n not implemented |
+| Documentation | ✅ | Working with collections and data files |
+| E-commerce | 🟡 | Most features work |
+| Multi-language | 🔴 | Needs i18n support |
 
 ### Theme Compatibility
 
 | Theme | Status | Issues |
 |-------|--------|--------|
-| Minima | 🔴 | Needs theme support |
-| Minimal Mistakes | 🔴 | Needs theme support |
-| Just the Docs | 🔴 | Needs theme support |
-| Custom themes | 🟡 | Manual setup works |
+| npm-based themes | ✅ | Full support |
+| Custom themes | ✅ | Manual setup works |
+| Minima equivalent | 🔴 | Official theme needed |
+| Minimal Mistakes | 🔴 | Needs testing |
+| Just the Docs | 🔴 | Needs testing |
 
 ---
 
@@ -274,23 +312,25 @@ Sites that work without modification:
 - Basic blogs with posts and pages
 - Sites using collections
 - Sites with includes and layouts
-- Sites using supported plugins (SEO, sitemap, feed)
+- Sites using supported plugins (SEO, sitemap, feed, jemoji, mentions, etc.)
+- Sites using data files (`_data` directory)
+- Sites with front matter defaults
+- Sites using pagination
+- Sites using SASS/SCSS
 
 ### Minor Changes Required 🟡
 
 Sites that need small adjustments:
-- Sites using unsupported Liquid filters (can work around)
+- Sites using unsupported Liquid filters (most now supported)
 - Sites with custom layouts (may need path adjustments)
-- Sites with complex permalinks (mostly work)
+- Sites using CSV/TSV data files (JSON/YAML supported)
 
 ### Major Changes Required 🔴
 
 Sites that need significant work:
 - Sites using Ruby plugins (need TS reimplementation)
-- Sites using SASS (not yet supported)
-- Sites using pagination (not yet supported)
-- Sites using themes (not yet supported)
-- Sites using data files (not yet supported)
+- Sites using i18n/localization (not yet supported)
+- Sites using math (KaTeX/MathJax not yet supported)
 
 ---
 
@@ -344,6 +384,6 @@ modern:
 
 ---
 
-**Last Updated**: 2025-12-03  
+**Last Updated**: 2025-12-04  
 **Version**: 0.1.0  
 **Maintained by**: @benbalter

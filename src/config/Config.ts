@@ -151,12 +151,16 @@ export interface JekyllConfig {
       enabled?: boolean;
       removeComments?: boolean;
       collapseWhitespace?: boolean;
+      keepClosingSlash?: boolean;
       minifyCSS?: boolean;
       minifyJS?: boolean;
       removeOptionalTags?: boolean;
       removeAttributeQuotes?: boolean;
       collapseBooleanAttributes?: boolean;
       removeEmptyAttributes?: boolean;
+      processConditionalComments?: boolean;
+      sortAttributes?: boolean;
+      sortClassName?: boolean;
     };
     // Resource hints (preload/prefetch)
     resourceHints?: {

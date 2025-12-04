@@ -68,8 +68,8 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
     const nameWidth = 22;
     const name = op.name.length > nameWidth ? op.name.substring(0, nameWidth - 1) + '…' : op.name;
     const details = op.details ? ` (${op.details})` : '';
-    console.log(
-      `  ${rankStr}${name.padEnd(nameWidth)} ${formatTime(op.duration)} ${percentage.padStart(5)}%${details}`
+    process.stdout.write(
+      `  ${rankStr}${name.padEnd(nameWidth)} ${formatTime(op.duration)} ${percentage.padStart(5)}%${details}\n`
     );
   };
 
@@ -236,22 +236,22 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
     const sortedOps = timings.getMostCostlyOperations();
 
     // Print total duration
-    console.log('');
+    process.stdout.write('\n');
     printStat('Total:', formatTime(timings.totalDuration));
-    console.log('');
+    process.stdout.write('\n');
 
     // Print header for operations table
-    console.log(
-      `  ${'#'.padEnd(3)} ${'Operation'.padEnd(22)} ${'Time'.padStart(10)} ${'%'.padStart(6)}`
+    process.stdout.write(
+      `  ${'#'.padEnd(3)} ${'Operation'.padEnd(22)} ${'Time'.padStart(10)} ${'%'.padStart(6)}\n`
     );
-    console.log(`  ${SEPARATOR}`);
+    process.stdout.write(`  ${SEPARATOR}\n`);
 
     // Print all operations ranked by cost
     sortedOps.forEach((op, index) => {
       printOperationRow(op, timings.totalDuration, index + 1);
     });
 
-    console.log(`  ${SEPARATOR}`);
+    process.stdout.write(`  ${SEPARATOR}\n`);
 
     // Verify output was created
     expect(existsSync(destDirTs)).toBe(true);

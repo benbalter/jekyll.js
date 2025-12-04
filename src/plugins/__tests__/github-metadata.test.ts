@@ -243,4 +243,178 @@ describe('GitHubMetadataPlugin', () => {
 
     expect(result).toBe('hello-world');
   });
+
+  describe('github_edit_link tag', () => {
+    it('should generate edit URL without link text', async () => {
+      const config = {
+        title: 'Test Site',
+        url: 'https://example.com',
+        repository: 'octocat/hello-world',
+      };
+      site = new Site(testSiteDir, config);
+      renderer = new Renderer(site);
+      plugin = new GitHubMetadataPlugin();
+      plugin.register(renderer, site);
+
+      const template = '{% github_edit_link %}';
+      const result = await renderer.render(template, {
+        page: { path: 'page.md' },
+        site: { ...site.config, github: site.data.github },
+      });
+
+      expect(result).toBe('https://github.com/octocat/hello-world/edit/main/page.md');
+    });
+
+    it('should generate link with double-quoted text', async () => {
+      const config = {
+        title: 'Test Site',
+        url: 'https://example.com',
+        repository: 'octocat/hello-world',
+      };
+      site = new Site(testSiteDir, config);
+      renderer = new Renderer(site);
+      plugin = new GitHubMetadataPlugin();
+      plugin.register(renderer, site);
+
+      const template = '{% github_edit_link "Improve this page" %}';
+      const result = await renderer.render(template, {
+        page: { path: 'page.md' },
+        site: { ...site.config, github: site.data.github },
+      });
+
+      expect(result).toBe(
+        '<a href="https://github.com/octocat/hello-world/edit/main/page.md">Improve this page</a>'
+      );
+    });
+
+    it('should generate link with single-quoted text', async () => {
+      const config = {
+        title: 'Test Site',
+        url: 'https://example.com',
+        repository: 'octocat/hello-world',
+      };
+      site = new Site(testSiteDir, config);
+      renderer = new Renderer(site);
+      plugin = new GitHubMetadataPlugin();
+      plugin.register(renderer, site);
+
+      const template = "{% github_edit_link 'Edit on GitHub' %}";
+      const result = await renderer.render(template, {
+        page: { path: 'index.html' },
+        site: { ...site.config, github: site.data.github },
+      });
+
+      expect(result).toBe(
+        '<a href="https://github.com/octocat/hello-world/edit/main/index.html">Edit on GitHub</a>'
+      );
+    });
+
+    it('should include source path if specified', async () => {
+      const config = {
+        title: 'Test Site',
+        url: 'https://example.com',
+        repository: 'octocat/hello-world',
+        github_pages_source_path: 'docs/',
+        branch: 'gh-pages',
+      };
+      site = new Site(testSiteDir, config);
+      renderer = new Renderer(site);
+      plugin = new GitHubMetadataPlugin();
+      plugin.register(renderer, site);
+
+      const template = '{% github_edit_link %}';
+      const result = await renderer.render(template, {
+        page: { path: 'getting-started.md' },
+        site: { ...site.config, github: site.data.github },
+      });
+
+      expect(result).toBe(
+        'https://github.com/octocat/hello-world/edit/gh-pages/docs/getting-started.md'
+      );
+    });
+
+    it('should return empty string when no repository configured', async () => {
+      const config = {
+        title: 'Test Site',
+        url: 'https://example.com',
+      };
+      site = new Site(testSiteDir, config);
+      renderer = new Renderer(site);
+      plugin = new GitHubMetadataPlugin();
+      plugin.register(renderer, site);
+
+      const template = '{% github_edit_link %}';
+      const result = await renderer.render(template, {
+        page: { path: 'page.md' },
+        site: { ...site.config, github: site.data.github },
+      });
+
+      expect(result).toBe('');
+    });
+
+    it('should escape HTML in link text', async () => {
+      const config = {
+        title: 'Test Site',
+        url: 'https://example.com',
+        repository: 'octocat/hello-world',
+      };
+      site = new Site(testSiteDir, config);
+      renderer = new Renderer(site);
+      plugin = new GitHubMetadataPlugin();
+      plugin.register(renderer, site);
+
+      const template = '{% github_edit_link "<script>alert(1)</script>" %}';
+      const result = await renderer.render(template, {
+        page: { path: 'page.md' },
+        site: { ...site.config, github: site.data.github },
+      });
+
+      expect(result).toBe(
+        '<a href="https://github.com/octocat/hello-world/edit/main/page.md">&lt;script&gt;alert(1)&lt;/script&gt;</a>'
+      );
+    });
+
+    it('should handle nested page paths', async () => {
+      const config = {
+        title: 'Test Site',
+        url: 'https://example.com',
+        repository: 'octocat/hello-world',
+      };
+      site = new Site(testSiteDir, config);
+      renderer = new Renderer(site);
+      plugin = new GitHubMetadataPlugin();
+      plugin.register(renderer, site);
+
+      const template = '{% github_edit_link %}';
+      const result = await renderer.render(template, {
+        page: { path: 'guides/getting-started/installation.md' },
+        site: { ...site.config, github: site.data.github },
+      });
+
+      expect(result).toBe(
+        'https://github.com/octocat/hello-world/edit/main/guides/getting-started/installation.md'
+      );
+    });
+
+    it('should use custom branch from config', async () => {
+      const config = {
+        title: 'Test Site',
+        url: 'https://example.com',
+        repository: 'octocat/hello-world',
+        branch: 'develop',
+      };
+      site = new Site(testSiteDir, config);
+      renderer = new Renderer(site);
+      plugin = new GitHubMetadataPlugin();
+      plugin.register(renderer, site);
+
+      const template = '{% github_edit_link %}';
+      const result = await renderer.render(template, {
+        page: { path: 'README.md' },
+        site: { ...site.config, github: site.data.github },
+      });
+
+      expect(result).toBe('https://github.com/octocat/hello-world/edit/develop/README.md');
+    });
+  });
 });

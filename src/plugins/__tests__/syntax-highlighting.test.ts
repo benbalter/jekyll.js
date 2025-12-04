@@ -4,7 +4,7 @@
 
 // Mock shiki to avoid ESM module issues in Jest
 jest.mock('shiki', () => ({
-  getHighlighter: jest.fn().mockResolvedValue({
+  createHighlighter: jest.fn().mockResolvedValue({
     codeToHtml: jest.fn((code: string, _options: any) => {
       // Simple HTML escaping for the mock
       const escaped = code

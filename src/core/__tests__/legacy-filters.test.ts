@@ -309,23 +309,28 @@ describe('Legacy Jekyll Liquid Filters Compatibility', () => {
   });
 
   describe('strip_index filter', () => {
-    it('should strip trailing /index.html if implemented', async () => {
+    it('should strip trailing /index.html', async () => {
       const renderer = new Renderer(site);
       const result = await renderer.render('{{ url | strip_index }}', {
         url: '/foo/index.html',
       });
-      // This filter may or may not be implemented - check it handles the input
-      expect(result).toBeTruthy();
-      // If implemented, it should strip index.html, otherwise return unchanged
+      expect(result).toBe('/foo/');
     });
 
-    it('should strip trailing /index.htm if implemented', async () => {
+    it('should strip trailing /index.htm', async () => {
       const renderer = new Renderer(site);
       const result = await renderer.render('{{ url | strip_index }}', {
         url: '/foo/index.htm',
       });
-      // This filter may or may not be implemented
-      expect(result).toBeTruthy();
+      expect(result).toBe('/foo/');
+    });
+
+    it('should strip index.html at root level', async () => {
+      const renderer = new Renderer(site);
+      const result = await renderer.render('{{ url | strip_index }}', {
+        url: '/index.html',
+      });
+      expect(result).toBe('/');
     });
 
     it('should not strip HTML in middle of URLs', async () => {
@@ -336,12 +341,28 @@ describe('Legacy Jekyll Liquid Filters Compatibility', () => {
       expect(result).toBe('/index.html/foo');
     });
 
+    it('should not strip index.html when not at end', async () => {
+      const renderer = new Renderer(site);
+      const result = await renderer.render('{{ url | strip_index }}', {
+        url: '/index.html?query=1',
+      });
+      expect(result).toBe('/index.html?query=1');
+    });
+
     it('should handle nil gracefully', async () => {
       const renderer = new Renderer(site);
       const result = await renderer.render('{{ url | strip_index }}', {
         url: null,
       });
       expect(result.trim()).toBe('');
+    });
+
+    it('should handle empty string', async () => {
+      const renderer = new Renderer(site);
+      const result = await renderer.render('{{ url | strip_index }}', {
+        url: '',
+      });
+      expect(result).toBe('');
     });
   });
 

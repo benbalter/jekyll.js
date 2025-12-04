@@ -44,7 +44,7 @@ describe('Site', () => {
       expect(site.config.title).toBe('My Site');
       expect(site.destination).toBe(join(testSiteDir, 'dist'));
       expect(site.config.exclude).toContain('custom-exclude');
-      expect(site.config.exclude).toContain('_site'); // Default excludes are still there
+      expect(site.config.exclude).toContain('dist'); // Auto-excluded because it's the destination
     });
 
     it('should throw FileSystemError when source directory does not exist', () => {

@@ -1,5 +1,5 @@
-import { existsSync, readdirSync, statSync, readFileSync } from 'fs';
-import { join, resolve, extname, dirname, basename } from 'path';
+import { existsSync, readdirSync, statSync, readFileSync, openSync, readSync, closeSync } from 'fs';
+import { join, resolve, extname, dirname, basename, relative } from 'path';
 import { Document, DocumentType } from './Document';
 import { StaticFile } from './StaticFile';
 import { JekyllConfig, loadConfig } from '../config';
@@ -86,20 +86,38 @@ export class Site {
     }
 
     // Merge default excludes with user-provided excludes
+    // Ruby Jekyll default excludes: https://github.com/jekyll/jekyll/blob/master/lib/jekyll/configuration.rb
     const defaultExcludes = [
-      '_site',
       '.sass-cache',
       '.jekyll-cache',
-      '.jekyll-metadata',
+      'gemfiles',
+      'Gemfile',
+      'Gemfile.lock',
       'node_modules',
-      'vendor',
+      'vendor/bundle/',
+      'vendor/cache/',
+      'vendor/gems/',
+      'vendor/ruby/',
     ];
     const mergedExcludes = [...defaultExcludes, ...(config.exclude || [])];
+
+    // Resolve destination path
+    const resolvedDest = config.destination
+      ? resolve(config.destination)
+      : join(this.source, '_site');
+
+    // Auto-exclude destination directory if it's inside source (Ruby Jekyll behavior)
+    const relativeDest = relative(this.source, resolvedDest);
+    if (relativeDest.length > 0 && !relativeDest.startsWith('..')) {
+      if (!mergedExcludes.includes(relativeDest)) {
+        mergedExcludes.push(relativeDest);
+      }
+    }
 
     this.config = {
       ...config,
       source: this.source,
-      destination: config.destination || join(this.source, '_site'),
+      destination: resolvedDest,
       exclude: mergedExcludes,
       include: config.include || [],
     };
@@ -276,13 +294,32 @@ export class Site {
 
   /**
    * Read all pages from the source directory - async version
-   * Pages are any markdown or HTML files not in special directories
+   * Pages are any markdown or HTML files not in special directories,
+   * OR any other files that have YAML front matter (following Jekyll behavior)
    */
   private async readPagesAsync(): Promise<void> {
     const files = await this.walkSiteDirectoryAsync(this.source, true);
-    const pageFiles = files.filter(
-      (file) => this.isMarkdownOrHtml(file) && !this.isSpecialDirectory(file)
-    );
+    const pageFiles = files.filter((file) => {
+      // Skip files in special directories (underscore-prefixed)
+      if (this.isSpecialDirectory(file)) {
+        return false;
+      }
+
+      // Skip SASS/SCSS files - they're processed by the SASS processor
+      const ext = extname(file).toLowerCase();
+      if (['.scss', '.sass'].includes(ext)) {
+        return false;
+      }
+
+      // Include markdown/HTML files
+      if (this.isMarkdownOrHtml(file)) {
+        return true;
+      }
+
+      // Include any other file that has front matter (Jekyll behavior)
+      // This allows .txt, .xml, .json, etc. with front matter to be processed through Liquid
+      return this.hasFrontMatter(file);
+    });
 
     // Create documents in parallel batches
     const docs = await this.createDocumentsParallel(
@@ -298,6 +335,7 @@ export class Site {
   /**
    * Read all static files from the source directory - async version
    * Static files are non-Jekyll files (not markdown, HTML, SASS, or in special directories)
+   * AND do not have YAML front matter
    */
   private async readStaticFilesAsync(): Promise<void> {
     const files = await this.walkSiteDirectoryAsync(this.source, true);
@@ -317,6 +355,11 @@ export class Site {
 
       // Skip files in special directories (underscore-prefixed)
       if (this.isSpecialDirectory(file)) {
+        return false;
+      }
+
+      // Skip files with front matter - they're treated as pages and processed through Liquid
+      if (this.hasFrontMatter(file)) {
         return false;
       }
 
@@ -555,6 +598,54 @@ export class Site {
   private isMarkdownOrHtml(path: string): boolean {
     const ext = extname(path).toLowerCase();
     return ['.md', '.markdown', '.html', '.htm'].includes(ext);
+  }
+
+  /**
+   * Check if a file has YAML front matter
+   * Front matter starts with --- on the first line and has a closing ---
+   * For efficiency, we only read the first 4KB of the file to detect front matter
+   */
+  private hasFrontMatter(filePath: string): boolean {
+    let fd: number | null = null;
+    try {
+      // Read only the first 4KB - this is enough to detect front matter
+      // Front matter is typically small (metadata only)
+      const buffer = Buffer.alloc(4096);
+      fd = openSync(filePath, 'r');
+      const bytesRead = readSync(fd, buffer, 0, 4096, 0);
+      const content = buffer.toString('utf-8', 0, bytesRead);
+
+      // Check for front matter structure: starts with --- and has closing ---
+      const trimmed = content.trimStart();
+      if (!trimmed.startsWith('---')) {
+        return false;
+      }
+
+      // Find the closing --- (must be on its own line after the opening ---)
+      const lines = trimmed.split('\n');
+      if (lines.length < 2) {
+        return false;
+      }
+
+      // Look for closing --- after the first line
+      for (let i = 1; i < lines.length; i++) {
+        if (lines[i]?.trim() === '---') {
+          return true;
+        }
+      }
+
+      return false;
+    } catch {
+      return false;
+    } finally {
+      if (fd !== null) {
+        try {
+          closeSync(fd);
+        } catch {
+          // Ignore close errors
+        }
+      }
+    }
   }
 
   /**

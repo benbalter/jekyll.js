@@ -303,7 +303,8 @@ export function getDefaultConfig(sourcePath: string = '.'): JekyllConfig {
     // Collections
     collections: {},
 
-    // Exclude patterns (Jekyll defaults + Node.js specific)
+    // Exclude patterns (Ruby Jekyll defaults)
+    // See: https://github.com/jekyll/jekyll/blob/master/lib/jekyll/configuration.rb
     exclude: [
       '.sass-cache',
       '.jekyll-cache',

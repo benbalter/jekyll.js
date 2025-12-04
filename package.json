@@ -27,7 +27,8 @@
     "url": "https://github.com/benbalter/jekyll.js/issues"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && npm run copy-themes",
+    "copy-themes": "node scripts/copy-themes.js",
     "dev": "tsc --watch",
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint src --ext .ts --fix",

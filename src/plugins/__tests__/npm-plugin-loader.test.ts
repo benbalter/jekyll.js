@@ -78,7 +78,7 @@ describe('npm-plugin-loader', () => {
 
     it('should return null for invalid package names', () => {
       expect(findNpmPackage('../etc/passwd', testDir)).toBeNull();
-      expect(findNpmPackageName('InvalidName', testDir)).toBeNull();
+      expect(findNpmPackage('InvalidName', testDir)).toBeNull();
     });
 
     it('should find packages in node_modules', () => {
@@ -354,9 +354,3 @@ describe('npm-plugin-loader', () => {
     });
   });
 });
-
-// Helper function for testing - not exported from the module
-function findNpmPackageName(name: string, dir: string): string | null {
-  // Simple wrapper to call findNpmPackage with invalid names
-  return findNpmPackage(name, dir);
-}

@@ -10,6 +10,7 @@
 import { Plugin } from './index';
 import { Renderer } from '../core/Renderer';
 import { Site } from '../core/Site';
+import { escapeHtml } from '../utils/html';
 
 /**
  * GitHub repository metadata interface
@@ -397,18 +398,4 @@ function buildEditUrl(github: GitHubMetadata, pagePath: string): string {
   parts.push(normalizedPagePath);
 
   return parts.join('/');
-}
-
-/**
- * Escape HTML special characters to prevent XSS
- * @param str String to escape
- * @returns Escaped string
- */
-function escapeHtml(str: string): string {
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
 }

@@ -264,7 +264,7 @@ export class DevServer {
    * Send 403 Forbidden response
    */
   private send403(res: ServerResponse, url: string): void {
-    const escapedUrl = url.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const escapedUrl = this.escapeHtml(url);
     const content = `<!DOCTYPE html>
 <html>
 <head>
@@ -293,8 +293,7 @@ export class DevServer {
    * Send 404 response
    */
   private send404(res: ServerResponse, url: string): void {
-    // Escape HTML special characters to prevent XSS
-    const escapedUrl = url.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const escapedUrl = this.escapeHtml(url);
     const content = `<!DOCTYPE html>
 <html>
 <head>
@@ -317,6 +316,19 @@ export class DevServer {
       'Content-Length': Buffer.byteLength(content),
     });
     res.end(content);
+  }
+
+  /**
+   * Escape HTML special characters to prevent XSS attacks
+   * Escapes &, <, >, ", and ' in that order to prevent double-escaping
+   */
+  private escapeHtml(str: string): string {
+    return str
+      .replace(/&/g, '&amp;') // Must be first to prevent double-escaping
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
   /**

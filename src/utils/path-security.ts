@@ -40,6 +40,8 @@ export class PathTraversalError extends Error {
 export function isPathWithinBase(basePath: string, targetPath: string): boolean {
   // Resolve both paths to absolute, normalized forms
   const resolvedBase = resolve(basePath);
+  // When targetPath is absolute, resolve ignores basePath and returns targetPath normalized
+  // When targetPath is relative, resolve combines them
   const resolvedTarget = resolve(basePath, targetPath);
 
   // Get the relative path from base to target
@@ -51,16 +53,36 @@ export function isPathWithinBase(basePath: string, targetPath: string): boolean 
     return false;
   }
 
-  // On Windows, check for drive letter changes (e.g., C: vs D:)
+  // On Windows, check for drive letter or UNC path root changes
   if (process.platform === 'win32') {
-    const baseDrive = resolvedBase.substring(0, 2).toLowerCase();
-    const targetDrive = resolvedTarget.substring(0, 2).toLowerCase();
-    if (baseDrive !== targetDrive && /^[a-z]:$/i.test(baseDrive)) {
+    // Handle both drive letters (C:) and UNC paths (\\server\share)
+    const baseRoot = getWindowsRoot(resolvedBase);
+    const targetRoot = getWindowsRoot(resolvedTarget);
+    if (baseRoot !== targetRoot) {
       return false;
     }
   }
 
   return true;
+}
+
+/**
+ * Get the root of a Windows path (drive letter or UNC server/share)
+ * @param p - Path to get root from
+ * @returns The root portion of the path
+ */
+function getWindowsRoot(p: string): string {
+  // UNC path: \\server\share\...
+  if (p.startsWith('\\\\')) {
+    const parts = p.split('\\');
+    // Return \\server\share
+    return parts.slice(0, 4).join('\\').toLowerCase();
+  }
+  // Drive letter: C:\...
+  if (/^[a-zA-Z]:/.test(p)) {
+    return p.substring(0, 2).toLowerCase();
+  }
+  return '';
 }
 
 /**

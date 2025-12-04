@@ -493,10 +493,19 @@ export class ThemeManager {
   }
 
   /**
+   * Normalize path separators to forward slashes for cross-platform consistency
+   * @param path Path to normalize
+   * @returns Path with forward slashes
+   */
+  private normalizePath(path: string): string {
+    return path.replace(/\\/g, '/');
+  }
+
+  /**
    * Recursively collect site files into a Set for efficient lookup
    * @param dir Directory to scan
    * @param relativeBase Relative base path
-   * @returns Set of relative file paths that exist in the site
+   * @returns Set of relative file paths that exist in the site (normalized to forward slashes)
    */
   private collectSiteFiles(dir: string, relativeBase: string): Set<string> {
     const files = new Set<string>();
@@ -509,7 +518,7 @@ export class ThemeManager {
 
     for (const entry of entries) {
       const fullPath = join(dir, entry);
-      const relativePath = join(relativeBase, entry);
+      const relativePath = this.normalizePath(join(relativeBase, entry));
 
       const stats = statSync(fullPath);
 
@@ -531,7 +540,7 @@ export class ThemeManager {
    * Recursively collect theme static files that are not overridden by site files
    * @param dir Directory to scan
    * @param relativeBase Relative base path
-   * @param siteFiles Set of site files for efficient lookup
+   * @param siteFiles Set of site files for efficient lookup (normalized to forward slashes)
    * @param files Accumulator array
    */
   private collectThemeStaticFiles(
@@ -548,7 +557,8 @@ export class ThemeManager {
 
     for (const entry of entries) {
       const fullPath = join(dir, entry);
-      const relativePath = join(relativeBase, entry);
+      // Normalize path for consistent cross-platform comparison
+      const relativePath = this.normalizePath(join(relativeBase, entry));
 
       const stats = statSync(fullPath);
 
@@ -556,7 +566,7 @@ export class ThemeManager {
         // Recurse into subdirectory
         this.collectThemeStaticFiles(fullPath, relativePath, siteFiles, files);
       } else if (stats.isFile()) {
-        // Only add if not overridden by site file (efficient Set lookup)
+        // Only add if not overridden by site file (efficient Set lookup with normalized paths)
         if (!siteFiles.has(relativePath)) {
           files.push({
             sourcePath: fullPath,

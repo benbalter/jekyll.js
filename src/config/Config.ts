@@ -364,8 +364,11 @@ export function mergeWithDefaults(
   const resolvedDest = merged.destination!;
   const relativeDest = relative(resolvedSource, resolvedDest);
 
-  // Check if destination is inside source (relative path doesn't start with '..')
-  if (relativeDest && !relativeDest.startsWith('..') && !relativeDest.startsWith('/')) {
+  // Check if destination is inside source:
+  // - relativeDest is non-empty (destination != source)
+  // - relativeDest doesn't start with '..' (destination is inside, not outside source)
+  // Note: When paths are properly resolved, relative() won't return paths starting with '/'
+  if (relativeDest.length > 0 && !relativeDest.startsWith('..')) {
     // Add the destination directory to the exclude list if not already present
     if (!merged.exclude!.includes(relativeDest)) {
       merged.exclude!.push(relativeDest);

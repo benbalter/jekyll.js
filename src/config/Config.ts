@@ -358,6 +358,20 @@ export function mergeWithDefaults(
       : resolve(sourcePath, userConfig.destination)
     : defaults.destination!;
 
+  // Automatically exclude the destination directory if it's inside the source directory
+  // This prevents the built site from being copied into itself on subsequent builds
+  const resolvedSource = merged.source!;
+  const resolvedDest = merged.destination!;
+  const relativeDest = relative(resolvedSource, resolvedDest);
+
+  // Check if destination is inside source (relative path doesn't start with '..')
+  if (relativeDest && !relativeDest.startsWith('..') && !relativeDest.startsWith('/')) {
+    // Add the destination directory to the exclude list if not already present
+    if (!merged.exclude!.includes(relativeDest)) {
+      merged.exclude!.push(relativeDest);
+    }
+  }
+
   return merged;
 }
 

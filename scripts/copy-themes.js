@@ -22,8 +22,19 @@ function copyDir(src, dest) {
     const destPath = path.join(dest, entry.name);
 
     if (entry.isDirectory()) {
+      // Skip __tests__ directories
+      if (entry.name === '__tests__') {
+        continue;
+      }
       copyDir(srcPath, destPath);
     } else {
+      // Skip test files
+      if (
+        entry.name.endsWith('.test.ts') ||
+        entry.name.endsWith('.test.js')
+      ) {
+        continue;
+      }
       fs.copyFileSync(srcPath, destPath);
     }
   }

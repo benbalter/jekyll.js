@@ -18,3 +18,10 @@ export {
 export { FileWatcher, type WatcherOptions } from './watcher';
 export { escapeHtml, escapeJs } from './html';
 export { PerformanceTimer, type TimedOperation, type BuildTimings } from './timer';
+export {
+  walkDirectoryAsync,
+  readFilesParallel,
+  statFilesParallel,
+  parallelMap,
+  type WalkOptions,
+} from './parallel-fs';

@@ -111,6 +111,28 @@ describe('buildCommand', () => {
     expect(existsSync(outputDir)).toBe(true);
   });
 
+  it('should display build time on completion', async () => {
+    const consoleSpy = jest.spyOn(console, 'log');
+
+    await buildCommand({
+      source: testSiteDir,
+      destination: outputDir,
+      config: join(testSiteDir, '_config.yml'),
+    });
+
+    // Check that build time is displayed
+    const buildTimeCalls = consoleSpy.mock.calls.filter(
+      (call) => typeof call[0] === 'string' && call[0].includes('Done in')
+    );
+    expect(buildTimeCalls.length).toBeGreaterThan(0);
+    // Verify format matches "Done in X.XXX seconds."
+    const buildTimeOutput = buildTimeCalls[0]?.[0] as string | undefined;
+    expect(buildTimeOutput).toBeDefined();
+    expect(buildTimeOutput).toMatch(/Done in \d+\.\d{3} seconds\./);
+
+    consoleSpy.mockRestore();
+  });
+
   // Note: We don't test --watch mode here because it would hang the test suite
   // Watch mode should be tested manually or with a timeout mechanism
 

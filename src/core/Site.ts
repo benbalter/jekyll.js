@@ -6,6 +6,7 @@ import { JekyllConfig, loadConfig } from '../config';
 import { ThemeManager } from './ThemeManager';
 import { logger } from '../utils/logger';
 import { FileSystemError } from '../utils/errors';
+import { walkDirectoryAsync } from '../utils/parallel-fs';
 import yaml from 'js-yaml';
 
 /**
@@ -110,45 +111,52 @@ export class Site {
 
   /**
    * Read and process all files in the site
+   * Uses parallel file operations for better performance on large sites
    */
   public async read(): Promise<void> {
-    // Read layouts first (they're needed for other documents)
-    this.readLayouts();
+    // Phase 1: Read layouts and includes in parallel (they may be needed for other documents)
+    // These must complete before processing documents that depend on them
+    await Promise.all([this.readLayoutsAsync(), this.readIncludesAsync()]);
 
-    // Read includes
-    this.readIncludes();
-
-    // Read data files
+    // Phase 2: Read data files (synchronous since they're typically small)
     this.readData();
 
-    // Read posts
-    this.readPosts();
-
-    // Read collections
-    this.readCollections();
-
-    // Read pages (do this last to avoid picking up collection docs as pages)
-    this.readPages();
-
-    // Read static files
-    this.readStaticFiles();
+    // Phase 3: Read posts, collections, pages, and static files in parallel
+    // These are independent of each other
+    await Promise.all([
+      this.readPostsAsync(),
+      this.readCollectionsAsync(),
+      this.readPagesAsync(),
+      this.readStaticFilesAsync(),
+    ]);
   }
 
   /**
-   * Read all layouts from _layouts directory (site and theme)
+   * Read all layouts from _layouts directory (site and theme) - async version
    * Site layouts take precedence over theme layouts
    */
-  private readLayouts(): void {
+  private async readLayoutsAsync(): Promise<void> {
     // Get all layout directories (site first, then theme)
     const layoutDirs = this.themeManager.getLayoutDirectories();
 
-    // Read layouts from all directories
-    // Site layouts (first in array) will be processed first and added to the map.
-    // Theme layouts will only be added if not already present (override mechanism).
-    for (const layoutsDir of layoutDirs) {
-      const files = this.walkDirectory(layoutsDir);
-      for (const file of files) {
-        const doc = new Document(file, this.source, DocumentType.LAYOUT);
+    // Process all layout directories in parallel
+    const layoutPromises = layoutDirs.map(async (layoutsDir) => {
+      const files = await this.walkSiteDirectoryAsync(layoutsDir);
+      return { layoutsDir, files };
+    });
+
+    const layoutResults = await Promise.all(layoutPromises);
+
+    // Process files (maintaining site-first precedence)
+    for (const { files } of layoutResults) {
+      // Create documents in parallel batches
+      const docs = await this.createDocumentsParallel(
+        files,
+        DocumentType.LAYOUT,
+        undefined,
+        undefined
+      );
+      for (const doc of docs) {
         // Site layouts take precedence, so only add if not already present
         if (!this.layouts.has(doc.basename)) {
           this.layouts.set(doc.basename, doc);
@@ -158,20 +166,35 @@ export class Site {
   }
 
   /**
-   * Read all includes from _includes directory (site and theme)
+   * Read all includes from _includes directory (site and theme) - async version
    * Site includes take precedence over theme includes
    */
-  private readIncludes(): void {
+  private async readIncludesAsync(): Promise<void> {
     // Get all include directories (site first, then theme)
     const includeDirs = this.themeManager.getIncludeDirectories();
 
-    // Read includes from all directories
-    // Site includes (first in array) will be processed first and added to the map.
-    // Theme includes will only be added if not already present (override mechanism).
-    for (const includesDir of includeDirs) {
-      const files = this.walkDirectory(includesDir);
-      for (const file of files) {
-        const doc = new Document(file, this.source, DocumentType.INCLUDE);
+    // Process all include directories in parallel
+    const includePromises = includeDirs.map(async (includesDir) => {
+      const files = await this.walkSiteDirectoryAsync(includesDir);
+      return { includesDir, files };
+    });
+
+    const includeResults = await Promise.all(includePromises);
+
+    // Process files (maintaining site-first precedence)
+    for (const { includesDir, files } of includeResults) {
+      // Create documents in parallel batches
+      const docs = await this.createDocumentsParallel(
+        files,
+        DocumentType.INCLUDE,
+        undefined,
+        undefined
+      );
+      for (let i = 0; i < docs.length; i++) {
+        const doc = docs[i];
+        if (!doc) continue;
+        const file = files[i];
+        if (!file) continue;
         const relativePath = file.substring(includesDir.length + 1);
         // Site includes take precedence, so only add if not already present
         if (!this.includes.has(relativePath)) {
@@ -179,6 +202,225 @@ export class Site {
         }
       }
     }
+  }
+
+  /**
+   * Read all posts from _posts directory - async version
+   */
+  private async readPostsAsync(): Promise<void> {
+    const postsDir = join(this.source, '_posts');
+    if (!existsSync(postsDir)) {
+      return;
+    }
+
+    const files = await this.walkSiteDirectoryAsync(postsDir);
+    const markdownFiles = files.filter((file) => this.isMarkdownOrHtml(file));
+
+    // Create documents in parallel batches
+    const docs = await this.createDocumentsParallel(
+      markdownFiles,
+      DocumentType.POST,
+      undefined,
+      this.config
+    );
+
+    this.posts.push(...docs);
+
+    // Sort posts by date (newest first)
+    this.posts.sort((a, b) => {
+      const dateA = a.date?.getTime() || 0;
+      const dateB = b.date?.getTime() || 0;
+      return dateB - dateA;
+    });
+  }
+
+  /**
+   * Read all collections defined in config - async version
+   */
+  private async readCollectionsAsync(): Promise<void> {
+    if (!this.config.collections) {
+      return;
+    }
+
+    const collectionNames = Object.keys(this.config.collections);
+
+    // Process all collections in parallel
+    const collectionPromises = collectionNames.map(async (collectionName) => {
+      const collectionDir = join(this.source, `_${collectionName}`);
+      if (!existsSync(collectionDir)) {
+        return { collectionName, documents: [] };
+      }
+
+      const files = await this.walkSiteDirectoryAsync(collectionDir);
+      const markdownFiles = files.filter((file) => this.isMarkdownOrHtml(file));
+
+      // Create documents in parallel batches
+      const documents = await this.createDocumentsParallel(
+        markdownFiles,
+        DocumentType.COLLECTION,
+        collectionName,
+        this.config
+      );
+
+      return { collectionName, documents };
+    });
+
+    const results = await Promise.all(collectionPromises);
+
+    for (const { collectionName, documents } of results) {
+      if (documents.length > 0) {
+        this.collections.set(collectionName, documents);
+      }
+    }
+  }
+
+  /**
+   * Read all pages from the source directory - async version
+   * Pages are any markdown or HTML files not in special directories
+   */
+  private async readPagesAsync(): Promise<void> {
+    const files = await this.walkSiteDirectoryAsync(this.source, true);
+    const pageFiles = files.filter(
+      (file) => this.isMarkdownOrHtml(file) && !this.isSpecialDirectory(file)
+    );
+
+    // Create documents in parallel batches
+    const docs = await this.createDocumentsParallel(
+      pageFiles,
+      DocumentType.PAGE,
+      undefined,
+      this.config
+    );
+
+    this.pages.push(...docs);
+  }
+
+  /**
+   * Read all static files from the source directory - async version
+   * Static files are non-Jekyll files (not markdown, HTML, SASS, or in special directories)
+   */
+  private async readStaticFilesAsync(): Promise<void> {
+    const files = await this.walkSiteDirectoryAsync(this.source, true);
+
+    // Filter to static files only
+    const staticFilePaths = files.filter((file) => {
+      // Skip markdown, HTML, and SASS files - they're processed by Jekyll
+      if (this.isMarkdownOrHtml(file)) {
+        return false;
+      }
+
+      // Skip SASS/SCSS files - they're processed by the SASS processor
+      const ext = extname(file).toLowerCase();
+      if (['.scss', '.sass'].includes(ext)) {
+        return false;
+      }
+
+      // Skip files in special directories (underscore-prefixed)
+      if (this.isSpecialDirectory(file)) {
+        return false;
+      }
+
+      return true;
+    });
+
+    // Create static files in parallel batches
+    const staticFiles = await this.createStaticFilesParallel(staticFilePaths);
+    this.static_files.push(...staticFiles);
+  }
+
+  /**
+   * Create documents in batches for error handling and progress tracking.
+   *
+   * Note: While this method uses async/await and Promise.all, the Document constructor
+   * uses synchronous I/O (readFileSync, statSync). This means file reads still happen
+   * sequentially on the main thread. True parallelism would require refactoring
+   * Document to use async I/O (fs/promises). The batching provides error isolation
+   * and allows for potential future async refactoring.
+   *
+   * @param files Array of file paths
+   * @param type Document type
+   * @param collection Optional collection name
+   * @param config Optional config for front matter defaults
+   * @returns Array of created documents
+   */
+  private async createDocumentsParallel(
+    files: string[],
+    type: DocumentType,
+    collection?: string,
+    config?: JekyllConfig
+  ): Promise<Document[]> {
+    const BATCH_SIZE = 50;
+    const documents: Document[] = [];
+
+    for (let i = 0; i < files.length; i += BATCH_SIZE) {
+      const batch = files.slice(i, i + BATCH_SIZE);
+      const batchPromises = batch.map(async (file) => {
+        try {
+          return new Document(file, this.source, type, collection, config);
+        } catch (error) {
+          logger.warn(`Failed to create document ${file}`, {
+            error: error instanceof Error ? error.message : 'Unknown error',
+          });
+          return null;
+        }
+      });
+
+      const results = await Promise.all(batchPromises);
+      documents.push(...results.filter((doc): doc is Document => doc !== null));
+    }
+
+    return documents;
+  }
+
+  /**
+   * Create static files in batches for error handling and progress tracking.
+   *
+   * Note: While this method uses async/await and Promise.all, the StaticFile constructor
+   * uses synchronous I/O (statSync). This means stat calls still happen sequentially
+   * on the main thread. True parallelism would require refactoring StaticFile to use
+   * async I/O (fs/promises). The batching provides error isolation and allows for
+   * potential future async refactoring.
+   *
+   * @param files Array of file paths
+   * @returns Array of created static files
+   */
+  private async createStaticFilesParallel(files: string[]): Promise<StaticFile[]> {
+    const BATCH_SIZE = 100;
+    const staticFiles: StaticFile[] = [];
+
+    for (let i = 0; i < files.length; i += BATCH_SIZE) {
+      const batch = files.slice(i, i + BATCH_SIZE);
+      const batchPromises = batch.map(async (file) => {
+        try {
+          return new StaticFile(file, this.source);
+        } catch (error) {
+          logger.warn(`Failed to read static file ${file}`, {
+            error: error instanceof Error ? error.message : 'Unknown error',
+          });
+          return null;
+        }
+      });
+
+      const results = await Promise.all(batchPromises);
+      staticFiles.push(...results.filter((sf): sf is StaticFile => sf !== null));
+    }
+
+    return staticFiles;
+  }
+
+  /**
+   * Walk a directory recursively and return all file paths - async version
+   * Uses the shared walkDirectoryAsync from parallel-fs for better code reuse
+   * @param dir Directory to walk
+   * @param shallow If true, don't recurse into subdirectories that start with underscore
+   */
+  private walkSiteDirectoryAsync(dir: string, shallow = false): Promise<string[]> {
+    const rootDir = resolve(this.config.source ?? process.cwd());
+    return walkDirectoryAsync(dir, {
+      shouldExclude: (path: string) => this.shouldExclude(path),
+      shallow,
+      rootDir,
+    });
   }
 
   /**
@@ -270,162 +512,6 @@ export class Site {
       );
       return null;
     }
-  }
-
-  /**
-   * Read all posts from _posts directory
-   */
-  private readPosts(): void {
-    const postsDir = join(this.source, '_posts');
-    if (!existsSync(postsDir)) {
-      return;
-    }
-
-    const files = this.walkDirectory(postsDir);
-    for (const file of files) {
-      if (this.isMarkdownOrHtml(file)) {
-        const doc = new Document(file, this.source, DocumentType.POST, undefined, this.config);
-        this.posts.push(doc);
-      }
-    }
-
-    // Sort posts by date (newest first)
-    this.posts.sort((a, b) => {
-      const dateA = a.date?.getTime() || 0;
-      const dateB = b.date?.getTime() || 0;
-      return dateB - dateA;
-    });
-  }
-
-  /**
-   * Read all collections defined in config
-   */
-  private readCollections(): void {
-    if (!this.config.collections) {
-      return;
-    }
-
-    for (const collectionName of Object.keys(this.config.collections)) {
-      const collectionDir = join(this.source, `_${collectionName}`);
-      if (!existsSync(collectionDir)) {
-        continue;
-      }
-
-      const files = this.walkDirectory(collectionDir);
-      const documents: Document[] = [];
-
-      for (const file of files) {
-        if (this.isMarkdownOrHtml(file)) {
-          const doc = new Document(
-            file,
-            this.source,
-            DocumentType.COLLECTION,
-            collectionName,
-            this.config
-          );
-          documents.push(doc);
-        }
-      }
-
-      this.collections.set(collectionName, documents);
-    }
-  }
-
-  /**
-   * Read all pages from the source directory
-   * Pages are any markdown or HTML files not in special directories
-   */
-  private readPages(): void {
-    const files = this.walkDirectory(this.source, true);
-
-    for (const file of files) {
-      if (this.isMarkdownOrHtml(file) && !this.isSpecialDirectory(file)) {
-        const doc = new Document(file, this.source, DocumentType.PAGE, undefined, this.config);
-        this.pages.push(doc);
-      }
-    }
-  }
-
-  /**
-   * Read all static files from the source directory
-   * Static files are non-Jekyll files (not markdown, HTML, SASS, or in special directories)
-   */
-  private readStaticFiles(): void {
-    const files = this.walkDirectory(this.source, true);
-
-    for (const file of files) {
-      // Skip markdown, HTML, and SASS files - they're processed by Jekyll
-      if (this.isMarkdownOrHtml(file)) {
-        continue;
-      }
-
-      // Skip SASS/SCSS files - they're processed by the SASS processor
-      const ext = extname(file).toLowerCase();
-      if (['.scss', '.sass'].includes(ext)) {
-        continue;
-      }
-
-      // Skip files in special directories (underscore-prefixed)
-      if (this.isSpecialDirectory(file)) {
-        continue;
-      }
-
-      // This is a static file
-      try {
-        const staticFile = new StaticFile(file, this.source);
-        this.static_files.push(staticFile);
-      } catch (error) {
-        // Log warning but don't fail - some files might have permission issues
-        logger.warn(`Failed to read static file ${file}`, {
-          error: error instanceof Error ? error.message : 'Unknown error',
-        });
-      }
-    }
-  }
-
-  /**
-   * Walk a directory recursively and return all file paths
-   * @param dir Directory to walk
-   * @param shallow If true, don't recurse into subdirectories that start with underscore
-   */
-  private walkDirectory(dir: string, shallow = false): string[] {
-    const files: string[] = [];
-
-    if (!existsSync(dir)) {
-      return files;
-    }
-
-    const entries = readdirSync(dir);
-
-    for (const entry of entries) {
-      const fullPath = join(dir, entry);
-      const stats = statSync(fullPath);
-
-      if (stats.isDirectory()) {
-        // Skip excluded directories
-        if (this.shouldExclude(fullPath)) {
-          continue;
-        }
-
-        // For shallow walks, skip underscore directories except at root
-        const rootDir = resolve(this.config.source ?? process.cwd());
-        const currentDir = resolve(dir);
-        if (shallow && entry.startsWith('_') && currentDir !== rootDir) {
-          continue;
-        }
-
-        files.push(...this.walkDirectory(fullPath, shallow));
-      } else if (stats.isFile()) {
-        // Skip excluded files
-        if (this.shouldExclude(fullPath)) {
-          continue;
-        }
-
-        files.push(fullPath);
-      }
-    }
-
-    return files;
   }
 
   /**

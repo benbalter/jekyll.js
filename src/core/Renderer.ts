@@ -1012,6 +1012,18 @@ export class Renderer {
    */
   private registerTags(): void {
     // The 'include' tag is handled by liquidjs with jekyllInclude option
+    // Register 'include_cached' as an alias for 'include' for Jekyll compatibility
+    // In Jekyll, include_cached is a caching version of include, but since liquidjs
+    // already has caching enabled, we can simply alias it to the built-in include tag
+    const includeTag = this.liquid.tags['include'];
+    if (includeTag) {
+      this.liquid.registerTag('include_cached', includeTag);
+    } else {
+      logger.warn(
+        'Could not register include_cached tag: built-in include tag not found in liquidjs'
+      );
+    }
+
     // The 'highlight' tag would require custom implementation with a syntax highlighter
     // For now, we'll add a basic highlight tag that just wraps content
 

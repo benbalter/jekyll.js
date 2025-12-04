@@ -215,7 +215,13 @@ export class ThemeManager {
    * @returns Theme root directory or null if not found
    */
   private resolveThemeRoot(themeName: string): string | null {
-    // Try node_modules first
+    // Try bundled themes first (e.g., minima)
+    const bundledThemePath = this.getBundledThemePath(themeName);
+    if (bundledThemePath) {
+      return bundledThemePath;
+    }
+
+    // Try node_modules
     const nodeModulesPath = this.findNodeModules(this.sourceDir);
     if (nodeModulesPath) {
       const themeInNodeModules = join(nodeModulesPath, themeName);
@@ -233,6 +239,47 @@ export class ThemeManager {
     // Try as absolute path
     if (existsSync(themeName) && statSync(themeName).isDirectory()) {
       return resolve(themeName);
+    }
+
+    return null;
+  }
+
+  /**
+   * Get path to a bundled theme if it exists
+   * Bundled themes are included in the jekyll-ts package under themes/
+   * @param themeName Theme name
+   * @returns Path to bundled theme or null if not found
+   */
+  private getBundledThemePath(themeName: string): string | null {
+    // List of bundled themes
+    const bundledThemes = ['minima'];
+
+    if (!bundledThemes.includes(themeName)) {
+      return null;
+    }
+
+    // Get the path to the themes directory
+    // The themes directory is at the same level as core/ in the package structure
+    // In compiled code: dist/themes/ (relative to dist/core/ThemeManager.js)
+    // In source/test: src/themes/ (relative to src/core/ThemeManager.ts)
+    const possiblePaths = [
+      // Standard path: themes/ is a sibling of core/
+      join(__dirname, '..', 'themes', themeName),
+      // Alternative path for different directory structures
+      join(__dirname, '..', '..', 'themes', themeName),
+    ];
+
+    for (const themePath of possiblePaths) {
+      // Verify it's a valid theme directory by checking for required directories
+      if (existsSync(themePath) && statSync(themePath).isDirectory()) {
+        // Check for essential theme marker files/directories
+        const hasLayouts = existsSync(join(themePath, '_layouts'));
+        const hasPackageJson = existsSync(join(themePath, 'package.json'));
+
+        if (hasLayouts || hasPackageJson) {
+          return themePath;
+        }
+      }
     }
 
     return null;

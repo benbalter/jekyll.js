@@ -726,11 +726,11 @@ time jekyll-ts build
 
 ### Resources
 
-- 📖 **Documentation**: [docs/README.md](./README.md)
-- 📋 **Feature Status**: [docs/FEATURES.md](./FEATURES.md)
-- 🔄 **Compatibility**: [docs/PARITY.md](./PARITY.md)
-- 🔌 **Plugins**: [docs/PLUGINS.md](./PLUGINS.md)
-- 🎨 **Themes**: [docs/theme-development.md](./theme-development.md)
+- 📖 **Documentation**: [README.md](./README.md)
+- 📋 **Feature Status**: [FEATURES.md](./FEATURES.md)
+- 🔄 **Compatibility**: [PARITY.md](./PARITY.md)
+- 🔌 **Plugins**: [PLUGINS.md](./PLUGINS.md)
+- 🎨 **Themes**: [theme-development.md](./theme-development.md)
 
 ### Community
 

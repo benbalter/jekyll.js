@@ -1082,6 +1082,25 @@ Content`
       expect(result).toBe('{{ this should not be processed }}');
     });
 
+    it('should support include_cached tag as alias for include', async () => {
+      // Create an include file
+      writeFileSync(
+        join(testDir, '_includes', 'cached-test.html'),
+        'Cached include content: {{ message }}'
+      );
+
+      await site.read();
+
+      // Create renderer with the includes directory explicitly set
+      const renderer = new Renderer(site, {
+        includesDir: join(testDir, '_includes'),
+      });
+      const template = '{% include_cached cached-test.html %}';
+      const result = await renderer.render(template, { message: 'Hello World' });
+
+      expect(result).toContain('Cached include content: Hello World');
+    });
+
     it('should support include_relative tag', async () => {
       // Create a test file to include
       const includeDir = join(testDir, 'includes-test');

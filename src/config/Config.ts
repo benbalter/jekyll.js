@@ -171,6 +171,14 @@ export interface JekyllConfig {
       preconnectOrigins?: string[];
       prefetchUrls?: string[];
       dnsPrefetchDomains?: string[];
+      customPreloads?: Array<{
+        href: string;
+        rel: 'preload' | 'prefetch' | 'preconnect' | 'dns-prefetch';
+        as?: 'style' | 'script' | 'font' | 'image' | 'fetch' | 'document';
+        type?: string;
+        crossorigin?: 'anonymous' | 'use-credentials' | '';
+        media?: string;
+      }>;
     };
     // Performance features
     performance?: {

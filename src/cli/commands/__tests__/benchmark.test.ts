@@ -1,6 +1,6 @@
 import { execSync, spawn } from 'child_process';
-import { existsSync, rmSync } from 'fs';
-import { join, resolve } from 'path';
+import { existsSync, readFileSync, readdirSync, rmSync, statSync } from 'fs';
+import { join, resolve, relative } from 'path';
 import { Site, Builder, BuildTimings, TimedOperation } from '../../../core';
 import { loadConfig } from '../../../config';
 
@@ -377,4 +377,286 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
     // All builds should complete in reasonable time
     expect(avg).toBeLessThan(10000);
   }, 60000); // 60 second timeout for multiple runs
+
+  /**
+   * Recursively get all files in a directory
+   * @param dir - Directory path to scan
+   * @param baseDir - Base directory for relative paths
+   * @returns Array of relative file paths
+   */
+  const getFilesRecursively = (dir: string, baseDir?: string): string[] => {
+    const base = baseDir || dir;
+    const files: string[] = [];
+
+    if (!existsSync(dir)) {
+      return files;
+    }
+
+    const entries = readdirSync(dir);
+
+    for (const entry of entries) {
+      const fullPath = join(dir, entry);
+      const stat = statSync(fullPath);
+
+      if (stat.isDirectory()) {
+        files.push(...getFilesRecursively(fullPath, base));
+      } else {
+        files.push(relative(base, fullPath));
+      }
+    }
+
+    return files.sort();
+  };
+
+  /**
+   * Normalize HTML content for comparison
+   * Removes whitespace differences that don't affect rendering
+   * @param content - HTML content to normalize
+   * @returns Normalized HTML content
+   */
+  const normalizeHtml = (content: string): string => {
+    return (
+      content
+        // Normalize line endings
+        .replace(/\r\n/g, '\n')
+        // Remove trailing whitespace on lines
+        .replace(/[ \t]+$/gm, '')
+        // Collapse multiple blank lines to single
+        .replace(/\n{3,}/g, '\n\n')
+        // Trim leading/trailing whitespace
+        .trim()
+    );
+  };
+
+  /**
+   * Compare two files and return the differences
+   * @param file1 - Path to first file
+   * @param file2 - Path to second file
+   * @returns Object containing match status and details
+   */
+  const compareFiles = (
+    file1: string,
+    file2: string
+  ): { match: boolean; details: string | null } => {
+    if (!existsSync(file1) || !existsSync(file2)) {
+      return {
+        match: false,
+        details: !existsSync(file1) ? 'Missing in TS build' : 'Missing in Ruby build',
+      };
+    }
+
+    const content1 = readFileSync(file1, 'utf-8');
+    const content2 = readFileSync(file2, 'utf-8');
+
+    // For HTML/CSS files, normalize before comparison
+    const ext = file1.split('.').pop()?.toLowerCase();
+    const isTextFile = ['html', 'css', 'xml', 'txt'].includes(ext || '');
+
+    if (isTextFile) {
+      const normalized1 = normalizeHtml(content1);
+      const normalized2 = normalizeHtml(content2);
+
+      if (normalized1 === normalized2) {
+        return { match: true, details: null };
+      }
+
+      // Find first difference location for debugging
+      const lines1 = normalized1.split('\n');
+      const lines2 = normalized2.split('\n');
+
+      for (let i = 0; i < Math.max(lines1.length, lines2.length); i++) {
+        if (lines1[i] !== lines2[i]) {
+          return {
+            match: false,
+            details: `Difference at line ${i + 1}`,
+          };
+        }
+      }
+    }
+
+    // Binary comparison for other files
+    if (content1 === content2) {
+      return { match: true, details: null };
+    }
+
+    return { match: false, details: 'Content differs' };
+  };
+
+  /**
+   * Result of a file comparison
+   */
+  interface FileComparisonResult {
+    relativePath: string;
+    match: boolean;
+    details: string | null;
+  }
+
+  /**
+   * Compare two build output directories
+   * @param dir1 - Path to first directory (TS build)
+   * @param dir2 - Path to second directory (Ruby build)
+   * @returns Comparison results
+   */
+  const compareBuildOutputs = (
+    dir1: string,
+    dir2: string
+  ): {
+    matching: FileComparisonResult[];
+    onlyInTs: string[];
+    onlyInRuby: string[];
+    different: FileComparisonResult[];
+  } => {
+    const filesTs = new Set(getFilesRecursively(dir1));
+    const filesRuby = new Set(getFilesRecursively(dir2));
+
+    const matching: FileComparisonResult[] = [];
+    const different: FileComparisonResult[] = [];
+    const onlyInTs: string[] = [];
+    const onlyInRuby: string[] = [];
+
+    // Files only in TS build
+    for (const file of filesTs) {
+      if (!filesRuby.has(file)) {
+        onlyInTs.push(file);
+      }
+    }
+
+    // Files only in Ruby build
+    for (const file of filesRuby) {
+      if (!filesTs.has(file)) {
+        onlyInRuby.push(file);
+      }
+    }
+
+    // Compare files that exist in both
+    for (const file of filesTs) {
+      if (filesRuby.has(file)) {
+        const result = compareFiles(join(dir1, file), join(dir2, file));
+        const comparisonResult: FileComparisonResult = {
+          relativePath: file,
+          match: result.match,
+          details: result.details,
+        };
+
+        if (result.match) {
+          matching.push(comparisonResult);
+        } else {
+          different.push(comparisonResult);
+        }
+      }
+    }
+
+    return { matching, onlyInTs, onlyInRuby, different };
+  };
+
+  it('should produce similar output as Ruby Jekyll (smoke test)', async () => {
+    if (!existsSync(jekyllTsBin)) {
+      process.stdout.write('⏭ Skipping - Jekyll TS binary not built\n');
+      return;
+    }
+
+    if (!rubyJekyllAvailable) {
+      process.stdout.write('⏭ Skipping smoke test (Ruby Jekyll not installed)\n');
+      return;
+    }
+
+    printHeader('🔍 Output Comparison (Smoke Test)');
+
+    // Build with Jekyll TS
+    await benchmarkBuild(
+      'node',
+      [jekyllTsBin, 'build', '-s', fixtureDir, '-d', destDirTs],
+      fixtureDir
+    );
+
+    // Build with Ruby Jekyll
+    const jekyllCommand = useBundle ? 'bundle' : 'jekyll';
+    const jekyllArgs = useBundle
+      ? ['exec', 'jekyll', 'build', '--source', fixtureDir, '--destination', destDirRuby]
+      : ['build', '--source', fixtureDir, '--destination', destDirRuby];
+    const jekyllCwd = useBundle ? projectRoot : fixtureDir;
+
+    await benchmarkBuild(jekyllCommand, jekyllArgs, jekyllCwd);
+
+    // Compare outputs
+    const comparison = compareBuildOutputs(destDirTs, destDirRuby);
+
+    // Print results
+    process.stdout.write('\n');
+    process.stdout.write(`  ${SEPARATOR}\n`);
+    process.stdout.write('  📊 Comparison Results\n');
+    process.stdout.write(`  ${SEPARATOR}\n`);
+
+    // Summary stats
+    const totalFiles = comparison.matching.length + comparison.different.length;
+    const matchPercent =
+      totalFiles > 0 ? ((comparison.matching.length / totalFiles) * 100).toFixed(1) : '0';
+
+    printStat('Matching:', `${comparison.matching.length} files`);
+    printStat('Different:', `${comparison.different.length} files`);
+    printStat('TS only:', `${comparison.onlyInTs.length} files`);
+    printStat('Ruby only:', `${comparison.onlyInRuby.length} files`);
+    printStat('Match %:', `${matchPercent}%`);
+
+    // Show matching files
+    if (comparison.matching.length > 0) {
+      process.stdout.write('\n');
+      process.stdout.write('  ✓ Matching files:\n');
+      comparison.matching.forEach((file) => {
+        process.stdout.write(`    ✓ ${file.relativePath}\n`);
+      });
+    }
+
+    // Show different files (these are potential compatibility issues)
+    if (comparison.different.length > 0) {
+      process.stdout.write('\n');
+      process.stdout.write('  ✗ Different files:\n');
+      comparison.different.forEach((file) => {
+        process.stdout.write(`    ✗ ${file.relativePath}`);
+        if (file.details) {
+          process.stdout.write(` (${file.details})`);
+        }
+        process.stdout.write('\n');
+      });
+    }
+
+    // Show files only in TS build
+    if (comparison.onlyInTs.length > 0) {
+      process.stdout.write('\n');
+      process.stdout.write('  ⚠ Only in Jekyll TS build:\n');
+      comparison.onlyInTs.forEach((file) => {
+        process.stdout.write(`    + ${file}\n`);
+      });
+    }
+
+    // Show files only in Ruby build
+    if (comparison.onlyInRuby.length > 0) {
+      process.stdout.write('\n');
+      process.stdout.write('  ⚠ Only in Ruby Jekyll build:\n');
+      comparison.onlyInRuby.forEach((file) => {
+        process.stdout.write(`    - ${file}\n`);
+      });
+    }
+
+    process.stdout.write(`\n  ${SEPARATOR}\n`);
+
+    // Verify both outputs were created
+    expect(existsSync(destDirTs)).toBe(true);
+    expect(existsSync(destDirRuby)).toBe(true);
+
+    // Log the comparison summary for CI visibility
+    const summary = {
+      matching: comparison.matching.length,
+      different: comparison.different.length,
+      onlyInTs: comparison.onlyInTs.length,
+      onlyInRuby: comparison.onlyInRuby.length,
+      matchPercent,
+    };
+
+    process.stdout.write(`\n  Smoke test summary: ${JSON.stringify(summary)}\n`);
+
+    // For now, we just verify that both builds completed and produced output
+    // Future: Add assertions for specific files or match percentage thresholds
+    expect(totalFiles).toBeGreaterThan(0);
+  }, 60000); // 60 second timeout for both builds and comparison
 });

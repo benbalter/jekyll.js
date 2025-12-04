@@ -5,6 +5,7 @@ import { StaticFile } from './StaticFile';
 import { JekyllConfig, loadConfig } from '../config';
 import { ThemeManager } from './ThemeManager';
 import { logger } from '../utils/logger';
+import { FileSystemError } from '../utils/errors';
 import yaml from 'js-yaml';
 
 /**
@@ -75,6 +76,13 @@ export class Site {
    */
   constructor(source: string, config: SiteConfig = {}) {
     this.source = resolve(source);
+
+    // Validate that source directory exists
+    if (!existsSync(this.source)) {
+      throw new FileSystemError(`Source directory does not exist: ${this.source}`, {
+        file: this.source,
+      });
+    }
 
     // Merge default excludes with user-provided excludes
     const defaultExcludes = [

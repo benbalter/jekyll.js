@@ -116,10 +116,14 @@ jest.mock('../markdown', () => {
 
       return html.trim();
     }),
+    initMarkdownProcessor: jest.fn(async () => {
+      // Mock implementation that tracks it was called
+      return Promise.resolve();
+    }),
   };
 });
 
-import { processMarkdown, processMarkdownSync } from '../markdown';
+import { processMarkdown, processMarkdownSync, initMarkdownProcessor } from '../markdown';
 
 describe('Markdown processing', () => {
   describe('processMarkdown', () => {
@@ -198,6 +202,36 @@ describe('Markdown processing', () => {
       expect(() => processMarkdownSync('# Test')).toThrow(
         'processMarkdownSync is not supported. Use processMarkdown instead.'
       );
+    });
+  });
+
+  describe('initMarkdownProcessor', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it('should initialize the processor without error', async () => {
+      await expect(initMarkdownProcessor()).resolves.toBeUndefined();
+    });
+
+    it('should accept options for initialization', async () => {
+      await expect(initMarkdownProcessor({ emoji: true })).resolves.toBeUndefined();
+    });
+
+    it('should be callable multiple times (idempotent)', async () => {
+      await initMarkdownProcessor();
+      await initMarkdownProcessor();
+      // Should not throw
+      expect(initMarkdownProcessor).toHaveBeenCalledTimes(2);
+    });
+
+    it('should handle different option combinations', async () => {
+      await initMarkdownProcessor({});
+      await initMarkdownProcessor({ emoji: true });
+      await initMarkdownProcessor({ githubMentions: true });
+      await initMarkdownProcessor({ emoji: true, githubMentions: true });
+      // All calls should succeed
+      expect(initMarkdownProcessor).toHaveBeenCalledTimes(4);
     });
   });
 });

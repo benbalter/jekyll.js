@@ -416,5 +416,48 @@ describe('GitHubMetadataPlugin', () => {
 
       expect(result).toBe('https://github.com/octocat/hello-world/edit/develop/README.md');
     });
+
+    it('should return empty string when page path is missing', async () => {
+      const config = {
+        title: 'Test Site',
+        url: 'https://example.com',
+        repository: 'octocat/hello-world',
+      };
+      site = new Site(testSiteDir, config);
+      renderer = new Renderer(site);
+      plugin = new GitHubMetadataPlugin();
+      plugin.register(renderer, site);
+
+      const template = '{% github_edit_link %}';
+      const result = await renderer.render(template, {
+        page: { path: '' },
+        site: { ...site.config, github: site.data.github },
+      });
+
+      expect(result).toBe('');
+    });
+
+    it('should handle escaped quotes in link text', async () => {
+      const config = {
+        title: 'Test Site',
+        url: 'https://example.com',
+        repository: 'octocat/hello-world',
+      };
+      site = new Site(testSiteDir, config);
+      renderer = new Renderer(site);
+      plugin = new GitHubMetadataPlugin();
+      plugin.register(renderer, site);
+
+      const template = '{% github_edit_link "Say \\"Hello\\"" %}';
+      const result = await renderer.render(template, {
+        page: { path: 'page.md' },
+        site: { ...site.config, github: site.data.github },
+      });
+
+      // Quotes in link text are HTML-escaped for security
+      expect(result).toBe(
+        '<a href="https://github.com/octocat/hello-world/edit/main/page.md">Say &quot;Hello&quot;</a>'
+      );
+    });
   });
 });

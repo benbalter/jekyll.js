@@ -195,9 +195,19 @@ export class GitHubMetadataPlugin implements Plugin {
     renderer.getLiquid().registerTag('github_edit_link', {
       parse(token: any) {
         // Parse optional link text argument from quotes
+        // Supports escaped quotes within the text (e.g., "Say \"Hello\"" or 'It\'s here')
         const args = token.args.trim();
-        const linkTextMatch = args.match(/(?:"([^"]*)"|'([^']*)')/);
-        this.linkText = linkTextMatch ? linkTextMatch[1] || linkTextMatch[2] : null;
+        const doubleQuoteMatch = args.match(/^"((?:[^"\\]|\\.)*)"/);
+        const singleQuoteMatch = args.match(/^'((?:[^'\\]|\\.)*)'/);
+        if (doubleQuoteMatch) {
+          // Unescape escaped double quotes
+          this.linkText = doubleQuoteMatch[1].replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+        } else if (singleQuoteMatch) {
+          // Unescape escaped single quotes
+          this.linkText = singleQuoteMatch[1].replace(/\\'/g, "'").replace(/\\\\/g, '\\');
+        } else {
+          this.linkText = null;
+        }
       },
       render: function (ctx: any) {
         // Get github metadata from site data
@@ -222,7 +232,7 @@ export class GitHubMetadataPlugin implements Plugin {
           return `<a href="${escapeHtml(editUrl)}">${escapeHtml(this.linkText)}</a>`;
         }
 
-        return editUrl;
+        return escapeHtml(editUrl);
       },
     });
   }

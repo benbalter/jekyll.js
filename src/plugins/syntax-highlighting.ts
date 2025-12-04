@@ -14,7 +14,7 @@
  * @see https://shiki.matsu.io/
  */
 
-import { getHighlighter, Highlighter, BundledLanguage, BundledTheme } from 'shiki';
+import { createHighlighter, Highlighter, BundledLanguage, BundledTheme } from 'shiki';
 import { logger } from '../utils/logger';
 
 /**
@@ -62,7 +62,7 @@ export async function initHighlighter(
     const theme = options.theme || 'github-light';
     const themes = options.themes || [theme];
 
-    highlighterInstance = await getHighlighter({
+    highlighterInstance = await createHighlighter({
       themes: themes,
       langs: options.languages || [], // Load languages on demand if not specified
     });

@@ -120,9 +120,10 @@ async function getProcessor(options: MarkdownOptions): Promise<any> {
     // Custom buildUrl that only handles mentions, returning false for other types
     // This ensures we don't auto-link issues (#123), commits, or other GitHub references
     // Type matches remark-github's BuildUrlValues which has type: 'commit' | 'compare' | 'issue' | 'mention'
-    const mentionsOnlyBuildUrl = (
-      values: { type: 'commit' | 'compare' | 'issue' | 'mention'; user: string }
-    ): string | false => {
+    const mentionsOnlyBuildUrl = (values: {
+      type: 'commit' | 'compare' | 'issue' | 'mention';
+      user: string;
+    }): string | false => {
       if (values.type === 'mention') {
         // Type narrowing: when type is 'mention', values matches BuildUrlMentionValues
         return defaultBuildUrl(values as { type: 'mention'; user: string });

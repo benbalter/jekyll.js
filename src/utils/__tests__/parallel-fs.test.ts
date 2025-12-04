@@ -201,6 +201,159 @@ describe('Parallel File System Utilities', () => {
       expect(results).toEqual([]);
     });
   });
+
+  describe('batchProcess', () => {
+    it('should process items in batches', async () => {
+      const items = Array.from({ length: 100 }, (_, i) => i);
+      const processor = async (n: number) => n * 2;
+
+      const { batchProcess } = await import('../parallel-fs');
+      const results = await batchProcess(items, processor, { batchSize: 20 });
+
+      expect(results.length).toBe(100);
+      for (let i = 0; i < 100; i++) {
+        expect(results[i]).toBe(i * 2);
+      }
+    });
+
+    it('should report progress', async () => {
+      const items = Array.from({ length: 50 }, (_, i) => i);
+      const processor = async (n: number) => n * 2;
+      const progressReports: { processed: number; total: number }[] = [];
+
+      const { batchProcess } = await import('../parallel-fs');
+      await batchProcess(items, processor, {
+        batchSize: 10,
+        onProgress: (processed, total) => {
+          progressReports.push({ processed, total });
+        },
+      });
+
+      // Should have 5 progress reports (50 items / 10 batch size)
+      expect(progressReports.length).toBe(5);
+      expect(progressReports[0]).toEqual({ processed: 10, total: 50 });
+      expect(progressReports[4]).toEqual({ processed: 50, total: 50 });
+    });
+
+    it('should handle errors with onError callback', async () => {
+      const items = [1, 2, 3, 4, 5];
+      const processor = async (n: number) => {
+        if (n === 3) throw new Error('Test error');
+        return n * 2;
+      };
+      const errors: Error[] = [];
+
+      const { batchProcess } = await import('../parallel-fs');
+      const results = await batchProcess(items, processor, {
+        batchSize: 5,
+        onError: (error) => {
+          errors.push(error);
+          return true; // Continue processing
+        },
+      });
+
+      expect(results.length).toBe(5);
+      expect(results[0]).toBe(2);
+      expect(results[1]).toBe(4);
+      expect(results[2]).toBeNull(); // Failed item
+      expect(results[3]).toBe(8);
+      expect(results[4]).toBe(10);
+      expect(errors.length).toBe(1);
+      expect(errors[0]!.message).toBe('Test error');
+    });
+
+    it('should throw error when onError not provided', async () => {
+      const items = [1, 2, 3];
+      const processor = async (n: number) => {
+        if (n === 2) throw new Error('Test error');
+        return n * 2;
+      };
+
+      const { batchProcess } = await import('../parallel-fs');
+      await expect(batchProcess(items, processor, { batchSize: 5 })).rejects.toThrow('Test error');
+    });
+  });
+
+  describe('MemoryTracker', () => {
+    it('should track memory samples', async () => {
+      const { MemoryTracker } = await import('../parallel-fs');
+      const tracker = new MemoryTracker();
+
+      tracker.start();
+
+      // Generate some memory allocations
+      const arrays: number[][] = [];
+      for (let i = 0; i < 10; i++) {
+        arrays.push(new Array(10000).fill(i));
+        tracker.sample();
+      }
+
+      const results = tracker.getResults();
+
+      expect(results.startMemory).not.toBeNull();
+      expect(results.endMemory).not.toBeNull();
+      expect(results.samples.length).toBe(11); // 1 start + 10 samples
+      expect(results.peakHeapUsed).toBeGreaterThan(0);
+      expect(results.avgHeapUsed).toBeGreaterThan(0);
+    });
+
+    it('should handle reset', async () => {
+      const { MemoryTracker } = await import('../parallel-fs');
+      const tracker = new MemoryTracker();
+
+      tracker.start();
+      tracker.sample();
+      tracker.reset();
+
+      const results = tracker.getResults();
+
+      expect(results.startMemory).toBeNull();
+      expect(results.samples.length).toBe(0);
+    });
+
+    it('should throw error when sample() called before start()', async () => {
+      const { MemoryTracker } = await import('../parallel-fs');
+      const tracker = new MemoryTracker();
+
+      expect(() => tracker.sample()).toThrow('MemoryTracker: sample() called before start()');
+    });
+  });
+
+  describe('getMemoryStats and formatBytes', () => {
+    it('should return memory statistics', async () => {
+      const { getMemoryStats } = await import('../parallel-fs');
+      const stats = getMemoryStats();
+
+      expect(stats.heapUsed).toBeGreaterThan(0);
+      expect(stats.heapTotal).toBeGreaterThan(0);
+      expect(stats.rss).toBeGreaterThan(0);
+      expect(typeof stats.external).toBe('number');
+    });
+
+    it('should format bytes correctly', async () => {
+      const { formatBytes } = await import('../parallel-fs');
+
+      expect(formatBytes(500)).toBe('500 B');
+      expect(formatBytes(1024)).toBe('1.0 KB');
+      expect(formatBytes(1536)).toBe('1.5 KB');
+      expect(formatBytes(1024 * 1024)).toBe('1.0 MB');
+      expect(formatBytes(1.5 * 1024 * 1024)).toBe('1.5 MB');
+      expect(formatBytes(1024 * 1024 * 1024)).toBe('1.00 GB');
+    });
+
+    it('should format bytes correctly for edge cases', async () => {
+      const { formatBytes } = await import('../parallel-fs');
+
+      // Zero bytes
+      expect(formatBytes(0)).toBe('0 B');
+
+      // Negative values (e.g., from memory delta calculations)
+      expect(formatBytes(-500)).toBe('-500 B');
+      expect(formatBytes(-1024)).toBe('-1.0 KB');
+      expect(formatBytes(-1.5 * 1024 * 1024)).toBe('-1.5 MB');
+      expect(formatBytes(-1024 * 1024 * 1024)).toBe('-1.00 GB');
+    });
+  });
 });
 
 describe('Site parallel file reading performance', () => {

@@ -310,6 +310,13 @@ describe('Parallel File System Utilities', () => {
       expect(results.startMemory).toBeNull();
       expect(results.samples.length).toBe(0);
     });
+
+    it('should throw error when sample() called before start()', async () => {
+      const { MemoryTracker } = await import('../parallel-fs');
+      const tracker = new MemoryTracker();
+
+      expect(() => tracker.sample()).toThrow('MemoryTracker: sample() called before start()');
+    });
   });
 
   describe('getMemoryStats and formatBytes', () => {
@@ -332,6 +339,19 @@ describe('Parallel File System Utilities', () => {
       expect(formatBytes(1024 * 1024)).toBe('1.0 MB');
       expect(formatBytes(1.5 * 1024 * 1024)).toBe('1.5 MB');
       expect(formatBytes(1024 * 1024 * 1024)).toBe('1.00 GB');
+    });
+
+    it('should format bytes correctly for edge cases', async () => {
+      const { formatBytes } = await import('../parallel-fs');
+
+      // Zero bytes
+      expect(formatBytes(0)).toBe('0 B');
+
+      // Negative values (e.g., from memory delta calculations)
+      expect(formatBytes(-500)).toBe('-500 B');
+      expect(formatBytes(-1024)).toBe('-1.0 KB');
+      expect(formatBytes(-1.5 * 1024 * 1024)).toBe('-1.5 MB');
+      expect(formatBytes(-1024 * 1024 * 1024)).toBe('-1.00 GB');
     });
   });
 });

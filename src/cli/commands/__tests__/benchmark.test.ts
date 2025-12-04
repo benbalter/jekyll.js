@@ -33,8 +33,8 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
    * - TypeScript/ts-jest compilation
    * - Varying CI environment base memory usage
    */
-  const MAX_EXPECTED_HEAP_MB = 500 * 1024 * 1024; // 500MB max expected heap
-  const HEAP_STABILITY_THRESHOLD_MB = 10 * 1024 * 1024; // 10MB stability threshold
+  const MAX_EXPECTED_HEAP_BYTES = 500 * 1024 * 1024; // 500MB max expected heap
+  const HEAP_STABILITY_THRESHOLD_BYTES = 10 * 1024 * 1024; // 10MB stability threshold
 
   /**
    * Format a duration in milliseconds to a human-readable string
@@ -725,7 +725,7 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
     expect(existsSync(join(destDirTs, 'index.html'))).toBe(true);
 
     // Memory should stay within reasonable bounds for a small site
-    expect(memoryResults.peakHeapUsed).toBeLessThan(MAX_EXPECTED_HEAP_MB);
+    expect(memoryResults.peakHeapUsed).toBeLessThan(MAX_EXPECTED_HEAP_BYTES);
   }, 30000);
 
   it('should track memory efficiency across multiple builds', async () => {
@@ -795,7 +795,7 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
     const lastTwoHeapIncreases = memoryReadings.slice(-2).map((r) => r.heapUsed);
     if (lastTwoHeapIncreases.length === 2) {
       const heapDiff = Math.abs(lastTwoHeapIncreases[1]! - lastTwoHeapIncreases[0]!);
-      const isStable = heapDiff < HEAP_STABILITY_THRESHOLD_MB;
+      const isStable = heapDiff < HEAP_STABILITY_THRESHOLD_BYTES;
       printStat('Memory Stable:', isStable ? 'Yes ✓' : 'No (may indicate leak)');
     }
 

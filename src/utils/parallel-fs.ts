@@ -50,14 +50,18 @@ export function getMemoryStats(): MemoryStats {
 
 /**
  * Format bytes to human-readable string
- * @param bytes Number of bytes
- * @returns Formatted string (e.g., "1.5 MB")
+ * @param bytes Number of bytes (can be negative for deltas)
+ * @returns Formatted string (e.g., "1.5 MB" or "-500 B")
  */
 export function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+  const isNegative = bytes < 0;
+  const abs = Math.abs(bytes);
+  const sign = isNegative ? '-' : '';
+
+  if (abs < 1024) return `${sign}${abs} B`;
+  if (abs < 1024 * 1024) return `${sign}${(abs / 1024).toFixed(1)} KB`;
+  if (abs < 1024 * 1024 * 1024) return `${sign}${(abs / (1024 * 1024)).toFixed(1)} MB`;
+  return `${sign}${(abs / (1024 * 1024 * 1024)).toFixed(2)} GB`;
 }
 
 /**
@@ -69,13 +73,13 @@ const DEFAULT_CONCURRENCY = 10;
 /**
  * Process items in parallel with a concurrency limit
  * @param items Items to process
- * @param processor Async function to process each item (receives item and index)
+ * @param processor Async function to process each item (receives item and optional index)
  * @param concurrency Maximum number of concurrent operations
  * @returns Array of results in input order
  */
 export async function parallelMap<T, R>(
   items: T[],
-  processor: (item: T, index: number) => Promise<R>,
+  processor: (item: T, index?: number) => Promise<R>,
   concurrency: number = DEFAULT_CONCURRENCY
 ): Promise<R[]> {
   const results: (R | undefined)[] = new Array(items.length);
@@ -298,8 +302,8 @@ export async function batchProcess<T, R>(
     const currentBatchStart = batchStart;
     const batchResults = await parallelMap(
       batch,
-      async (item: T, localIndex: number) => {
-        const globalIndex = currentBatchStart + localIndex;
+      async (item: T, localIndex?: number) => {
+        const globalIndex = currentBatchStart + (localIndex ?? 0);
         try {
           const result = await processor(item);
           return { globalIndex, result, error: null };
@@ -351,8 +355,12 @@ export class MemoryTracker {
 
   /**
    * Sample current memory usage
+   * @throws Error if called before start()
    */
   sample(): void {
+    if (this.startMemory === null) {
+      throw new Error('MemoryTracker: sample() called before start()');
+    }
     this.samples.push(getMemoryStats());
   }
 

@@ -447,7 +447,7 @@ export function injectResourceHints(html: string, options: ResourceHintsOptions 
   }
 
   // Try to inject after <head> tag - use bounded pattern to avoid ReDoS
-  const headMatch = html.match(/<head[\s>][^>]{0,200}>/i) || html.match(/<head>/i);
+  const headMatch = html.match(/<head(?:\s[^>]{0,200})?>/i);
   if (headMatch) {
     const insertPos = (headMatch.index ?? 0) + headMatch[0].length;
     return html.slice(0, insertPos) + '\n' + hintsHtml + html.slice(insertPos);

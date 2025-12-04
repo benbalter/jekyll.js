@@ -12,6 +12,9 @@ import { Renderer } from '../core/Renderer';
 import { Site } from '../core/Site';
 import { escapeHtml } from '../utils/html';
 
+/** Maximum length for quoted string parsing to prevent DoS */
+const MAX_QUOTED_STRING_LENGTH = 1000;
+
 /**
  * Parse a quoted string without using regex to avoid ReDoS
  * Supports escaped quotes within the string
@@ -26,7 +29,7 @@ function parseQuotedString(input: string, quoteChar: string): string | null {
 
   let result = '';
   let i = 1; // Start after the opening quote
-  const maxLen = Math.min(input.length, 1000); // Limit parsing length for safety
+  const maxLen = Math.min(input.length, MAX_QUOTED_STRING_LENGTH);
 
   while (i < maxLen) {
     const char = input[i];

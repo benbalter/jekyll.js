@@ -53,6 +53,12 @@ describe('npm-plugin-loader', () => {
       expect(isValidNpmPackageName('/absolute/path')).toBe(false);
     });
 
+    it('should reject names with backslash path separators (Windows-style)', () => {
+      expect(isValidNpmPackageName('package\\malicious')).toBe(false);
+      expect(isValidNpmPackageName('..\\etc\\passwd')).toBe(false);
+      expect(isValidNpmPackageName('package\\..\\..\\etc')).toBe(false);
+    });
+
     it('should reject names starting with dot or underscore', () => {
       expect(isValidNpmPackageName('.hidden')).toBe(false);
       expect(isValidNpmPackageName('_private')).toBe(false);
@@ -279,6 +285,37 @@ describe('npm-plugin-loader', () => {
       const result = loadNpmPlugin('no-name-plugin', testDir);
       expect(result.success).toBe(true);
       expect(result.plugin?.name).toBe('no-name-plugin');
+    });
+
+    it('should load scoped npm packages', () => {
+      // Create a scoped package directory structure: node_modules/@myorg/plugin
+      const scopeDir = join(pluginsDir, '@myorg');
+      const pluginDir = join(scopeDir, 'scoped-plugin');
+      mkdirSync(pluginDir, { recursive: true });
+      writeFileSync(
+        join(pluginDir, 'package.json'),
+        JSON.stringify({
+          name: '@myorg/scoped-plugin',
+          main: 'index.js',
+        })
+      );
+      writeFileSync(
+        join(pluginDir, 'index.js'),
+        `
+        module.exports = {
+          name: '@myorg/scoped-plugin',
+          register: function(renderer, site) {
+            // Scoped plugin registration
+          }
+        };
+        `
+      );
+
+      const result = loadNpmPlugin('@myorg/scoped-plugin', testDir);
+      expect(result.success).toBe(true);
+      expect(result.plugin).toBeDefined();
+      expect(result.plugin?.name).toBe('@myorg/scoped-plugin');
+      expect(typeof result.plugin?.register).toBe('function');
     });
   });
 

@@ -102,13 +102,19 @@ export function getBuiltInPluginNames(): Set<string> {
 export function registerPlugins(renderer: Renderer, site: Site): void {
   const configuredPlugins = site.config.plugins || [];
   const builtInPlugins = getBuiltInPlugins();
-  const builtInNames = new Set(builtInPlugins.map((p) => p.name));
+  const builtInNames = getBuiltInPluginNames();
 
   // Register built-in plugins that are explicitly listed in config
   for (const plugin of builtInPlugins) {
     if (configuredPlugins.includes(plugin.name)) {
-      plugin.register(renderer, site);
-      logger.debug(`Registered built-in plugin: ${plugin.name}`);
+      try {
+        plugin.register(renderer, site);
+        logger.debug(`Registered built-in plugin: ${plugin.name}`);
+      } catch (error) {
+        logger.warn(
+          `Failed to register built-in plugin '${plugin.name}': ${error instanceof Error ? error.message : String(error)}`
+        );
+      }
     }
   }
 

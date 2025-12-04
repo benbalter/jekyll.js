@@ -49,7 +49,6 @@ export function findNpmPackage(packageName: string, siteSource: string): string 
     join(siteSource, 'node_modules', packageName),
     // Current working directory's node_modules
     join(process.cwd(), 'node_modules', packageName),
-    // Try to resolve using Node's module resolution
   ];
 
   for (const searchPath of searchPaths) {
@@ -78,10 +77,6 @@ export function findNpmPackage(packageName: string, siteSource: string): string 
  * @returns Package root directory
  */
 function getPackageRoot(resolvedPath: string, packageName: string): string {
-  // Handle scoped packages (@scope/name)
-  const parts = packageName.startsWith('@') ? packageName.split('/') : [packageName];
-  const packageNamePart = parts[parts.length - 1];
-
   // Walk up the directory tree to find the package.json
   let dir = dirname(resolvedPath);
   while (dir !== dirname(dir)) {
@@ -89,7 +84,7 @@ function getPackageRoot(resolvedPath: string, packageName: string): string {
     if (existsSync(pkgJsonPath)) {
       try {
         const pkgJson = JSON.parse(readFileSync(pkgJsonPath, 'utf-8'));
-        if (pkgJson.name === packageName || pkgJson.name?.endsWith(`/${packageNamePart}`)) {
+        if (pkgJson.name === packageName) {
           return dir;
         }
       } catch {
@@ -121,8 +116,13 @@ export function isValidNpmPackageName(name: string): boolean {
   // - Must not start with a dot or underscore (except scoped packages)
   // - Must not contain path separators or special characters
 
-  // Check for path traversal attempts
+  // Check for path traversal attempts and absolute paths
   if (name.includes('..') || name.includes('/..') || name.includes('../')) {
+    return false;
+  }
+
+  // Check for absolute paths and backslashes (Windows-style path separators)
+  if (name.startsWith('/') || name.includes('\\')) {
     return false;
   }
 
@@ -139,10 +139,10 @@ export function isValidNpmPackageName(name: string): boolean {
     }
     const scopeWithoutAt = scope.substring(1);
     // Both scope and package name must be valid
-    return isValidUncopedPackageName(scopeWithoutAt) && isValidUncopedPackageName(pkgName || '');
+    return isValidUnscopedPackageName(scopeWithoutAt) && isValidUnscopedPackageName(pkgName || '');
   }
 
-  return isValidUncopedPackageName(name);
+  return isValidUnscopedPackageName(name);
 }
 
 /**
@@ -150,7 +150,7 @@ export function isValidNpmPackageName(name: string): boolean {
  * @param name Package name to validate
  * @returns Whether the name is valid
  */
-function isValidUncopedPackageName(name: string): boolean {
+function isValidUnscopedPackageName(name: string): boolean {
   if (!name || name.length === 0 || name.length > 214) {
     return false;
   }

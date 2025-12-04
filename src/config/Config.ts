@@ -585,8 +585,13 @@ function isValidNpmPackageNameForConfig(name: string): boolean {
     return false;
   }
 
-  // Check for path traversal attempts
+  // Check for path traversal attempts and absolute paths
   if (name.includes('..') || name.includes('/..') || name.includes('../')) {
+    return false;
+  }
+
+  // Check for absolute paths and backslashes (Windows-style path separators)
+  if (name.startsWith('/') || name.includes('\\')) {
     return false;
   }
 
@@ -598,10 +603,10 @@ function isValidNpmPackageNameForConfig(name: string): boolean {
     }
     const scope = parts[0]?.substring(1); // Remove @
     const pkgName = parts[1];
-    return isValidUncopedName(scope || '') && isValidUncopedName(pkgName || '');
+    return isValidUnscopedName(scope || '') && isValidUnscopedName(pkgName || '');
   }
 
-  return isValidUncopedName(name);
+  return isValidUnscopedName(name);
 }
 
 /**
@@ -609,7 +614,7 @@ function isValidNpmPackageNameForConfig(name: string): boolean {
  * @param name Name to check
  * @returns Whether it's valid
  */
-function isValidUncopedName(name: string): boolean {
+function isValidUnscopedName(name: string): boolean {
   if (!name || name.length === 0) {
     return false;
   }

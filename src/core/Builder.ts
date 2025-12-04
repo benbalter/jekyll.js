@@ -191,6 +191,16 @@ export class Builder {
       // Pre-cache site data before batch rendering operations for better performance
       this.renderer.preloadSiteData();
 
+      // Pre-initialize markdown processor to avoid cold-start latency on first markdown render
+      // This loads all remark modules and creates a cached frozen processor
+      if (this.timer) {
+        await this.timer.timeAsync('Initialize markdown', () =>
+          this.renderer.initializeMarkdownProcessor()
+        );
+      } else {
+        await this.renderer.initializeMarkdownProcessor();
+      }
+
       // Determine what needs to be rebuilt
       let pagesToRender = this.site.pages;
       let postsToRender = this.site.posts;
@@ -274,9 +284,9 @@ export class Builder {
 
       // Process SASS/SCSS files
       if (this.timer) {
-        this.timer.timeSync('Process SASS/SCSS', () => this.processSassFiles());
+        await this.timer.timeAsync('Process SASS/SCSS', () => this.processSassFiles());
       } else {
-        this.processSassFiles();
+        await this.processSassFiles();
       }
 
       // Copy static files
@@ -773,7 +783,7 @@ export class Builder {
   /**
    * Process SASS/SCSS files and compile them to CSS
    */
-  private processSassFiles(): void {
+  private async processSassFiles(): Promise<void> {
     const sassFiles = this.findSassFiles(this.site.source);
 
     if (sassFiles.length === 0) {
@@ -781,6 +791,9 @@ export class Builder {
     }
 
     logger.info(`Processing ${sassFiles.length} SASS/SCSS files...`);
+
+    // Get site data for Liquid context
+    const siteData = this.site.toJSON();
 
     for (const file of sassFiles) {
       try {
@@ -801,11 +814,45 @@ export class Builder {
           continue;
         }
 
+        // Process Liquid tags in SCSS content before SASS compilation
+        // This is required for Jekyll compatibility where SCSS files can contain
+        // Liquid includes like {% include css/file.css %}
+        const relativePath = relative(this.site.source, file);
+        // Build Liquid context matching the pattern used in Renderer.ensureSiteDataCached()
+        // - Spread config properties for direct access (e.g., site.title)
+        // - Keep config property for backward compatibility (e.g., site.config.title)
+        const liquidContext = {
+          site: {
+            ...siteData.config,
+            config: siteData.config,
+            data: siteData.data,
+            pages: siteData.pages,
+            posts: siteData.posts,
+            static_files: siteData.static_files,
+            collections: siteData.collections,
+            source: siteData.source,
+            destination: siteData.destination,
+          },
+          page: {
+            path: relativePath,
+            ...parsed.data,
+          },
+        };
+
+        let processedContent = parsed.content;
+        try {
+          processedContent = await this.renderer.render(parsed.content, liquidContext);
+        } catch (liquidError) {
+          logger.warn(`Failed to process Liquid in SASS file: ${relativePath}`, {
+            error: liquidError instanceof Error ? liquidError.message : String(liquidError),
+          });
+          // Continue with original content if Liquid processing fails
+        }
+
         // Compile SASS/SCSS
-        const css = this.sassProcessor.process(file, parsed.content);
+        const css = this.sassProcessor.process(file, processedContent);
 
         // Determine output path (replace .scss/.sass with .css)
-        const relativePath = relative(this.site.source, file);
         const outputPath = relativePath.replace(/\.(scss|sass)$/, '.css');
         const destPath = join(this.site.destination, outputPath);
 

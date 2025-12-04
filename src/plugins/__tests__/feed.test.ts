@@ -231,4 +231,69 @@ describe('FeedPlugin', () => {
 
     expect(newPostIndex).toBeLessThan(oldPostIndex);
   });
+
+  describe('feed_meta tag', () => {
+    it('should render the feed_meta tag with correct attributes', async () => {
+      const template = '{% feed_meta %}';
+      const result = await renderer.render(template, {});
+
+      expect(result).toContain('<link');
+      expect(result).toContain('type="application/atom+xml"');
+      expect(result).toContain('rel="alternate"');
+      expect(result).toContain('href="https://example.com/feed.xml"');
+      expect(result).toContain('title="Test Blog"');
+      expect(result).toContain('/>');
+    });
+
+    it('should use custom feed path from config', async () => {
+      site.config.feed = { path: '/custom-feed.xml' };
+      const template = '{% feed_meta %}';
+      const result = await renderer.render(template, {});
+
+      expect(result).toContain('href="https://example.com/custom-feed.xml"');
+    });
+
+    it('should include baseurl in feed URL', async () => {
+      site.config.baseurl = '/blog';
+      const template = '{% feed_meta %}';
+      const result = await renderer.render(template, {});
+
+      expect(result).toContain('href="https://example.com/blog/feed.xml"');
+    });
+
+    it('should handle missing title gracefully', async () => {
+      delete site.config.title;
+      const template = '{% feed_meta %}';
+      const result = await renderer.render(template, {});
+
+      expect(result).toContain('<link');
+      expect(result).toContain('type="application/atom+xml"');
+      expect(result).not.toContain('title=');
+    });
+
+    it('should use name config as fallback for title', async () => {
+      delete site.config.title;
+      site.config.name = 'My Site Name';
+      const template = '{% feed_meta %}';
+      const result = await renderer.render(template, {});
+
+      expect(result).toContain('title="My Site Name"');
+    });
+
+    it('should escape special characters in title', async () => {
+      site.config.title = 'Test & Blog "Title"';
+      const template = '{% feed_meta %}';
+      const result = await renderer.render(template, {});
+
+      expect(result).toContain('title="Test &amp; Blog &quot;Title&quot;"');
+    });
+
+    it('should handle feed path without leading slash', async () => {
+      site.config.feed = { path: 'atom.xml' };
+      const template = '{% feed_meta %}';
+      const result = await renderer.render(template, {});
+
+      expect(result).toContain('href="https://example.com/atom.xml"');
+    });
+  });
 });

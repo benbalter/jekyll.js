@@ -4,7 +4,7 @@ import { Document } from './Document';
 import { Paginator } from './Paginator';
 import { logger } from '../utils/logger';
 import { TemplateError, parseErrorLocation } from '../utils/errors';
-import { processMarkdown, MarkdownOptions } from './markdown';
+import { processMarkdown, initMarkdownProcessor, MarkdownOptions } from './markdown';
 import slugifyLib from 'slugify';
 import { format, parseISO, formatISO, formatRFC7231, isValid } from 'date-fns';
 import striptags from 'striptags';
@@ -1469,5 +1469,15 @@ export class Renderer {
    */
   preloadSiteData(): void {
     this.ensureSiteDataCached();
+  }
+
+  /**
+   * Pre-initialize the markdown processor for optimal performance.
+   * This loads all required remark modules and creates a cached frozen processor.
+   * Call this before rendering documents to avoid cold-start latency on first markdown render.
+   * @returns Promise that resolves when initialization is complete
+   */
+  async initializeMarkdownProcessor(): Promise<void> {
+    await initMarkdownProcessor(this.markdownOptions);
   }
 }

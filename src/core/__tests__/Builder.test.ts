@@ -722,4 +722,89 @@ Content`
       expect(site.static_files[0]?.name).toBe('app.js');
     });
   });
+
+  describe('SCSS with Liquid processing', () => {
+    it('should process Liquid includes in SCSS files', async () => {
+      // Create includes directory with CSS partial
+      const includesDir = join(testSiteDir, '_includes');
+      mkdirSync(includesDir);
+      const cssIncludesDir = join(includesDir, 'css');
+      mkdirSync(cssIncludesDir);
+      writeFileSync(
+        join(cssIncludesDir, 'responsive.css'),
+        `@media (max-width: 768px) {
+  .container {
+    width: 100%;
+  }
+}`
+      );
+
+      // Create SCSS file with Liquid include (like choosealicense.com)
+      const assetsDir = join(testSiteDir, 'assets');
+      mkdirSync(assetsDir);
+      const cssDir = join(assetsDir, 'css');
+      mkdirSync(cssDir);
+      writeFileSync(
+        join(cssDir, 'application.scss'),
+        `---
+---
+
+body {
+  background: #fafafa;
+  color: #333;
+}
+
+.main {
+  max-width: 960px;
+}
+
+{% include css/responsive.css %}`
+      );
+
+      const site = new Site(testSiteDir);
+      const builder = new Builder(site);
+      await builder.build();
+
+      // Check that SCSS file was compiled
+      expect(existsSync(join(destDir, 'assets/css/application.css'))).toBe(true);
+
+      // Check that Liquid include was processed before SASS compilation
+      const cssContent = readFileSync(join(destDir, 'assets/css/application.css'), 'utf-8');
+      expect(cssContent).toContain('background: #fafafa');
+      expect(cssContent).toContain('max-width: 960px');
+      // The included CSS should be in the output
+      expect(cssContent).toContain('@media (max-width: 768px)');
+      expect(cssContent).toContain('width: 100%');
+    });
+
+    it('should process SCSS with Liquid variables', async () => {
+      // Create SCSS file with Liquid site variable
+      const assetsDir = join(testSiteDir, 'assets');
+      mkdirSync(assetsDir);
+      writeFileSync(
+        join(assetsDir, 'style.scss'),
+        `---
+---
+
+/* Site: {{ site.title }} */
+body {
+  color: #333;
+}`
+      );
+
+      const site = new Site(testSiteDir, {
+        title: 'Test Site',
+      });
+      const builder = new Builder(site);
+      await builder.build();
+
+      // Check that SCSS file was compiled
+      expect(existsSync(join(destDir, 'assets/style.css'))).toBe(true);
+
+      // Check that Liquid variable was processed
+      const cssContent = readFileSync(join(destDir, 'assets/style.css'), 'utf-8');
+      expect(cssContent).toContain('Site: Test Site');
+      expect(cssContent).toContain('color: #333');
+    });
+  });
 });

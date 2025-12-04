@@ -16,92 +16,83 @@ Quick reference card for developers working on Jekyll.js compatibility features.
 
 ---
 
-## 🎯 Priority Features for v0.2.0
+## 🎯 Current Implementation Status
 
-### 1. Data Files (`_data` directory) 🔴
-**Complexity**: Medium | **Impact**: High
+### ✅ Completed Features (v0.1.0)
 
-Load YAML, JSON, CSV, TSV from `_data/` as `site.data`.
+All of the following features are fully implemented:
 
-**Files to modify:**
-- `src/core/Site.ts` - Add `readDataFiles()` method
-- `src/core/Renderer.ts` - Expose `site.data` in templates
-- Add tests in `src/core/__tests__/`
+1. **Data Files (`_data` directory)** ✅
+   - YAML and JSON formats supported
+   - Nested directory structures
+   - `site.data` in templates
+   - Watch for changes
 
-**Key Requirements:**
-- Support nested directories
-- Parse multiple formats
-- Watch for changes
+2. **Watch Mode for Builds** ✅
+   - File change detection via chokidar
+   - Automatic rebuilds
+   - Configuration reload
+   - Error handling
 
----
+3. **SASS/SCSS Processing** ✅
+   - Compile `.scss` and `.sass` files
+   - Import from `_sass/` directory
+   - Configuration options (style, sass_dir)
+   - Integration with watch mode
 
-### 2. Watch Mode for Builds 🔴
-**Complexity**: Medium | **Impact**: High
+4. **Front Matter Defaults** ✅
+   - Path and type-based defaults
+   - Scope matching
+   - Front matter merging
 
-Enable `--watch` flag to rebuild on file changes.
+5. **Liquid Filters** ✅ (60+ implemented)
+   - All array filters (sort, uniq, sample, push, pop, shift, unshift, find, find_exp)
+   - Type conversion (to_integer)
+   - Math filters (abs, plus, minus, times, divided_by, modulo, round, ceil, floor)
+   - Modern filters (reading_time, toc, heading_anchors, external_links, auto_excerpt)
 
-**Files to modify:**
-- `src/cli/commands/build.ts` - Implement file watching
-- Use `chokidar` (already in dependencies)
+6. **Pagination** ✅
+   - Basic post pagination
+   - Custom pagination paths
+   - Paginator object with all properties
 
-**Key Requirements:**
-- Watch source files
-- Debounce rebuilds
-- Handle errors gracefully
-- Clear console feedback
+7. **Theme Support** ✅
+   - npm package-based themes
+   - File override mechanism
+   - Layout and include merging
 
----
-
-### 3. SASS/SCSS Processing 🔴
-**Complexity**: Medium | **Impact**: High
-
-Compile `.scss`/`.sass` files with front matter.
-
-**Files to modify:**
-- `src/core/Builder.ts` - Add SASS compilation step
-- Add new `src/core/sass.ts` module
-- Add `sass` dependency to `package.json`
-
-**Key Requirements:**
-- Process files with front matter
-- Import from `_sass/` directory
-- Support compression options
-- Integrate with watch mode
+8. **Incremental Builds** ✅
+   - CacheManager for tracking
+   - Build cache in `.jekyll-cache/`
+   - Config change detection
 
 ---
 
-### 4. Front Matter Defaults 🔴
-**Complexity**: Medium | **Impact**: Medium
+## 🎯 Priority Features for v0.4.0+
 
-Apply default front matter based on path/type.
-
-**Files to modify:**
-- `src/core/Document.ts` - Apply defaults on construction
-- `src/core/Site.ts` - Pass defaults to documents
-- `src/config/Config.ts` - Already has interface
-
-**Key Requirements:**
-- Match files by path pattern
-- Filter by document type
-- Merge with file front matter (file wins)
-
----
-
-### 5. Additional Liquid Filters 🟡
+### 1. Multiple Configuration Files 🔴
 **Complexity**: Low | **Impact**: Medium
 
-Add missing array and utility filters.
+Support loading multiple config files (comma-separated).
 
-**Files to modify:**
-- `src/core/Renderer.ts` - Register new filters
+**Example**:
+```bash
+jekyll-ts build --config _config.yml,_config.dev.yml
+```
 
-**Filters to add:**
-- `sort`, `sort_natural`
-- `uniq`, `sample`
-- `push`, `pop`, `shift`, `unshift`
-- `find`, `find_exp`
-- `to_integer`, `to_float`
-- `abs`, `plus`, `minus`, `times`, `divided_by`
+---
+
+### 2. CSV/TSV Data Files 🔴
+**Complexity**: Low | **Impact**: Low
+
+Add support for CSV and TSV formats in `_data/` directory.
+
+---
+
+### 3. i18n/Localization 🔴
+**Complexity**: High | **Impact**: Medium
+
+Multi-language support for sites.
 
 ---
 
@@ -114,22 +105,37 @@ jekyll.js/
 │   │   ├── commands/  # Individual commands (build, serve, new)
 │   │   └── index.ts   # CLI entry point
 │   ├── core/          # Core build engine
-│   │   ├── Builder.ts    # Build orchestration
-│   │   ├── Document.ts   # Document representation
-│   │   ├── Renderer.ts   # Liquid rendering
-│   │   ├── Site.ts       # Site management
-│   │   └── markdown.ts   # Markdown processing
+│   │   ├── Builder.ts      # Build orchestration
+│   │   ├── CacheManager.ts # Incremental build cache
+│   │   ├── Document.ts     # Document representation
+│   │   ├── Paginator.ts    # Pagination support
+│   │   ├── Renderer.ts     # Liquid rendering (60+ filters)
+│   │   ├── SassProcessor.ts# SASS/SCSS compilation
+│   │   ├── Site.ts         # Site management
+│   │   ├── StaticFile.ts   # Static file handling
+│   │   ├── ThemeManager.ts # Theme loading and resolution
+│   │   └── markdown.ts     # Markdown processing
 │   ├── config/        # Configuration
 │   │   └── Config.ts     # _config.yml parser
 │   ├── plugins/       # Built-in plugins
-│   │   ├── seo-tag.ts
-│   │   ├── sitemap.ts
-│   │   └── feed.ts
+│   │   ├── avatar.ts         # jekyll-avatar
+│   │   ├── feed.ts           # jekyll-feed
+│   │   ├── github-metadata.ts# jekyll-github-metadata
+│   │   ├── image-optimization.ts # Sharp-based optimization
+│   │   ├── jemoji.ts         # jekyll-jemoji
+│   │   ├── mentions.ts       # jekyll-mentions
+│   │   ├── redirect-from.ts  # jekyll-redirect-from
+│   │   ├── seo-tag.ts        # jekyll-seo-tag
+│   │   ├── sitemap.ts        # jekyll-sitemap
+│   │   └── syntax-highlighting.ts # Shiki-based highlighting
 │   ├── server/        # Development server
 │   │   └── DevServer.ts
 │   └── utils/         # Utilities
 │       ├── errors.ts
-│       └── logger.ts
+│       ├── logger.ts   # Winston-based logging
+│       ├── parallel-fs.ts # Parallel file operations
+│       ├── timer.ts
+│       └── watcher.ts  # File watching (chokidar)
 ├── docs/              # Documentation
 ├── test-fixtures/     # Test Jekyll sites
 └── dist/              # Compiled output
@@ -413,5 +419,5 @@ describe('Feature', () => {
 
 ---
 
-**Last Updated**: 2025-11-21  
+**Last Updated**: 2025-12-04  
 **Maintained by**: @benbalter

@@ -1,5 +1,5 @@
-import { existsSync, readdirSync, statSync, readFileSync } from 'fs';
-import { join, resolve, extname, dirname, basename } from 'path';
+import { existsSync, readdirSync, statSync, readFileSync, openSync, readSync, closeSync } from 'fs';
+import { join, resolve, extname, dirname, basename, relative } from 'path';
 import { Document, DocumentType } from './Document';
 import { StaticFile } from './StaticFile';
 import { JekyllConfig, loadConfig } from '../config';
@@ -86,20 +86,38 @@ export class Site {
     }
 
     // Merge default excludes with user-provided excludes
+    // Ruby Jekyll default excludes: https://github.com/jekyll/jekyll/blob/master/lib/jekyll/configuration.rb
     const defaultExcludes = [
-      '_site',
       '.sass-cache',
       '.jekyll-cache',
-      '.jekyll-metadata',
+      'gemfiles',
+      'Gemfile',
+      'Gemfile.lock',
       'node_modules',
-      'vendor',
+      'vendor/bundle/',
+      'vendor/cache/',
+      'vendor/gems/',
+      'vendor/ruby/',
     ];
     const mergedExcludes = [...defaultExcludes, ...(config.exclude || [])];
+
+    // Resolve destination path
+    const resolvedDest = config.destination
+      ? resolve(config.destination)
+      : join(this.source, '_site');
+
+    // Auto-exclude destination directory if it's inside source (Ruby Jekyll behavior)
+    const relativeDest = relative(this.source, resolvedDest);
+    if (relativeDest.length > 0 && !relativeDest.startsWith('..')) {
+      if (!mergedExcludes.includes(relativeDest)) {
+        mergedExcludes.push(relativeDest);
+      }
+    }
 
     this.config = {
       ...config,
       source: this.source,
-      destination: config.destination || join(this.source, '_site'),
+      destination: resolvedDest,
       exclude: mergedExcludes,
       include: config.include || [],
     };
@@ -276,13 +294,32 @@ export class Site {
 
   /**
    * Read all pages from the source directory - async version
-   * Pages are any markdown or HTML files not in special directories
+   * Pages are any markdown or HTML files not in special directories,
+   * OR any other files that have YAML front matter (following Jekyll behavior)
    */
   private async readPagesAsync(): Promise<void> {
     const files = await this.walkSiteDirectoryAsync(this.source, true);
-    const pageFiles = files.filter(
-      (file) => this.isMarkdownOrHtml(file) && !this.isSpecialDirectory(file)
-    );
+    const pageFiles = files.filter((file) => {
+      // Skip files in special directories (underscore-prefixed)
+      if (this.isSpecialDirectory(file)) {
+        return false;
+      }
+
+      // Skip SASS/SCSS files - they're processed by the SASS processor
+      const ext = extname(file).toLowerCase();
+      if (['.scss', '.sass'].includes(ext)) {
+        return false;
+      }
+
+      // Include markdown/HTML files
+      if (this.isMarkdownOrHtml(file)) {
+        return true;
+      }
+
+      // Include any other file that has front matter (Jekyll behavior)
+      // This allows .txt, .xml, .json, etc. with front matter to be processed through Liquid
+      return this.hasFrontMatter(file);
+    });
 
     // Create documents in parallel batches
     const docs = await this.createDocumentsParallel(
@@ -298,6 +335,7 @@ export class Site {
   /**
    * Read all static files from the source directory - async version
    * Static files are non-Jekyll files (not markdown, HTML, SASS, or in special directories)
+   * AND do not have YAML front matter
    */
   private async readStaticFilesAsync(): Promise<void> {
     const files = await this.walkSiteDirectoryAsync(this.source, true);
@@ -317,6 +355,11 @@ export class Site {
 
       // Skip files in special directories (underscore-prefixed)
       if (this.isSpecialDirectory(file)) {
+        return false;
+      }
+
+      // Skip files with front matter - they're treated as pages and processed through Liquid
+      if (this.hasFrontMatter(file)) {
         return false;
       }
 
@@ -424,24 +467,75 @@ export class Site {
   }
 
   /**
-   * Read all data files from _data directory
+   * Read all data files from _data directory (site and theme)
+   * Site data takes precedence over theme data
    */
   private readData(): void {
-    const dataDir = join(this.source, this.config.data_dir || '_data');
-    if (!existsSync(dataDir)) {
-      return;
+    // First read theme data if available
+    // Note: skipExclude=true for theme data since exclude patterns only apply to site files
+    const themeDataDir = this.themeManager.getThemeDataDirectory();
+    let themeData: Record<string, any> = {};
+
+    if (themeDataDir && existsSync(themeDataDir)) {
+      themeData = this.readDataDirectory(themeDataDir, themeDataDir, true);
     }
 
-    this.data = this.readDataDirectory(dataDir, dataDir);
+    // Then read site data (apply exclude patterns)
+    const siteDataDir = join(this.source, this.config.data_dir || '_data');
+    let siteData: Record<string, any> = {};
+
+    if (existsSync(siteDataDir)) {
+      siteData = this.readDataDirectory(siteDataDir, siteDataDir, false);
+    }
+
+    // Merge theme data with site data (site takes precedence)
+    this.data = this.mergeData(themeData, siteData);
+  }
+
+  /**
+   * Deep merge two data objects, with the second object taking precedence
+   * @param base Base data object (theme data)
+   * @param override Override data object (site data)
+   * @returns Merged data object
+   */
+  private mergeData(base: Record<string, any>, override: Record<string, any>): Record<string, any> {
+    const result: Record<string, any> = { ...base };
+
+    for (const key of Object.keys(override)) {
+      const baseValue = base[key];
+      const overrideValue = override[key];
+
+      // If both values are plain objects (not arrays), deep merge them
+      if (
+        baseValue &&
+        overrideValue &&
+        typeof baseValue === 'object' &&
+        typeof overrideValue === 'object' &&
+        !Array.isArray(baseValue) &&
+        !Array.isArray(overrideValue)
+      ) {
+        result[key] = this.mergeData(baseValue, overrideValue);
+      } else {
+        // Otherwise, override takes precedence
+        result[key] = overrideValue;
+      }
+    }
+
+    return result;
   }
 
   /**
    * Recursively read data files from a directory
    * @param dir Directory to read
    * @param baseDir Base data directory for computing relative paths
+   * @param skipExclude Whether to skip exclusion checks (true for theme data)
    * @returns Object containing parsed data files
    */
-  private readDataDirectory(dir: string, baseDir: string): Record<string, any> {
+  private readDataDirectory(
+    dir: string,
+    baseDir: string,
+    skipExclude: boolean = false
+  ): Record<string, any> {
     const data: Record<string, any> = {};
 
     if (!existsSync(dir)) {
@@ -455,19 +549,19 @@ export class Site {
       const stats = statSync(fullPath);
 
       if (stats.isDirectory()) {
-        // Skip excluded directories
-        if (this.shouldExclude(fullPath)) {
+        // Skip excluded directories (only for site data, not theme data)
+        if (!skipExclude && this.shouldExclude(fullPath)) {
           continue;
         }
 
         // Recursively read subdirectory
-        const subData = this.readDataDirectory(fullPath, baseDir);
+        const subData = this.readDataDirectory(fullPath, baseDir, skipExclude);
         if (Object.keys(subData).length > 0) {
           data[entry] = subData;
         }
       } else if (stats.isFile()) {
-        // Skip excluded files
-        if (this.shouldExclude(fullPath)) {
+        // Skip excluded files (only for site data, not theme data)
+        if (!skipExclude && this.shouldExclude(fullPath)) {
           continue;
         }
 
@@ -555,6 +649,54 @@ export class Site {
   private isMarkdownOrHtml(path: string): boolean {
     const ext = extname(path).toLowerCase();
     return ['.md', '.markdown', '.html', '.htm'].includes(ext);
+  }
+
+  /**
+   * Check if a file has YAML front matter
+   * Front matter starts with --- on the first line and has a closing ---
+   * For efficiency, we only read the first 4KB of the file to detect front matter
+   */
+  private hasFrontMatter(filePath: string): boolean {
+    let fd: number | null = null;
+    try {
+      // Read only the first 4KB - this is enough to detect front matter
+      // Front matter is typically small (metadata only)
+      const buffer = Buffer.alloc(4096);
+      fd = openSync(filePath, 'r');
+      const bytesRead = readSync(fd, buffer, 0, 4096, 0);
+      const content = buffer.toString('utf-8', 0, bytesRead);
+
+      // Check for front matter structure: starts with --- and has closing ---
+      const trimmed = content.trimStart();
+      if (!trimmed.startsWith('---')) {
+        return false;
+      }
+
+      // Find the closing --- (must be on its own line after the opening ---)
+      const lines = trimmed.split('\n');
+      if (lines.length < 2) {
+        return false;
+      }
+
+      // Look for closing --- after the first line
+      for (let i = 1; i < lines.length; i++) {
+        if (lines[i]?.trim() === '---') {
+          return true;
+        }
+      }
+
+      return false;
+    } catch {
+      return false;
+    } finally {
+      if (fd !== null) {
+        try {
+          closeSync(fd);
+        } catch {
+          // Ignore close errors
+        }
+      }
+    }
   }
 
   /**

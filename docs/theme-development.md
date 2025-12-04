@@ -9,8 +9,13 @@ A Jekyll.js theme is an npm package that provides:
 - **Includes** (`_includes/`) - Reusable template components
 - **Sass stylesheets** (`_sass/`) - Stylesheet partials
 - **Assets** (`assets/`) - CSS, JavaScript, images, fonts
+- **Data files** (`_data/`) - Default data for templates
+- **Configuration** (`_config.yml`) - Theme default settings
+- **Metadata** (`package.json`) - Theme information (name, version, author)
 
 Themes allow you to package and distribute site designs, making it easy for users to apply a consistent look and feel to their Jekyll.js sites.
+
+This npm-based theme system is similar to Jekyll.rb's gem-based themes, but uses the standard JavaScript package ecosystem for installation and management.
 
 ## Using a Theme
 
@@ -42,9 +47,74 @@ Site files always take precedence over theme files. To customize a theme:
 
 1. **Override a layout:** Create `_layouts/default.html` in your site
 2. **Override an include:** Create `_includes/header.html` in your site
-3. **Add custom styles:** Create your own stylesheets in `assets/`
+3. **Override data files:** Create `_data/navigation.yml` in your site
+4. **Add custom styles:** Create your own stylesheets in `assets/`
 
 The theme's original files remain untouched, and your customizations are applied on top.
+
+### Theme Data Files
+
+Themes can provide default data in their `_data/` directory. This data is automatically merged with your site's data, with **site data taking precedence** over theme data.
+
+For example, if a theme provides `_data/navigation.yml`:
+
+```yaml
+# Theme's _data/navigation.yml
+main:
+  - title: Home
+    url: /
+  - title: About
+    url: /about/
+```
+
+You can override specific values in your site's `_data/navigation.yml`:
+
+```yaml
+# Site's _data/navigation.yml (overrides theme)
+main:
+  - title: Home
+    url: /
+  - title: Blog
+    url: /blog/
+```
+
+### Theme Configuration Defaults
+
+Themes can include a `_config.yml` file with default configuration values. These defaults are available to your templates but **do not automatically merge** with your site's configuration.
+
+Access theme defaults in your site using the theme manager API or reference them in templates:
+
+```yaml
+# Theme's _config.yml
+author:
+  name: Theme Default Author
+  bio: A default biography
+social:
+  twitter: theme_twitter
+defaults:
+  - scope:
+      path: ""
+      type: "posts"
+    values:
+      layout: post
+      comments: true
+```
+
+### Accessing Theme Metadata
+
+Theme metadata from `package.json` is available via the `ThemeManager` API:
+
+```typescript
+import { Site } from 'jekyll-ts';
+
+const site = new Site('/path/to/site', config);
+const metadata = site.themeManager.getThemeMetadata();
+
+console.log(metadata?.name);        // 'jekyll-theme-minimal'
+console.log(metadata?.version);     // '1.0.0'
+console.log(metadata?.author);      // 'Your Name'
+console.log(metadata?.description); // 'A minimal theme for Jekyll.js'
+```
 
 ## Creating a Theme
 
@@ -66,12 +136,16 @@ jekyll-theme-name/
 │   ├── _variables.scss
 │   ├── _base.scss
 │   └── _layout.scss
+├── _data/                  # Theme data files (new)
+│   ├── navigation.yml
+│   └── social.yml
 ├── assets/
 │   ├── css/
 │   │   └── main.scss
 │   ├── js/
 │   │   └── main.js
 │   └── images/
+├── _config.yml             # Theme defaults (new)
 ├── package.json
 ├── README.md
 └── LICENSE
@@ -94,16 +168,70 @@ Create a `package.json` file for your theme:
   ],
   "author": "Your Name",
   "license": "MIT",
+  "homepage": "https://github.com/yourusername/jekyll-theme-minimal",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/jekyll-theme-minimal.git"
+  },
   "files": [
     "_layouts",
     "_includes",
     "_sass",
-    "assets"
+    "_data",
+    "assets",
+    "_config.yml"
   ]
 }
 ```
 
-**Important:** Include the `files` field to ensure theme assets are published to npm.
+**Important:** Include the `files` field to ensure theme assets are published to npm. The metadata fields (`description`, `author`, `license`, `homepage`, `repository`, `keywords`) are readable via the `ThemeMetadata` API.
+
+### Theme Configuration File
+
+Create `_config.yml` for theme defaults:
+
+```yaml
+# Theme default configuration
+# These values are available via themeManager.getThemeDefaults()
+
+author:
+  name: Default Author
+  email: author@example.com
+
+social:
+  twitter: null
+  github: null
+
+# Default front matter for posts
+defaults:
+  - scope:
+      path: ""
+      type: "posts"
+    values:
+      layout: post
+      comments: true
+      share: true
+```
+
+### Theme Data Files
+
+Create `_data/navigation.yml` for default navigation:
+
+```yaml
+main:
+  - title: Home
+    url: /
+  - title: About
+    url: /about/
+  - title: Blog
+    url: /blog/
+
+footer:
+  - title: Privacy
+    url: /privacy/
+  - title: Terms
+    url: /terms/
+```
 
 ### Example Layout
 
@@ -338,7 +466,91 @@ Most Jekyll themes should work with minimal changes. Key differences:
 
 - **Plugins:** Ruby plugins won't work. Use TypeScript/JavaScript equivalents.
 - **Asset pipeline:** Some advanced asset processing may differ.
-- **Sass processing:** Currently planned, not yet implemented (v0.2.0).
+- **Data files:** Theme `_data/` directories are supported and merged with site data.
+- **Configuration:** Theme `_config.yml` provides defaults accessible via `getThemeDefaults()`.
+
+## ThemeManager API Reference
+
+The `ThemeManager` class provides programmatic access to theme features.
+
+### Methods
+
+#### `hasTheme(): boolean`
+Returns `true` if a theme is configured for the site.
+
+#### `getTheme(): ThemeConfig | null`
+Returns the full theme configuration object, or `null` if no theme is configured.
+
+#### `getThemeMetadata(): ThemeMetadata | null`
+Returns theme metadata from `package.json`:
+
+```typescript
+interface ThemeMetadata {
+  name: string;           // Package name
+  version: string;        // Package version
+  description?: string;   // Package description
+  author?: string | { name: string; email?: string; url?: string };
+  license?: string;       // License type
+  homepage?: string;      // Homepage URL
+  repository?: string | { type: string; url: string };
+  keywords?: string[];    // Package keywords
+}
+```
+
+#### `getThemeDefaults(): JekyllConfig | null`
+Returns the theme's default configuration from `_config.yml`.
+
+#### `getThemeDataDirectory(): string | null`
+Returns the path to the theme's `_data/` directory, or `null` if it doesn't exist.
+
+#### `getDataDirectories(): string[]`
+Returns all data directories (site first, then theme).
+
+#### `getThemeStaticFiles(siteSource: string): Array<{ sourcePath: string; relativePath: string }>`
+Returns a list of theme asset files that should be copied to the build output (excluding files overridden by the site).
+
+#### `resolveDataFile(dataPath: string): string | null`
+Resolves a data file path, checking the site first, then the theme.
+
+#### `resolveLayout(layoutName: string): string | null`
+Resolves a layout file, checking the site first, then the theme.
+
+#### `resolveInclude(includePath: string): string | null`
+Resolves an include file, checking the site first, then the theme.
+
+### Example Usage
+
+```typescript
+import { Site } from 'jekyll-ts';
+
+// Create a site with theme
+const site = new Site('/path/to/site', {
+  theme: 'jekyll-theme-minimal'
+});
+
+const themeManager = site.themeManager;
+
+// Check if theme is loaded
+if (themeManager.hasTheme()) {
+  // Get theme info
+  const theme = themeManager.getTheme();
+  console.log('Theme root:', theme?.root);
+  
+  // Get metadata from package.json
+  const metadata = themeManager.getThemeMetadata();
+  console.log('Theme:', metadata?.name, 'v' + metadata?.version);
+  
+  // Get default config from theme's _config.yml
+  const defaults = themeManager.getThemeDefaults();
+  console.log('Default author:', defaults?.author);
+  
+  // Get theme data directory
+  const dataDir = themeManager.getThemeDataDirectory();
+  if (dataDir) {
+    console.log('Theme data at:', dataDir);
+  }
+}
+```
 
 ## Getting Help
 

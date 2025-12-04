@@ -204,6 +204,15 @@ export class Renderer {
       return `${url}${baseurl}${path}`;
     });
 
+    // strip_index filter - strips trailing /index.html or /index.htm from URLs
+    // This is a Jekyll-specific filter for clean URL formatting
+    this.liquid.registerFilter('strip_index', (input: string) => {
+      if (!input) return '';
+      // Only strip index.html or index.htm at the very end of the string
+      // This preserves index.html in the middle of a path
+      return String(input).replace(/\/index\.html?$/i, '/');
+    });
+
     // Array filters
     this.liquid.registerFilter('where', (array: any[], key: string, value?: any) => {
       if (!Array.isArray(array)) return [];

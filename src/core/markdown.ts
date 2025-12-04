@@ -100,11 +100,11 @@ async function loadOptionalModules(options: MarkdownOptions): Promise<void> {
   const loadPromises: Promise<void>[] = [];
 
   // Handle emoji module loading with race condition prevention
+  // Keep the promise reference until the module is cached, don't clear it in the handler
   if (options.emoji && !cachedModules.remarkGemoji) {
     if (!loadingEmoji) {
       loadingEmoji = import('remark-gemoji').then(({ default: remarkGemoji }) => {
         cachedModules!.remarkGemoji = remarkGemoji;
-        loadingEmoji = null;
       });
     }
     loadPromises.push(loadingEmoji);
@@ -116,7 +116,6 @@ async function loadOptionalModules(options: MarkdownOptions): Promise<void> {
       loadingGithub = import('remark-github').then(({ default: remarkGithub, defaultBuildUrl }) => {
         cachedModules!.remarkGithub = remarkGithub;
         cachedModules!.defaultBuildUrl = defaultBuildUrl;
-        loadingGithub = null;
       });
     }
     loadPromises.push(loadingGithub);

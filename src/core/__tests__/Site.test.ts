@@ -1,5 +1,6 @@
 import { Site, SiteConfig, createSiteFromConfig } from '../Site';
 import { DocumentType } from '../Document';
+import { FileSystemError } from '../../utils/errors';
 import { mkdirSync, writeFileSync, rmSync } from 'fs';
 import { join } from 'path';
 
@@ -44,6 +45,13 @@ describe('Site', () => {
       expect(site.destination).toBe(join(testSiteDir, 'dist'));
       expect(site.config.exclude).toContain('custom-exclude');
       expect(site.config.exclude).toContain('_site'); // Default excludes are still there
+    });
+
+    it('should throw FileSystemError when source directory does not exist', () => {
+      const nonExistentDir = join(testSiteDir, 'nonexistent');
+
+      expect(() => new Site(nonExistentDir)).toThrow(FileSystemError);
+      expect(() => new Site(nonExistentDir)).toThrow(/Source directory does not exist/);
     });
   });
 

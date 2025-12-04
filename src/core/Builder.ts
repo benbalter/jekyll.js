@@ -153,6 +153,10 @@ export class Builder {
       } else {
         await this.site.read();
       }
+
+      // Invalidate cached site data since site.read() updates pages, posts, collections
+      this.renderer.invalidateSiteCache();
+
       logger.debug(`Found ${this.site.pages.length} pages, ${this.site.posts.length} posts`, {
         collections: Array.from(this.site.collections.keys()).join(', '),
       });
@@ -183,6 +187,9 @@ export class Builder {
       } else {
         this.generateUrls();
       }
+
+      // Pre-cache site data before batch rendering operations for better performance
+      this.renderer.preloadSiteData();
 
       // Determine what needs to be rebuilt
       let pagesToRender = this.site.pages;

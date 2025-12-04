@@ -37,6 +37,10 @@ let cachedModules: {
   defaultBuildUrl?: typeof import('remark-github').defaultBuildUrl;
 } | null = null;
 
+// Track in-progress optional module loads to prevent race conditions
+let loadingEmoji: Promise<void> | null = null;
+let loadingGithub: Promise<void> | null = null;
+
 // Cached frozen processors for different option combinations
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const processorCache = new Map<string, any>();
@@ -87,27 +91,35 @@ async function loadModules(options: MarkdownOptions): Promise<typeof cachedModul
 }
 
 /**
- * Load optional modules (emoji, GitHub mentions) if needed and not already cached
+ * Load optional modules (emoji, GitHub mentions) if needed and not already cached.
+ * Uses tracking variables to prevent race conditions when called concurrently.
  */
 async function loadOptionalModules(options: MarkdownOptions): Promise<void> {
   if (!cachedModules) return;
 
   const loadPromises: Promise<void>[] = [];
 
+  // Handle emoji module loading with race condition prevention
   if (options.emoji && !cachedModules.remarkGemoji) {
-    loadPromises.push(
-      import('remark-gemoji').then(({ default: remarkGemoji }) => {
+    if (!loadingEmoji) {
+      loadingEmoji = import('remark-gemoji').then(({ default: remarkGemoji }) => {
         cachedModules!.remarkGemoji = remarkGemoji;
-      })
-    );
+        loadingEmoji = null;
+      });
+    }
+    loadPromises.push(loadingEmoji);
   }
 
+  // Handle GitHub module loading with race condition prevention
   if (options.githubMentions && !cachedModules.remarkGithub) {
-    loadPromises.push(
-      import('remark-github').then(({ default: remarkGithub }) => {
+    if (!loadingGithub) {
+      loadingGithub = import('remark-github').then(({ default: remarkGithub, defaultBuildUrl }) => {
         cachedModules!.remarkGithub = remarkGithub;
-      })
-    );
+        cachedModules!.defaultBuildUrl = defaultBuildUrl;
+        loadingGithub = null;
+      });
+    }
+    loadPromises.push(loadingGithub);
   }
 
   if (loadPromises.length > 0) {
@@ -153,9 +165,10 @@ async function getProcessor(options: MarkdownOptions): Promise<any> {
     // Custom buildUrl that only handles mentions, returning false for other types
     // This ensures we don't auto-link issues (#123), commits, or other GitHub references
     // Type matches remark-github's BuildUrlValues which has type: 'commit' | 'compare' | 'issue' | 'mention'
-    const mentionsOnlyBuildUrl = (
-      values: { type: 'commit' | 'compare' | 'issue' | 'mention'; user: string }
-    ): string | false => {
+    const mentionsOnlyBuildUrl = (values: {
+      type: 'commit' | 'compare' | 'issue' | 'mention';
+      user: string;
+    }): string | false => {
       if (values.type === 'mention') {
         // Type narrowing: when type is 'mention', values matches BuildUrlMentionValues
         return defaultBuildUrl(values as { type: 'mention'; user: string });

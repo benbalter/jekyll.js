@@ -807,4 +807,121 @@ body {
       expect(cssContent).toContain('color: #333');
     });
   });
+
+  describe('non-markdown files with front matter', () => {
+    it('should render text files with front matter through Liquid', async () => {
+      // Create robots.txt with front matter and Liquid
+      writeFileSync(
+        join(testSiteDir, 'robots.txt'),
+        `---
+layout: null
+---
+# Robots file for {{ site.title }}
+User-agent: *
+Sitemap: {{ site.url }}/sitemap.xml`
+      );
+
+      const site = new Site(testSiteDir, {
+        title: 'My Site',
+        url: 'https://example.com',
+      });
+      const builder = new Builder(site);
+      await builder.build();
+
+      // Check that robots.txt was created
+      expect(existsSync(join(destDir, 'robots.txt'))).toBe(true);
+
+      // Check that Liquid was processed
+      const content = readFileSync(join(destDir, 'robots.txt'), 'utf-8');
+      expect(content).toContain('Robots file for My Site');
+      expect(content).toContain('Sitemap: https://example.com/sitemap.xml');
+    });
+
+    it('should render XML files with front matter through Liquid', async () => {
+      // Create feed.xml with front matter and Liquid
+      writeFileSync(
+        join(testSiteDir, 'feed.xml'),
+        `---
+layout: null
+---
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>{{ site.title }}</title>
+  <link href="{{ site.url }}/" rel="alternate"/>
+</feed>`
+      );
+
+      const site = new Site(testSiteDir, {
+        title: 'Test Blog',
+        url: 'https://blog.example.com',
+      });
+      const builder = new Builder(site);
+      await builder.build();
+
+      // Check that feed.xml was created
+      expect(existsSync(join(destDir, 'feed.xml'))).toBe(true);
+
+      // Check that Liquid was processed
+      const content = readFileSync(join(destDir, 'feed.xml'), 'utf-8');
+      expect(content).toContain('<title>Test Blog</title>');
+      expect(content).toContain('href="https://blog.example.com/"');
+    });
+
+    it('should preserve original extension for non-markdown files', async () => {
+      // Create various file types with front matter
+      writeFileSync(
+        join(testSiteDir, 'manifest.json'),
+        `---\nlayout: null\n---\n{"name": "{{ site.title }}"}`
+      );
+      writeFileSync(
+        join(testSiteDir, 'config.txt'),
+        `---\nlayout: null\n---\ntitle={{ site.title }}`
+      );
+
+      const site = new Site(testSiteDir, {
+        title: 'App Title',
+      });
+      const builder = new Builder(site);
+      await builder.build();
+
+      // Check files were created with correct extensions
+      expect(existsSync(join(destDir, 'manifest.json'))).toBe(true);
+      expect(existsSync(join(destDir, 'config.txt'))).toBe(true);
+
+      // Verify Liquid processing
+      const manifestContent = readFileSync(join(destDir, 'manifest.json'), 'utf-8');
+      expect(manifestContent).toContain('"name": "App Title"');
+
+      const configContent = readFileSync(join(destDir, 'config.txt'), 'utf-8');
+      expect(configContent).toContain('title=App Title');
+    });
+
+    it('should copy files without front matter as static files', async () => {
+      // Create a plain text file without front matter
+      writeFileSync(join(testSiteDir, 'plain.txt'), 'This is plain text without {{ any }} liquid');
+
+      // Create a file with front matter for comparison
+      writeFileSync(
+        join(testSiteDir, 'processed.txt'),
+        '---\nlayout: null\n---\nThis has {{ site.title }} processed'
+      );
+
+      const site = new Site(testSiteDir, {
+        title: 'Test',
+      });
+      const builder = new Builder(site);
+      await builder.build();
+
+      // Plain file should be copied as-is
+      expect(existsSync(join(destDir, 'plain.txt'))).toBe(true);
+      const plainContent = readFileSync(join(destDir, 'plain.txt'), 'utf-8');
+      expect(plainContent).toContain('{{ any }}'); // Liquid not processed
+
+      // Processed file should have Liquid rendered
+      expect(existsSync(join(destDir, 'processed.txt'))).toBe(true);
+      const processedContent = readFileSync(join(destDir, 'processed.txt'), 'utf-8');
+      expect(processedContent).toContain('This has Test processed');
+      expect(processedContent).not.toContain('{{ site.title }}');
+    });
+  });
 });

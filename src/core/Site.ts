@@ -276,13 +276,32 @@ export class Site {
 
   /**
    * Read all pages from the source directory - async version
-   * Pages are any markdown or HTML files not in special directories
+   * Pages are any markdown or HTML files not in special directories,
+   * OR any other files that have YAML front matter (following Jekyll behavior)
    */
   private async readPagesAsync(): Promise<void> {
     const files = await this.walkDirectoryAsync(this.source, true);
-    const pageFiles = files.filter(
-      (file) => this.isMarkdownOrHtml(file) && !this.isSpecialDirectory(file)
-    );
+    const pageFiles = files.filter((file) => {
+      // Skip files in special directories (underscore-prefixed)
+      if (this.isSpecialDirectory(file)) {
+        return false;
+      }
+
+      // Skip SASS/SCSS files - they're processed by the SASS processor
+      const ext = extname(file).toLowerCase();
+      if (['.scss', '.sass'].includes(ext)) {
+        return false;
+      }
+
+      // Include markdown/HTML files
+      if (this.isMarkdownOrHtml(file)) {
+        return true;
+      }
+
+      // Include any other file that has front matter (Jekyll behavior)
+      // This allows .txt, .xml, .json, etc. with front matter to be processed through Liquid
+      return this.hasFrontMatter(file);
+    });
 
     // Create documents in parallel batches
     const docs = await this.createDocumentsParallel(
@@ -298,6 +317,7 @@ export class Site {
   /**
    * Read all static files from the source directory - async version
    * Static files are non-Jekyll files (not markdown, HTML, SASS, or in special directories)
+   * AND do not have YAML front matter
    */
   private async readStaticFilesAsync(): Promise<void> {
     const files = await this.walkDirectoryAsync(this.source, true);
@@ -317,6 +337,11 @@ export class Site {
 
       // Skip files in special directories (underscore-prefixed)
       if (this.isSpecialDirectory(file)) {
+        return false;
+      }
+
+      // Skip files with front matter - they're treated as pages and processed through Liquid
+      if (this.hasFrontMatter(file)) {
         return false;
       }
 
@@ -596,6 +621,19 @@ export class Site {
   private isMarkdownOrHtml(path: string): boolean {
     const ext = extname(path).toLowerCase();
     return ['.md', '.markdown', '.html', '.htm'].includes(ext);
+  }
+
+  /**
+   * Check if a file has YAML front matter
+   * Front matter starts with --- on the first line
+   */
+  private hasFrontMatter(filePath: string): boolean {
+    try {
+      const content = readFileSync(filePath, 'utf-8');
+      return content.trimStart().startsWith('---');
+    } catch {
+      return false;
+    }
   }
 
   /**

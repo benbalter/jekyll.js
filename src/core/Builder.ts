@@ -515,10 +515,15 @@ export class Builder {
     const base = basename(urlPath, ext);
     const dir = dirname(urlPath);
 
+    // For markdown and HTML files, convert extension to .html
+    // For other files with front matter (e.g., .xml, .json, .txt), preserve original extension
+    const isMarkdownOrHtml = ['.md', '.markdown', '.html', '.htm'].includes(ext.toLowerCase());
+    const outputExt = isMarkdownOrHtml ? '.html' : ext;
+
     if (base === 'index') {
       urlPath = dir === '.' ? '/' : `/${dir}/`;
     } else {
-      urlPath = dir === '.' ? `/${base}.html` : `/${dir}/${base}.html`;
+      urlPath = dir === '.' ? `/${base}${outputExt}` : `/${dir}/${base}${outputExt}`;
     }
 
     return this.normalizeUrl(urlPath);

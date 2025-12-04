@@ -6,15 +6,50 @@
  * - Includes (_includes/)
  * - Sass stylesheets (_sass/, assets/)
  * - Static assets (CSS, JavaScript, images)
- * - Configuration defaults
+ * - Data files (_data/)
+ * - Configuration defaults (_config.yml)
+ * - Package metadata (package.json)
  *
  * Theme files can be overridden by site files.
+ *
+ * Similar to Jekyll.rb's gem-based theme system, themes are distributed
+ * as npm packages and can be installed via `npm install`.
  */
 
-import { existsSync, statSync } from 'fs';
-import { join, resolve, dirname } from 'path';
+import { existsSync, statSync, readFileSync, readdirSync } from 'fs';
+import { join, resolve, dirname, basename } from 'path';
+import yaml from 'js-yaml';
 import { JekyllConfig } from '../config';
 import { logger } from '../utils/logger';
+
+/**
+ * Theme metadata from package.json
+ */
+export interface ThemeMetadata {
+  /** Theme package name */
+  name: string;
+
+  /** Theme version */
+  version: string;
+
+  /** Theme description */
+  description?: string;
+
+  /** Theme author */
+  author?: string | { name: string; email?: string; url?: string };
+
+  /** Theme license */
+  license?: string;
+
+  /** Theme homepage URL */
+  homepage?: string;
+
+  /** Theme repository */
+  repository?: string | { type: string; url: string };
+
+  /** Theme keywords */
+  keywords?: string[];
+}
 
 /**
  * Theme configuration interface
@@ -37,6 +72,15 @@ export interface ThemeConfig {
 
   /** Theme assets directory */
   assetsDir: string;
+
+  /** Theme data directory */
+  dataDir: string;
+
+  /** Theme metadata from package.json */
+  metadata?: ThemeMetadata;
+
+  /** Theme default configuration from _config.yml */
+  defaults?: JekyllConfig;
 }
 
 /**
@@ -80,6 +124,12 @@ export class ThemeManager {
 
     logger.info(`Using theme: ${themeName} (${themeRoot})`);
 
+    // Load theme metadata from package.json
+    const metadata = this.loadThemeMetadata(themeRoot);
+
+    // Load theme default configuration from _config.yml
+    const defaults = this.loadThemeDefaults(themeRoot);
+
     return {
       name: themeName,
       root: themeRoot,
@@ -87,7 +137,76 @@ export class ThemeManager {
       includesDir: join(themeRoot, '_includes'),
       sassDir: join(themeRoot, '_sass'),
       assetsDir: join(themeRoot, 'assets'),
+      dataDir: join(themeRoot, '_data'),
+      metadata,
+      defaults,
     };
+  }
+
+  /**
+   * Load theme metadata from package.json
+   * @param themeRoot Theme root directory
+   * @returns Theme metadata or undefined if not found
+   */
+  private loadThemeMetadata(themeRoot: string): ThemeMetadata | undefined {
+    const packageJsonPath = join(themeRoot, 'package.json');
+
+    if (!existsSync(packageJsonPath)) {
+      logger.debug(`No package.json found for theme at ${themeRoot}`);
+      return undefined;
+    }
+
+    try {
+      const content = readFileSync(packageJsonPath, 'utf-8');
+      const packageJson = JSON.parse(content);
+
+      return {
+        name: packageJson.name || basename(themeRoot),
+        version: packageJson.version || '0.0.0',
+        description: packageJson.description,
+        author: packageJson.author,
+        license: packageJson.license,
+        homepage: packageJson.homepage,
+        repository: packageJson.repository,
+        keywords: packageJson.keywords,
+      };
+    } catch (error) {
+      logger.warn(`Failed to parse theme package.json at ${packageJsonPath}`, {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return undefined;
+    }
+  }
+
+  /**
+   * Load theme default configuration from _config.yml
+   * @param themeRoot Theme root directory
+   * @returns Theme default configuration or undefined if not found
+   */
+  private loadThemeDefaults(themeRoot: string): JekyllConfig | undefined {
+    const configPath = join(themeRoot, '_config.yml');
+
+    if (!existsSync(configPath)) {
+      logger.debug(`No _config.yml found for theme at ${themeRoot}`);
+      return undefined;
+    }
+
+    try {
+      const content = readFileSync(configPath, 'utf-8');
+      const config = yaml.load(content) as JekyllConfig;
+
+      if (!config || typeof config !== 'object') {
+        return undefined;
+      }
+
+      logger.debug(`Loaded theme default configuration from ${configPath}`);
+      return config;
+    } catch (error) {
+      logger.warn(`Failed to parse theme _config.yml at ${configPath}`, {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return undefined;
+    }
   }
 
   /**
@@ -275,7 +394,7 @@ export class ThemeManager {
    * @param basename File basename (without extension)
    * @returns Full path to file or null if not found
    */
-  private findFileWithExtensions(dir: string, basename: string): string | null {
+  private findFileWithExtensions(dir: string, fileBasename: string): string | null {
     if (!existsSync(dir)) {
       return null;
     }
@@ -284,9 +403,155 @@ export class ThemeManager {
     const extensions = ['', '.html', '.md', '.markdown'];
 
     for (const ext of extensions) {
-      const filePath = join(dir, basename + ext);
+      const filePath = join(dir, fileBasename + ext);
       if (existsSync(filePath) && statSync(filePath).isFile()) {
         return filePath;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Get theme data directory
+   * @returns Theme data directory or null if no theme or directory doesn't exist
+   */
+  public getThemeDataDirectory(): string | null {
+    if (this.theme && existsSync(this.theme.dataDir)) {
+      return this.theme.dataDir;
+    }
+    return null;
+  }
+
+  /**
+   * Get theme metadata from package.json
+   * @returns Theme metadata or null if no theme
+   */
+  public getThemeMetadata(): ThemeMetadata | null {
+    if (this.theme?.metadata) {
+      return this.theme.metadata;
+    }
+    return null;
+  }
+
+  /**
+   * Get theme default configuration from _config.yml
+   * @returns Theme default configuration or null if no theme
+   */
+  public getThemeDefaults(): JekyllConfig | null {
+    if (this.theme?.defaults) {
+      return this.theme.defaults;
+    }
+    return null;
+  }
+
+  /**
+   * Get all data directories (site first, then theme)
+   * Used to merge theme data with site data
+   * @returns Array of data directory paths
+   */
+  public getDataDirectories(): string[] {
+    const dirs: string[] = [];
+
+    // Add site data directory
+    const siteDataDir = join(this.sourceDir, this.config.data_dir || '_data');
+    if (existsSync(siteDataDir)) {
+      dirs.push(siteDataDir);
+    }
+
+    // Add theme data directory
+    if (this.theme && existsSync(this.theme.dataDir)) {
+      dirs.push(this.theme.dataDir);
+    }
+
+    return dirs;
+  }
+
+  /**
+   * Get list of theme static files to copy (assets not overridden by site)
+   * @param siteSource Site source directory for checking overrides
+   * @returns Array of theme static file info with source and relative paths
+   */
+  public getThemeStaticFiles(
+    siteSource: string
+  ): Array<{ sourcePath: string; relativePath: string }> {
+    const staticFiles: Array<{ sourcePath: string; relativePath: string }> = [];
+
+    if (!this.theme) {
+      return staticFiles;
+    }
+
+    // Collect assets from theme's assets directory
+    const themeAssetsDir = this.theme.assetsDir;
+    if (existsSync(themeAssetsDir)) {
+      this.collectThemeStaticFiles(themeAssetsDir, 'assets', siteSource, staticFiles);
+    }
+
+    return staticFiles;
+  }
+
+  /**
+   * Recursively collect theme static files that are not overridden by site files
+   * @param dir Directory to scan
+   * @param relativeBase Relative base path
+   * @param siteSource Site source directory for checking overrides
+   * @param files Accumulator array
+   */
+  private collectThemeStaticFiles(
+    dir: string,
+    relativeBase: string,
+    siteSource: string,
+    files: Array<{ sourcePath: string; relativePath: string }>
+  ): void {
+    if (!existsSync(dir)) {
+      return;
+    }
+
+    const entries = readdirSync(dir);
+
+    for (const entry of entries) {
+      const fullPath = join(dir, entry);
+      const relativePath = join(relativeBase, entry);
+      const siteOverridePath = join(siteSource, relativePath);
+
+      const stats = statSync(fullPath);
+
+      if (stats.isDirectory()) {
+        // Recurse into subdirectory
+        this.collectThemeStaticFiles(fullPath, relativePath, siteSource, files);
+      } else if (stats.isFile()) {
+        // Only add if not overridden by site file
+        if (!existsSync(siteOverridePath)) {
+          files.push({
+            sourcePath: fullPath,
+            relativePath: relativePath,
+          });
+        } else {
+          logger.debug(`Theme file overridden by site: ${relativePath}`);
+        }
+      }
+    }
+  }
+
+  /**
+   * Resolve a data file path
+   * Site data takes precedence over theme data
+   * @param dataPath Data file path (relative to data dir)
+   * @returns Full path to data file or null if not found
+   */
+  public resolveDataFile(dataPath: string): string | null {
+    // Check site data first
+    const siteDataDir = join(this.sourceDir, this.config.data_dir || '_data');
+    const siteDataPath = join(siteDataDir, dataPath);
+    if (existsSync(siteDataPath) && statSync(siteDataPath).isFile()) {
+      return siteDataPath;
+    }
+
+    // Check theme data
+    if (this.theme) {
+      const themeDataPath = join(this.theme.dataDir, dataPath);
+      if (existsSync(themeDataPath) && statSync(themeDataPath).isFile()) {
+        return themeDataPath;
       }
     }
 

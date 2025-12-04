@@ -424,15 +424,60 @@ export class Site {
   }
 
   /**
-   * Read all data files from _data directory
+   * Read all data files from _data directory (site and theme)
+   * Site data takes precedence over theme data
    */
   private readData(): void {
-    const dataDir = join(this.source, this.config.data_dir || '_data');
-    if (!existsSync(dataDir)) {
-      return;
+    // First read theme data if available
+    const themeDataDir = this.themeManager.getThemeDataDirectory();
+    let themeData: Record<string, any> = {};
+
+    if (themeDataDir && existsSync(themeDataDir)) {
+      themeData = this.readDataDirectory(themeDataDir, themeDataDir);
     }
 
-    this.data = this.readDataDirectory(dataDir, dataDir);
+    // Then read site data
+    const siteDataDir = join(this.source, this.config.data_dir || '_data');
+    let siteData: Record<string, any> = {};
+
+    if (existsSync(siteDataDir)) {
+      siteData = this.readDataDirectory(siteDataDir, siteDataDir);
+    }
+
+    // Merge theme data with site data (site takes precedence)
+    this.data = this.mergeData(themeData, siteData);
+  }
+
+  /**
+   * Deep merge two data objects, with the second object taking precedence
+   * @param base Base data object (theme data)
+   * @param override Override data object (site data)
+   * @returns Merged data object
+   */
+  private mergeData(base: Record<string, any>, override: Record<string, any>): Record<string, any> {
+    const result: Record<string, any> = { ...base };
+
+    for (const key of Object.keys(override)) {
+      const baseValue = base[key];
+      const overrideValue = override[key];
+
+      // If both values are plain objects (not arrays), deep merge them
+      if (
+        baseValue &&
+        overrideValue &&
+        typeof baseValue === 'object' &&
+        typeof overrideValue === 'object' &&
+        !Array.isArray(baseValue) &&
+        !Array.isArray(overrideValue)
+      ) {
+        result[key] = this.mergeData(baseValue, overrideValue);
+      } else {
+        // Otherwise, override takes precedence
+        result[key] = overrideValue;
+      }
+    }
+
+    return result;
   }
 
   /**

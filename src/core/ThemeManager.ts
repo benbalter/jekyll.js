@@ -215,7 +215,13 @@ export class ThemeManager {
    * @returns Theme root directory or null if not found
    */
   private resolveThemeRoot(themeName: string): string | null {
-    // Try node_modules first
+    // Try bundled themes first (e.g., minima)
+    const bundledThemePath = this.getBundledThemePath(themeName);
+    if (bundledThemePath) {
+      return bundledThemePath;
+    }
+
+    // Try node_modules
     const nodeModulesPath = this.findNodeModules(this.sourceDir);
     if (nodeModulesPath) {
       const themeInNodeModules = join(nodeModulesPath, themeName);
@@ -233,6 +239,39 @@ export class ThemeManager {
     // Try as absolute path
     if (existsSync(themeName) && statSync(themeName).isDirectory()) {
       return resolve(themeName);
+    }
+
+    return null;
+  }
+
+  /**
+   * Get path to a bundled theme if it exists
+   * Bundled themes are included in the jekyll-ts package under src/themes/
+   * @param themeName Theme name
+   * @returns Path to bundled theme or null if not found
+   */
+  private getBundledThemePath(themeName: string): string | null {
+    // List of bundled themes
+    const bundledThemes = ['minima'];
+
+    if (!bundledThemes.includes(themeName)) {
+      return null;
+    }
+
+    // Get the path to the themes directory
+    // In development: src/themes/
+    // In production: dist/themes/
+    const possiblePaths = [
+      // Production path (when installed as a package)
+      join(__dirname, '..', 'themes', themeName),
+      // Development path (when running from source)
+      join(__dirname, '..', '..', 'themes', themeName),
+    ];
+
+    for (const themePath of possiblePaths) {
+      if (existsSync(themePath) && statSync(themePath).isDirectory()) {
+        return themePath;
+      }
     }
 
     return null;

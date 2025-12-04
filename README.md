@@ -335,6 +335,8 @@ jekyll.js/
 
 This project aims to be compatible with Jekyll 4.x. While the goal is 100% compatibility, some features may not be available in early versions.
 
+> 📖 **Migration Guide**: See [**MIGRATION.md**](./docs/MIGRATION.md) for step-by-step instructions to migrate from Ruby Jekyll, including how to opt into modern enhancements.
+>
 > 📖 **Parity & Improvements**: See [**PARITY.md**](./docs/PARITY.md) for a complete guide to features with full parity with Ruby Jekyll and backwards-compatible improvements.
 >
 > 📖 **Modern Features**: Jekyll.js includes optional modern JavaScript enhancements. See [**MODERN-FEATURES.md**](./docs/MODERN-FEATURES.md) for details on syntax highlighting, image optimization, and advanced validation.

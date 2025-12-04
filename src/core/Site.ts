@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, statSync, readFileSync } from 'fs';
+import { existsSync, readdirSync, statSync, readFileSync, openSync, readSync, closeSync } from 'fs';
 import { readdir, stat } from 'fs/promises';
 import { join, resolve, extname, dirname, basename } from 'path';
 import { Document, DocumentType } from './Document';
@@ -625,14 +625,49 @@ export class Site {
 
   /**
    * Check if a file has YAML front matter
-   * Front matter starts with --- on the first line
+   * Front matter starts with --- on the first line and has a closing ---
+   * For efficiency, we only read the first 4KB of the file to detect front matter
    */
   private hasFrontMatter(filePath: string): boolean {
+    let fd: number | null = null;
     try {
-      const content = readFileSync(filePath, 'utf-8');
-      return content.trimStart().startsWith('---');
+      // Read only the first 4KB - this is enough to detect front matter
+      // Front matter is typically small (metadata only)
+      const buffer = Buffer.alloc(4096);
+      fd = openSync(filePath, 'r');
+      const bytesRead = readSync(fd, buffer, 0, 4096, 0);
+      const content = buffer.toString('utf-8', 0, bytesRead);
+
+      // Check for front matter structure: starts with --- and has closing ---
+      const trimmed = content.trimStart();
+      if (!trimmed.startsWith('---')) {
+        return false;
+      }
+
+      // Find the closing --- (must be on its own line after the opening ---)
+      const lines = trimmed.split('\n');
+      if (lines.length < 2) {
+        return false;
+      }
+
+      // Look for closing --- after the first line
+      for (let i = 1; i < lines.length; i++) {
+        if (lines[i]?.trim() === '---') {
+          return true;
+        }
+      }
+
+      return false;
     } catch {
       return false;
+    } finally {
+      if (fd !== null) {
+        try {
+          closeSync(fd);
+        } catch {
+          // Ignore close errors
+        }
+      }
     }
   }
 

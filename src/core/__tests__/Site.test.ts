@@ -540,5 +540,37 @@ collections:
       expect(staticFileNames).not.toContain('robots.txt');
       expect(staticFileNames).not.toContain('feed.xml');
     });
+
+    it('should not treat files with incomplete front matter as pages', async () => {
+      // Create a file that starts with --- but has no closing ---
+      writeFileSync(
+        join(testSiteDir, 'incomplete.txt'),
+        '---\nThis starts with dashes but has no closing marker'
+      );
+
+      // Create a file that starts with --- in content (not front matter)
+      writeFileSync(
+        join(testSiteDir, 'dashes.txt'),
+        '---Something that looks like but is not front matter'
+      );
+
+      // Create a proper front matter file for comparison
+      writeFileSync(join(testSiteDir, 'proper.txt'), '---\nlayout: null\n---\nProper front matter');
+
+      const site = new Site(testSiteDir);
+      await site.read();
+
+      // Only proper front matter file should be a page
+      const pageNames = site.pages.map((p) => p.basename + p.extname);
+      expect(pageNames).toContain('proper.txt');
+      expect(pageNames).not.toContain('incomplete.txt');
+      expect(pageNames).not.toContain('dashes.txt');
+
+      // Incomplete front matter files should be static files
+      const staticFileNames = site.static_files.map((sf) => sf.name);
+      expect(staticFileNames).toContain('incomplete.txt');
+      expect(staticFileNames).toContain('dashes.txt');
+      expect(staticFileNames).not.toContain('proper.txt');
+    });
   });
 });

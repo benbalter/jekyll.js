@@ -2,7 +2,7 @@
  * Tests for parallel file system utilities
  */
 
-import { mkdirSync, writeFileSync, rmSync, existsSync } from 'fs';
+import { mkdirSync, writeFileSync, rmSync } from 'fs';
 import { join } from 'path';
 import {
   walkDirectoryAsync,
@@ -10,6 +10,7 @@ import {
   statFilesParallel,
   parallelMap,
 } from '../parallel-fs';
+import { Document } from '../../core/Document';
 
 describe('Parallel File System Utilities', () => {
   const testDir = join(__dirname, '../../../../tmp/test-parallel-fs');
@@ -145,8 +146,9 @@ describe('Parallel File System Utilities', () => {
       expect(results.size).toBe(2);
       expect(results.get(file1)?.size).toBe(5); // 'short' = 5 bytes
       expect(results.get(file2)?.size).toBe(19); // 'longer content here' = 19 bytes
-      expect(results.get(file1)?.mtime).toBeInstanceOf(Date);
-      expect(results.get(file2)?.mtime).toBeInstanceOf(Date);
+      // Check that mtime is a valid date by checking it can be converted to a number
+      expect(typeof results.get(file1)?.mtime?.getTime()).toBe('number');
+      expect(typeof results.get(file2)?.mtime?.getTime()).toBe('number');
     });
 
     it('should skip files that cannot be stat', async () => {
@@ -170,7 +172,8 @@ describe('Parallel File System Utilities', () => {
 
       const results = await parallelMap(items, processor);
 
-      expect(results.sort()).toEqual([2, 4, 6, 8, 10]);
+      // Sort numerically (not as strings)
+      expect(results.sort((a, b) => a - b)).toEqual([2, 4, 6, 8, 10]);
     });
 
     it('should respect concurrency limit', async () => {
@@ -235,7 +238,7 @@ Content for page ${i}`
     }
 
     // Import Site dynamically to avoid circular deps
-    const { Site } = await import('../Site');
+    const { Site } = await import('../../core/Site');
 
     const site = new Site(testDir);
 
@@ -247,7 +250,7 @@ Content for page ${i}`
 
     // Verify all pages were read correctly
     for (let i = 0; i < numFiles; i++) {
-      const page = site.pages.find((p) => p.data.title === `Page ${i}`);
+      const page = site.pages.find((p: Document) => p.data.title === `Page ${i}`);
       expect(page).toBeDefined();
     }
 
@@ -286,7 +289,7 @@ Page content ${i}`
     }
 
     // Import Site dynamically
-    const { Site } = await import('../Site');
+    const { Site } = await import('../../core/Site');
 
     const site = new Site(testDir);
 

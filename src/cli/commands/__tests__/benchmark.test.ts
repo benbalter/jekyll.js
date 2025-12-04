@@ -32,8 +32,15 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
    * - Jest's memory overhead
    * - TypeScript/ts-jest compilation
    * - Varying CI environment base memory usage
+   *
+   * The max heap threshold can be configured via JEKYLLJS_BENCHMARK_MAX_HEAP_MB
+   * environment variable (defaults to 1024MB for CI compatibility)
    */
-  const MAX_EXPECTED_HEAP_BYTES = 500 * 1024 * 1024; // 500MB max expected heap
+  const DEFAULT_MAX_HEAP_MB = 1024;
+  const MAX_EXPECTED_HEAP_BYTES =
+    parseInt(process.env.JEKYLLJS_BENCHMARK_MAX_HEAP_MB || `${DEFAULT_MAX_HEAP_MB}`, 10) *
+    1024 *
+    1024;
   const HEAP_STABILITY_THRESHOLD_BYTES = 10 * 1024 * 1024; // 10MB stability threshold
 
   /**

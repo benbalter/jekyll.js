@@ -129,8 +129,9 @@ export class ProgressIndicator {
       line = `${labelText} [${bar}] ${percentage}% (${this.current}/${this.total}) ${elapsed}s${messageText}`;
     }
 
-    // Clear line and write progress
-    process.stdout.write('\r' + line + ' '.repeat(20) + '\r');
+    // Clear line and write progress using ANSI escape codes
+    // \r returns to start of line, \x1b[K clears from cursor to end of line
+    process.stdout.write('\r\x1b[K' + line);
   }
 
   /**
@@ -223,8 +224,9 @@ export class Spinner {
       this.interval = null;
     }
     if (process.stdout.isTTY) {
-      // Clear the line
-      process.stdout.write('\r' + ' '.repeat(80) + '\r');
+      // Clear the line using ANSI escape codes
+      // \r returns to start of line, \x1b[K clears from cursor to end of line
+      process.stdout.write('\r\x1b[K');
     }
   }
 

@@ -1,5 +1,12 @@
 /**
  * Markdown processing using Remark
+ *
+ * This module provides optimized markdown processing using the Remark ecosystem.
+ * Key optimizations:
+ * - Module caching: Dynamic imports are cached after first load
+ * - Processor caching: Frozen processors are reused for repeated processing
+ * - Parallel module loading: Core modules are loaded simultaneously
+ * - Processor freezing: Processors are frozen after configuration for optimal performance
  */
 
 /**
@@ -30,7 +37,11 @@ let cachedModules: {
   defaultBuildUrl?: typeof import('remark-github').defaultBuildUrl;
 } | null = null;
 
-// Cached processors for different option combinations
+// Track in-progress optional module loads to prevent race conditions
+let loadingEmoji: Promise<void> | null = null;
+let loadingGithub: Promise<void> | null = null;
+
+// Cached frozen processors for different option combinations
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const processorCache = new Map<string, any>();
 
@@ -51,40 +62,73 @@ function getOptionsCacheKey(options: MarkdownOptions): string {
  * Load and cache the required modules
  */
 async function loadModules(options: MarkdownOptions): Promise<typeof cachedModules> {
-  if (cachedModules === null) {
-    const [{ unified }, { default: remarkParse }, { default: remarkGfm }, { default: remarkHtml }] =
-      await Promise.all([
-        import('unified'),
-        import('remark-parse'),
-        import('remark-gfm'),
-        import('remark-html'),
-      ]);
-
-    cachedModules = {
-      unified,
-      remarkParse,
-      remarkGfm,
-      remarkHtml,
-    };
+  // If modules are already loaded, load optional modules if needed and return
+  if (cachedModules !== null) {
+    await loadOptionalModules(options);
+    return cachedModules;
   }
 
-  // Load optional modules if needed and not already cached
-  if (options.emoji && !cachedModules.remarkGemoji) {
-    const { default: remarkGemoji } = await import('remark-gemoji');
-    cachedModules.remarkGemoji = remarkGemoji;
-  }
+  // Load all core modules in parallel
+  const [{ unified }, { default: remarkParse }, { default: remarkGfm }, { default: remarkHtml }] =
+    await Promise.all([
+      import('unified'),
+      import('remark-parse'),
+      import('remark-gfm'),
+      import('remark-html'),
+    ]);
 
-  if (options.githubMentions && !cachedModules.remarkGithub) {
-    const { default: remarkGithub, defaultBuildUrl } = await import('remark-github');
-    cachedModules.remarkGithub = remarkGithub;
-    cachedModules.defaultBuildUrl = defaultBuildUrl;
-  }
+  cachedModules = {
+    unified,
+    remarkParse,
+    remarkGfm,
+    remarkHtml,
+  };
+
+  // Load optional modules if needed
+  await loadOptionalModules(options);
 
   return cachedModules;
 }
 
 /**
- * Get or create a cached processor for the given options
+ * Load optional modules (emoji, GitHub mentions) if needed and not already cached.
+ * Uses tracking variables to prevent race conditions when called concurrently.
+ */
+async function loadOptionalModules(options: MarkdownOptions): Promise<void> {
+  if (!cachedModules) return;
+
+  const loadPromises: Promise<void>[] = [];
+
+  // Handle emoji module loading with race condition prevention
+  // Keep the promise reference until the module is cached, don't clear it in the handler
+  if (options.emoji && !cachedModules.remarkGemoji) {
+    if (!loadingEmoji) {
+      loadingEmoji = import('remark-gemoji').then(({ default: remarkGemoji }) => {
+        cachedModules!.remarkGemoji = remarkGemoji;
+      });
+    }
+    loadPromises.push(loadingEmoji);
+  }
+
+  // Handle GitHub module loading with race condition prevention
+  if (options.githubMentions && !cachedModules.remarkGithub) {
+    if (!loadingGithub) {
+      loadingGithub = import('remark-github').then(({ default: remarkGithub, defaultBuildUrl }) => {
+        cachedModules!.remarkGithub = remarkGithub;
+        cachedModules!.defaultBuildUrl = defaultBuildUrl;
+      });
+    }
+    loadPromises.push(loadingGithub);
+  }
+
+  if (loadPromises.length > 0) {
+    await Promise.all(loadPromises);
+  }
+}
+
+/**
+ * Get or create a cached, frozen processor for the given options
+ * Frozen processors are optimized for repeated use
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getProcessor(options: MarkdownOptions): Promise<any> {
@@ -120,9 +164,10 @@ async function getProcessor(options: MarkdownOptions): Promise<any> {
     // Custom buildUrl that only handles mentions, returning false for other types
     // This ensures we don't auto-link issues (#123), commits, or other GitHub references
     // Type matches remark-github's BuildUrlValues which has type: 'commit' | 'compare' | 'issue' | 'mention'
-    const mentionsOnlyBuildUrl = (
-      values: { type: 'commit' | 'compare' | 'issue' | 'mention'; user: string }
-    ): string | false => {
+    const mentionsOnlyBuildUrl = (values: {
+      type: 'commit' | 'compare' | 'issue' | 'mention';
+      user: string;
+    }): string | false => {
       if (values.type === 'mention') {
         // Type narrowing: when type is 'mention', values matches BuildUrlMentionValues
         return defaultBuildUrl(values as { type: 'mention'; user: string });
@@ -138,6 +183,10 @@ async function getProcessor(options: MarkdownOptions): Promise<any> {
 
   // Add HTML output - SECURITY: No sanitization - matches Jekyll behavior, allows raw HTML
   processor = processor.use(modules.remarkHtml, { sanitize: false });
+
+  // Freeze the processor to optimize for repeated use
+  // This tells unified that the processor configuration is complete
+  processor.freeze();
 
   processorCache.set(cacheKey, processor);
   return processor;
@@ -182,8 +231,26 @@ export async function processMarkdown(
  * Always throws an error. Use processMarkdown instead.
  * @deprecated Use processMarkdown instead
  * @param _content Markdown content (unused - function always throws)
+ * @param _options Markdown options (unused - function always throws)
  * @throws {Error} Always throws - synchronous processing not supported
  */
-export function processMarkdownSync(_content: string): never {
+export function processMarkdownSync(_content: string, _options?: MarkdownOptions): never {
   throw new Error('processMarkdownSync is not supported. Use processMarkdown instead.');
+}
+
+/**
+ * Pre-initialize the markdown processor for optimal performance.
+ * Call this early in application startup to ensure modules are loaded
+ * and processor is cached before processing any documents.
+ *
+ * This function:
+ * - Loads all required Remark modules in parallel
+ * - Creates and freezes a processor with the given options
+ * - Caches the processor for reuse
+ *
+ * @param options Optional markdown processing options
+ * @returns Promise that resolves when initialization is complete
+ */
+export async function initMarkdownProcessor(options: MarkdownOptions = {}): Promise<void> {
+  await getProcessor(options);
 }

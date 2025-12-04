@@ -50,6 +50,8 @@ export class Renderer {
   private site: Site;
   /** Markdown processing options (set based on enabled plugins) */
   private markdownOptions: MarkdownOptions = {};
+  /** Cached site data to avoid repeated serialization */
+  private cachedSiteData: Record<string, unknown> | null = null;
 
   /**
    * Create a new Renderer instance
@@ -76,6 +78,28 @@ export class Renderer {
 
     // Register Jekyll-compatible tags
     this.registerTags();
+  }
+
+  /**
+   * Ensure site data is cached and return it
+   * @returns Cached site data object
+   */
+  private ensureSiteDataCached(): Record<string, unknown> {
+    if (!this.cachedSiteData) {
+      const siteData = this.site.toJSON();
+      this.cachedSiteData = {
+        ...siteData.config, // Flatten config into site for Jekyll compatibility
+        config: siteData.config, // Also keep config for backward compatibility
+        data: siteData.data, // Add data files
+        pages: siteData.pages,
+        posts: siteData.posts,
+        static_files: siteData.static_files, // Add static files
+        collections: siteData.collections,
+        source: siteData.source,
+        destination: siteData.destination,
+      };
+    }
+    return this.cachedSiteData!;
   }
 
   /**
@@ -1196,8 +1220,10 @@ export class Renderer {
     document: Document,
     additionalContext?: Record<string, unknown>
   ): Promise<string> {
-    // Create context with document data and site data
-    const siteData = this.site.toJSON();
+    // Get cached site data
+    const siteData = this.ensureSiteDataCached();
+
+    // Create context with document data and cached site data
     const context: Record<string, unknown> = {
       page: {
         ...document.data,
@@ -1209,17 +1235,7 @@ export class Renderer {
         categories: document.categories,
         tags: document.tags,
       },
-      site: {
-        ...siteData.config, // Flatten config into site for Jekyll compatibility
-        config: siteData.config, // Also keep config for backward compatibility
-        data: siteData.data, // Add data files
-        pages: siteData.pages,
-        posts: siteData.posts,
-        static_files: siteData.static_files, // Add static files
-        collections: siteData.collections,
-        source: siteData.source,
-        destination: siteData.destination,
-      },
+      site: siteData,
       ...additionalContext,
     };
 
@@ -1425,5 +1441,21 @@ export class Renderer {
    */
   getMarkdownOptions(): MarkdownOptions {
     return { ...this.markdownOptions };
+  }
+
+  /**
+   * Invalidate the cached site data.
+   * Call this if the site data has changed and needs to be re-serialized.
+   */
+  invalidateSiteCache(): void {
+    this.cachedSiteData = null;
+  }
+
+  /**
+   * Pre-cache site data for better performance during batch rendering.
+   * Call this before rendering multiple documents to avoid lazy initialization overhead.
+   */
+  preloadSiteData(): void {
+    this.ensureSiteDataCached();
   }
 }

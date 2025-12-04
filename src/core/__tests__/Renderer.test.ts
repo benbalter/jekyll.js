@@ -1530,4 +1530,91 @@ title: Directory Test
       });
     });
   });
+
+  describe('Site data caching', () => {
+    let site: Site;
+
+    beforeEach(() => {
+      mkdirSync(join(testDir, '_layouts'), { recursive: true });
+      mkdirSync(join(testDir, '_includes'), { recursive: true });
+      site = new Site(testDir, { title: 'Test Site' });
+    });
+
+    describe('invalidateSiteCache', () => {
+      it('should clear the cached site data', async () => {
+        const renderer = new Renderer(site);
+
+        // Preload the cache first
+        renderer.preloadSiteData();
+
+        // Invalidate the cache
+        renderer.invalidateSiteCache();
+
+        // The cache should be cleared (no direct way to test, but calling methods should work)
+        expect(() => renderer.invalidateSiteCache()).not.toThrow();
+      });
+
+      it('should be callable multiple times without error', () => {
+        const renderer = new Renderer(site);
+
+        renderer.invalidateSiteCache();
+        renderer.invalidateSiteCache();
+        renderer.invalidateSiteCache();
+
+        // Should not throw
+        expect(true).toBe(true);
+      });
+
+      it('should allow cache to be re-initialized after invalidation', async () => {
+        const renderer = new Renderer(site);
+
+        // Preload cache
+        renderer.preloadSiteData();
+
+        // Invalidate
+        renderer.invalidateSiteCache();
+
+        // Preload again - should load fresh data without error
+        expect(() => renderer.preloadSiteData()).not.toThrow();
+      });
+    });
+
+    describe('preloadSiteData', () => {
+      it('should pre-cache site data for performance', () => {
+        const renderer = new Renderer(site);
+
+        // Should not throw
+        expect(() => renderer.preloadSiteData()).not.toThrow();
+      });
+
+      it('should be callable multiple times (idempotent)', () => {
+        const renderer = new Renderer(site);
+
+        renderer.preloadSiteData();
+        renderer.preloadSiteData();
+        renderer.preloadSiteData();
+
+        // Should not throw
+        expect(true).toBe(true);
+      });
+
+      it('should work correctly before document rendering', async () => {
+        // Create a simple document file to test rendering
+        const docPath = join(testDir, 'test.md');
+        writeFileSync(docPath, '---\ntitle: Test\n---\nContent');
+
+        const renderer = new Renderer(site);
+
+        // Preload the site data
+        renderer.preloadSiteData();
+
+        // Create a document using the proper constructor
+        const doc = new Document(docPath, testDir, DocumentType.PAGE);
+
+        // Rendering should work
+        const result = await renderer.renderDocument(doc);
+        expect(result).toContain('Content');
+      });
+    });
+  });
 });

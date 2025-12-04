@@ -272,4 +272,280 @@ describe('ThemeManager', () => {
       expect(sassDir).toContain('_sass');
     });
   });
+
+  describe('getThemeDataDirectory', () => {
+    it('should return null without theme', () => {
+      const config: JekyllConfig = {};
+      const manager = new ThemeManager(testDir, config);
+
+      expect(manager.getThemeDataDirectory()).toBeNull();
+    });
+
+    it('should return null when theme has no _data directory', () => {
+      const config: JekyllConfig = {
+        theme: 'test-theme',
+      };
+      const manager = new ThemeManager(testDir, config);
+
+      // Theme doesn't have _data directory by default in test setup
+      expect(manager.getThemeDataDirectory()).toBeNull();
+    });
+
+    it('should return theme data directory with theme that has _data', () => {
+      // Create _data directory in theme
+      mkdirSync(join(themeDir, '_data'), { recursive: true });
+      writeFileSync(
+        join(themeDir, '_data', 'navigation.yml'),
+        'items:\n  - title: Home\n    url: /'
+      );
+
+      const config: JekyllConfig = {
+        theme: 'test-theme',
+      };
+      const manager = new ThemeManager(testDir, config);
+
+      const dataDir = manager.getThemeDataDirectory();
+      expect(dataDir).not.toBeNull();
+      expect(dataDir).toContain('test-theme');
+      expect(dataDir).toContain('_data');
+    });
+  });
+
+  describe('getThemeMetadata', () => {
+    it('should return null without theme', () => {
+      const config: JekyllConfig = {};
+      const manager = new ThemeManager(testDir, config);
+
+      expect(manager.getThemeMetadata()).toBeNull();
+    });
+
+    it('should return null when theme has no package.json', () => {
+      const config: JekyllConfig = {
+        theme: 'test-theme',
+      };
+      const manager = new ThemeManager(testDir, config);
+
+      // Theme doesn't have package.json by default in test setup
+      expect(manager.getThemeMetadata()).toBeNull();
+    });
+
+    it('should return theme metadata from package.json', () => {
+      // Create package.json in theme
+      const packageJson = {
+        name: 'jekyll-theme-test-theme',
+        version: '1.2.3',
+        description: 'A test Jekyll theme',
+        author: 'Test Author',
+        license: 'MIT',
+        homepage: 'https://example.com',
+        keywords: ['jekyll', 'theme'],
+      };
+      writeFileSync(join(themeDir, 'package.json'), JSON.stringify(packageJson, null, 2));
+
+      const config: JekyllConfig = {
+        theme: 'test-theme',
+      };
+      const manager = new ThemeManager(testDir, config);
+
+      const metadata = manager.getThemeMetadata();
+      expect(metadata).not.toBeNull();
+      expect(metadata?.name).toBe('jekyll-theme-test-theme');
+      expect(metadata?.version).toBe('1.2.3');
+      expect(metadata?.description).toBe('A test Jekyll theme');
+      expect(metadata?.author).toBe('Test Author');
+      expect(metadata?.license).toBe('MIT');
+      expect(metadata?.homepage).toBe('https://example.com');
+      expect(metadata?.keywords).toEqual(['jekyll', 'theme']);
+    });
+  });
+
+  describe('getThemeDefaults', () => {
+    it('should return null without theme', () => {
+      const config: JekyllConfig = {};
+      const manager = new ThemeManager(testDir, config);
+
+      expect(manager.getThemeDefaults()).toBeNull();
+    });
+
+    it('should return null when theme has no _config.yml', () => {
+      const config: JekyllConfig = {
+        theme: 'test-theme',
+      };
+      const manager = new ThemeManager(testDir, config);
+
+      // Theme doesn't have _config.yml by default in test setup
+      expect(manager.getThemeDefaults()).toBeNull();
+    });
+
+    it('should return theme defaults from _config.yml', () => {
+      // Create _config.yml in theme
+      const themeConfig = `
+title: Theme Default Title
+description: Theme default description
+author:
+  name: Theme Author
+  email: author@example.com
+defaults:
+  - scope:
+      path: ""
+    values:
+      layout: default
+`;
+      writeFileSync(join(themeDir, '_config.yml'), themeConfig);
+
+      const config: JekyllConfig = {
+        theme: 'test-theme',
+      };
+      const manager = new ThemeManager(testDir, config);
+
+      const defaults = manager.getThemeDefaults();
+      expect(defaults).not.toBeNull();
+      expect(defaults?.title).toBe('Theme Default Title');
+      expect(defaults?.description).toBe('Theme default description');
+      expect(defaults?.author).toEqual({ name: 'Theme Author', email: 'author@example.com' });
+      expect(defaults?.defaults).toHaveLength(1);
+    });
+  });
+
+  describe('getDataDirectories', () => {
+    it('should return only site data directory without theme', () => {
+      mkdirSync(join(testDir, '_data'), { recursive: true });
+
+      const config: JekyllConfig = {};
+      const manager = new ThemeManager(testDir, config);
+
+      const dirs = manager.getDataDirectories();
+      expect(dirs).toHaveLength(1);
+      expect(dirs[0]).toContain(testDir);
+      expect(dirs[0]).toContain('_data');
+    });
+
+    it('should return both site and theme data directories', () => {
+      // Create _data directories
+      mkdirSync(join(testDir, '_data'), { recursive: true });
+      mkdirSync(join(themeDir, '_data'), { recursive: true });
+
+      const config: JekyllConfig = {
+        theme: 'test-theme',
+      };
+      const manager = new ThemeManager(testDir, config);
+
+      const dirs = manager.getDataDirectories();
+      expect(dirs).toHaveLength(2);
+      expect(dirs[0]).toContain(testDir);
+      expect(dirs[1]).toContain('test-theme');
+    });
+  });
+
+  describe('getThemeStaticFiles', () => {
+    it('should return empty array without theme', () => {
+      const config: JekyllConfig = {};
+      const manager = new ThemeManager(testDir, config);
+
+      const files = manager.getThemeStaticFiles(testDir);
+      expect(files).toEqual([]);
+    });
+
+    it('should return theme asset files', () => {
+      // Create some asset files in theme
+      mkdirSync(join(themeDir, 'assets', 'css'), { recursive: true });
+      mkdirSync(join(themeDir, 'assets', 'js'), { recursive: true });
+      writeFileSync(join(themeDir, 'assets', 'css', 'style.css'), 'body { color: black; }');
+      writeFileSync(join(themeDir, 'assets', 'js', 'main.js'), 'console.log("theme");');
+
+      const config: JekyllConfig = {
+        theme: 'test-theme',
+      };
+      const manager = new ThemeManager(testDir, config);
+
+      const files = manager.getThemeStaticFiles(testDir);
+      expect(files.length).toBe(2);
+
+      const relativePaths = files.map((f) => f.relativePath.replace(/\\/g, '/'));
+      expect(relativePaths).toContain('assets/css/style.css');
+      expect(relativePaths).toContain('assets/js/main.js');
+    });
+
+    it('should not include files overridden by site', () => {
+      // Create asset files in both theme and site
+      mkdirSync(join(themeDir, 'assets', 'css'), { recursive: true });
+      mkdirSync(join(testDir, 'assets', 'css'), { recursive: true });
+
+      writeFileSync(join(themeDir, 'assets', 'css', 'style.css'), 'body { color: black; }');
+      writeFileSync(join(themeDir, 'assets', 'css', 'theme.css'), '.theme { display: block; }');
+      writeFileSync(join(testDir, 'assets', 'css', 'style.css'), 'body { color: red; }'); // Override
+
+      const config: JekyllConfig = {
+        theme: 'test-theme',
+      };
+      const manager = new ThemeManager(testDir, config);
+
+      const files = manager.getThemeStaticFiles(testDir);
+      expect(files.length).toBe(1);
+
+      const relativePaths = files.map((f) => f.relativePath.replace(/\\/g, '/'));
+      expect(relativePaths).toContain('assets/css/theme.css');
+      expect(relativePaths).not.toContain('assets/css/style.css');
+    });
+  });
+
+  describe('resolveDataFile', () => {
+    it('should resolve data file from site directory', () => {
+      // Create data file in site
+      mkdirSync(join(testDir, '_data'), { recursive: true });
+      writeFileSync(join(testDir, '_data', 'navigation.yml'), 'items: []');
+
+      const config: JekyllConfig = {
+        theme: 'test-theme',
+      };
+      const manager = new ThemeManager(testDir, config);
+
+      const dataPath = manager.resolveDataFile('navigation.yml');
+      expect(dataPath).not.toBeNull();
+      expect(dataPath).toContain(testDir);
+    });
+
+    it('should resolve data file from theme when not in site', () => {
+      // Create data file only in theme
+      mkdirSync(join(themeDir, '_data'), { recursive: true });
+      writeFileSync(join(themeDir, '_data', 'authors.yml'), 'authors: []');
+
+      const config: JekyllConfig = {
+        theme: 'test-theme',
+      };
+      const manager = new ThemeManager(testDir, config);
+
+      const dataPath = manager.resolveDataFile('authors.yml');
+      expect(dataPath).not.toBeNull();
+      expect(dataPath).toContain('test-theme');
+    });
+
+    it('should return null for non-existent data file', () => {
+      const config: JekyllConfig = {
+        theme: 'test-theme',
+      };
+      const manager = new ThemeManager(testDir, config);
+
+      const dataPath = manager.resolveDataFile('nonexistent.yml');
+      expect(dataPath).toBeNull();
+    });
+
+    it('should prioritize site data over theme data', () => {
+      // Create data files in both
+      mkdirSync(join(testDir, '_data'), { recursive: true });
+      mkdirSync(join(themeDir, '_data'), { recursive: true });
+      writeFileSync(join(testDir, '_data', 'settings.yml'), 'site: true');
+      writeFileSync(join(themeDir, '_data', 'settings.yml'), 'theme: true');
+
+      const config: JekyllConfig = {
+        theme: 'test-theme',
+      };
+      const manager = new ThemeManager(testDir, config);
+
+      const dataPath = manager.resolveDataFile('settings.yml');
+      expect(dataPath).not.toBeNull();
+      expect(dataPath).toContain(testDir);
+      expect(dataPath).not.toContain('test-theme');
+    });
+  });
 });

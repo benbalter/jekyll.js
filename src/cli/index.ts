@@ -25,6 +25,8 @@ program
   .option('-w, --watch', 'Watch for changes and rebuild')
   .option('-I, --incremental', 'Enable incremental build')
   .option('--verbose', 'Print verbose output')
+  .option('--debug', 'Enable debug mode with enhanced diagnostics')
+  .option('--profile', 'Show detailed timing information for build operations')
   .action(buildCommand);
 
 // Serve command
@@ -41,6 +43,7 @@ program
   .option('--drafts', 'Process and render draft posts')
   .option('--future', 'Publish posts with a future date')
   .option('--verbose', 'Print verbose output')
+  .option('--debug', 'Enable debug mode with enhanced diagnostics')
   .action(serveCommand);
 
 // New command

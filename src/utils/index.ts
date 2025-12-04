@@ -23,5 +23,27 @@ export {
   readFilesParallel,
   statFilesParallel,
   parallelMap,
+  batchProcess,
+  getMemoryStats,
+  formatBytes,
+  MemoryTracker,
   type WalkOptions,
+  type MemoryStats,
+  type BatchProcessorOptions,
 } from './parallel-fs';
+export {
+  ProgressIndicator,
+  Spinner,
+  createProgressIndicator,
+  createSpinner,
+  type ProgressOptions,
+} from './progress';
+export {
+  isPathWithinBase,
+  validateAndResolvePath,
+  sanitizeUrlPath,
+  resolveUrlToFilePath,
+  isPermalinkSafe,
+  sanitizePermalink,
+  PathTraversalError,
+} from './path-security';

@@ -118,7 +118,7 @@ Available options:
 
 ### Using Themes
 
-Jekyll.js supports npm-based themes that provide layouts, includes, and assets. To use a theme:
+Jekyll.js supports npm-based themes that provide layouts, includes, assets, data files, and configuration defaults. To use a theme:
 
 1. Install the theme package:
 
@@ -142,6 +142,14 @@ jekyll-ts build
 - Site files always take precedence over theme files
 - Create `_layouts/default.html` in your site to override the theme's default layout
 - Create `_includes/header.html` to override the theme's header include
+- Create `_data/navigation.yml` to override the theme's navigation data
+
+**Theme Features:**
+- **Layouts & Includes** - Template files for your site structure
+- **Assets** - CSS, JavaScript, images, and fonts
+- **Data Files** - Default data (navigation, authors, settings) that merges with site data
+- **Configuration Defaults** - Theme-level `_config.yml` with default settings
+- **Metadata** - Theme info from `package.json` (name, version, author, etc.)
 
 **Theme Structure:**
 A theme package should have the following structure:
@@ -151,9 +159,13 @@ jekyll-theme-name/
 ├── _layouts/       # Layout files
 ├── _includes/      # Include files
 ├── _sass/          # Sass partials
+├── _data/          # Default data files
 ├── assets/         # CSS, JS, images
-└── package.json
+├── _config.yml     # Theme defaults
+└── package.json    # Theme metadata
 ```
+
+> 📖 For detailed theme development guide, see [docs/theme-development.md](./docs/theme-development.md)
 
 ### Using Plugins
 
@@ -323,6 +335,8 @@ jekyll.js/
 
 This project aims to be compatible with Jekyll 4.x. While the goal is 100% compatibility, some features may not be available in early versions.
 
+> 📖 **Migration Guide**: See [**MIGRATION.md**](./docs/MIGRATION.md) for step-by-step instructions to migrate from Ruby Jekyll, including how to opt into modern enhancements.
+>
 > 📖 **Parity & Improvements**: See [**PARITY.md**](./docs/PARITY.md) for a complete guide to features with full parity with Ruby Jekyll and backwards-compatible improvements.
 >
 > 📖 **Modern Features**: Jekyll.js includes optional modern JavaScript enhancements. See [**MODERN-FEATURES.md**](./docs/MODERN-FEATURES.md) for details on syntax highlighting, image optimization, and advanced validation.

@@ -86,7 +86,7 @@
     "@types/lodash.merge": "^4.6.9",
     "@types/markdown-it": "^14.1.2",
     "@types/mime-types": "^3.0.1",
-    "@types/node": "^20.19.25",
+    "@types/node": "^24.10.1",
     "@types/sass": "^1.45.0",
     "@types/sharp": "^0.32.0",
     "@types/striptags": "^3.1.1",

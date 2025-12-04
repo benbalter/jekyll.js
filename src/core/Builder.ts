@@ -191,6 +191,16 @@ export class Builder {
       // Pre-cache site data before batch rendering operations for better performance
       this.renderer.preloadSiteData();
 
+      // Pre-initialize markdown processor to avoid cold-start latency on first markdown render
+      // This loads all remark modules and creates a cached frozen processor
+      if (this.timer) {
+        await this.timer.timeAsync('Initialize markdown', () =>
+          this.renderer.initializeMarkdownProcessor()
+        );
+      } else {
+        await this.renderer.initializeMarkdownProcessor();
+      }
+
       // Determine what needs to be rebuilt
       let pagesToRender = this.site.pages;
       let postsToRender = this.site.posts;

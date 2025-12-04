@@ -1,7 +1,7 @@
-import { registerPlugins, getBuiltInPlugins } from '../index';
+import { registerPlugins, getBuiltInPlugins, getBuiltInPluginNames } from '../index';
 import { Site } from '../../core/Site';
 import { Renderer } from '../../core/Renderer';
-import { mkdirSync, rmSync } from 'fs';
+import { mkdirSync, rmSync, writeFileSync } from 'fs';
 import { join } from 'path';
 
 describe('Plugin Registration', () => {
@@ -26,6 +26,16 @@ describe('Plugin Registration', () => {
       expect(pluginNames).toContain('jekyll-seo-tag');
       expect(pluginNames).toContain('jekyll-sitemap');
       expect(pluginNames).toContain('jekyll-feed');
+    });
+  });
+
+  describe('getBuiltInPluginNames', () => {
+    it('should return a Set of built-in plugin names', () => {
+      const names = getBuiltInPluginNames();
+      expect(names).toBeInstanceOf(Set);
+      expect(names.has('jekyll-seo-tag')).toBe(true);
+      expect(names.has('jekyll-sitemap')).toBe(true);
+      expect(names.has('jekyll-feed')).toBe(true);
     });
   });
 
@@ -128,6 +138,106 @@ describe('Plugin Registration', () => {
         page: { title: 'Test', url: '/' },
       });
       expect(result).toContain('<title>');
+    });
+
+    it('should load and register npm plugins from node_modules', async () => {
+      // Create a mock npm plugin in the site's node_modules
+      const nodeModulesDir = join(testSiteDir, 'node_modules', 'test-npm-plugin');
+      mkdirSync(nodeModulesDir, { recursive: true });
+
+      // Create package.json
+      writeFileSync(
+        join(nodeModulesDir, 'package.json'),
+        JSON.stringify({
+          name: 'test-npm-plugin',
+          main: 'index.js',
+        })
+      );
+
+      // Create a plugin that registers a custom Liquid tag
+      writeFileSync(
+        join(nodeModulesDir, 'index.js'),
+        `
+        module.exports = {
+          name: 'test-npm-plugin',
+          register: function(renderer, site) {
+            renderer.getLiquid().registerTag('test_tag', {
+              parse: function() {},
+              render: function() { return 'npm-plugin-output'; }
+            });
+          }
+        };
+        `
+      );
+
+      // Create site with the npm plugin configured
+      const config = {
+        title: 'Test Site',
+        plugins: ['test-npm-plugin'],
+      };
+
+      const site = new Site(testSiteDir, config);
+      const renderer = new Renderer(site);
+
+      // Register plugins
+      registerPlugins(renderer, site);
+
+      // Test that the npm plugin's tag IS available
+      const template = '{% test_tag %}';
+      const result = await renderer.render(template, {});
+      expect(result).toBe('npm-plugin-output');
+    });
+
+    it('should register both built-in and npm plugins together', async () => {
+      // Create a mock npm plugin
+      const nodeModulesDir = join(testSiteDir, 'node_modules', 'custom-filter-plugin');
+      mkdirSync(nodeModulesDir, { recursive: true });
+
+      writeFileSync(
+        join(nodeModulesDir, 'package.json'),
+        JSON.stringify({
+          name: 'custom-filter-plugin',
+          main: 'index.js',
+        })
+      );
+
+      writeFileSync(
+        join(nodeModulesDir, 'index.js'),
+        `
+        module.exports = {
+          name: 'custom-filter-plugin',
+          register: function(renderer, site) {
+            renderer.registerFilter('custom_reverse', function(input) {
+              return String(input).split('').reverse().join('');
+            });
+          }
+        };
+        `
+      );
+
+      // Create site with both built-in and npm plugins
+      const config = {
+        title: 'Test Site',
+        plugins: ['jekyll-seo-tag', 'custom-filter-plugin'],
+      };
+
+      const site = new Site(testSiteDir, config);
+      const renderer = new Renderer(site);
+
+      // Register plugins
+      registerPlugins(renderer, site);
+
+      // Test that built-in plugin works
+      const seoTemplate = '{% seo %}';
+      const seoResult = await renderer.render(seoTemplate, {
+        page: { title: 'Test', url: '/' },
+      });
+      expect(seoResult).toContain('<title>');
+
+      // Test that npm plugin filter works
+      const filterTemplate = '{{ "hello" | custom_reverse }}';
+      const filterResult = await renderer.render(filterTemplate, {});
+      expect(filterResult).toBe('olleh');
     });
   });
 });

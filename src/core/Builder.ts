@@ -6,6 +6,7 @@ import { SassProcessor } from './SassProcessor';
 import { logger } from '../utils/logger';
 import { BuildError, FileSystemError, JekyllError } from '../utils/errors';
 import { PerformanceTimer, BuildTimings } from '../utils/timer';
+import { isPathWithinBase, sanitizePermalink } from '../utils/path-security';
 import {
   mkdirSync,
   writeFileSync,
@@ -15,7 +16,7 @@ import {
   copyFileSync,
   readFileSync,
 } from 'fs';
-import { join, dirname, extname, basename, relative, sep } from 'path';
+import { join, dirname, extname, basename, relative, sep, resolve } from 'path';
 import { rmSync } from 'fs';
 import { registerPlugins } from '../plugins';
 import { CacheManager } from './CacheManager';
@@ -525,10 +526,15 @@ export class Builder {
     const base = basename(urlPath, ext);
     const dir = dirname(urlPath);
 
+    // For markdown and HTML files, convert extension to .html
+    // For other files with front matter (e.g., .xml, .json, .txt), preserve original extension
+    const isMarkdownOrHtml = ['.md', '.markdown', '.html', '.htm'].includes(ext.toLowerCase());
+    const outputExt = isMarkdownOrHtml ? '.html' : ext;
+
     if (base === 'index') {
       urlPath = dir === '.' ? '/' : `/${dir}/`;
     } else {
-      urlPath = dir === '.' ? `/${base}.html` : `/${dir}/${base}.html`;
+      urlPath = dir === '.' ? `/${base}${outputExt}` : `/${dir}/${base}${outputExt}`;
     }
 
     return this.normalizeUrl(urlPath);
@@ -548,20 +554,11 @@ export class Builder {
 
   /**
    * Normalize URL (ensure it starts with / and has correct slashes)
+   * Also sanitizes to prevent path traversal attacks
    */
   private normalizeUrl(url: string): string {
-    // Ensure starts with /
-    if (!url.startsWith('/')) {
-      url = '/' + url;
-    }
-
-    // Replace backslashes with forward slashes
-    url = url.replace(/\\/g, '/');
-
-    // Remove double slashes
-    url = url.replace(/\/+/g, '/');
-
-    return url;
+    // Use sanitizePermalink to remove any path traversal attempts
+    return sanitizePermalink(url);
   }
 
   /**
@@ -797,6 +794,8 @@ export class Builder {
 
   /**
    * Get output file path for a document
+   * Validates that the output path is within the destination directory
+   * @throws BuildError if the path would escape the destination directory
    */
   private getOutputPath(doc: Document): string {
     if (!doc.url) {
@@ -816,7 +815,20 @@ export class Builder {
       filePath = join(filePath, 'index.html');
     }
 
-    return join(this.site.destination, filePath);
+    const outputPath = join(this.site.destination, filePath);
+    const resolvedPath = resolve(outputPath);
+
+    // Security check: Ensure the output path is within the destination directory
+    if (!isPathWithinBase(this.site.destination, resolvedPath)) {
+      throw new BuildError(
+        `Security error: Output path '${filePath}' resolves outside the destination directory`,
+        {
+          file: doc.relativePath,
+        }
+      );
+    }
+
+    return resolvedPath;
   }
 
   /**
@@ -968,14 +980,32 @@ export class Builder {
 
     for (const staticFile of staticFiles) {
       const destPath = join(this.site.destination, staticFile.destinationRelativePath);
+      const resolvedDestPath = resolve(destPath);
+
+      // Security check: Ensure the destination path is within the destination directory
+      if (!isPathWithinBase(this.site.destination, resolvedDestPath)) {
+        logger.warn(
+          `Security warning: Skipping static file that would write outside destination: ${staticFile.relativePath}`
+        );
+        continue;
+      }
+
+      // Security check: Also verify source path is within source directory
+      const resolvedSourcePath = resolve(staticFile.path);
+      if (!isPathWithinBase(this.site.source, resolvedSourcePath)) {
+        logger.warn(
+          `Security warning: Skipping static file with source outside source directory: ${staticFile.relativePath}`
+        );
+        continue;
+      }
 
       try {
         // Ensure directory exists
-        mkdirSync(dirname(destPath), { recursive: true });
+        mkdirSync(dirname(resolvedDestPath), { recursive: true });
 
         // Check if destination file exists and has same or newer modification time
-        if (existsSync(destPath)) {
-          const destStats = statSync(destPath);
+        if (existsSync(resolvedDestPath)) {
+          const destStats = statSync(resolvedDestPath);
           // Skip if destination is newer than or same age as source
           if (destStats.mtime >= staticFile.modified_time) {
             skippedCount++;
@@ -985,7 +1015,7 @@ export class Builder {
         }
 
         // Copy file
-        copyFileSync(staticFile.path, destPath);
+        copyFileSync(staticFile.path, resolvedDestPath);
         copiedCount++;
 
         logger.debug(`Copied: ${staticFile.relativePath}`);

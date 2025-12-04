@@ -118,7 +118,7 @@ Available options:
 
 ### Using Themes
 
-Jekyll.js supports npm-based themes that provide layouts, includes, and assets. To use a theme:
+Jekyll.js supports npm-based themes that provide layouts, includes, assets, data files, and configuration defaults. To use a theme:
 
 1. Install the theme package:
 
@@ -142,6 +142,14 @@ jekyll-ts build
 - Site files always take precedence over theme files
 - Create `_layouts/default.html` in your site to override the theme's default layout
 - Create `_includes/header.html` to override the theme's header include
+- Create `_data/navigation.yml` to override the theme's navigation data
+
+**Theme Features:**
+- **Layouts & Includes** - Template files for your site structure
+- **Assets** - CSS, JavaScript, images, and fonts
+- **Data Files** - Default data (navigation, authors, settings) that merges with site data
+- **Configuration Defaults** - Theme-level `_config.yml` with default settings
+- **Metadata** - Theme info from `package.json` (name, version, author, etc.)
 
 **Theme Structure:**
 A theme package should have the following structure:
@@ -151,9 +159,53 @@ jekyll-theme-name/
 ├── _layouts/       # Layout files
 ├── _includes/      # Include files
 ├── _sass/          # Sass partials
+├── _data/          # Default data files
 ├── assets/         # CSS, JS, images
-└── package.json
+├── _config.yml     # Theme defaults
+└── package.json    # Theme metadata
 ```
+
+> 📖 For detailed theme development guide, see [docs/theme-development.md](./docs/theme-development.md)
+
+### Using Plugins
+
+Jekyll.js includes several built-in plugins and supports loading custom plugins from npm packages.
+
+**Built-in Plugins:**
+- `jekyll-seo-tag` - SEO meta tags
+- `jekyll-sitemap` - XML sitemap generation  
+- `jekyll-feed` - Atom feed generation
+- `jekyll-jemoji` - Emoji support
+- `jekyll-mentions` - @mention links
+- `jekyll-redirect-from` - Redirect pages
+- `jekyll-avatar` - GitHub avatar helper
+- `jekyll-github-metadata` - GitHub repository metadata
+
+**Enable plugins in `_config.yml`:**
+
+```yaml
+plugins:
+  - jekyll-seo-tag
+  - jekyll-sitemap
+  - jekyll-feed
+```
+
+**Using npm Plugins:**
+
+Install and use custom plugins from npm:
+
+```bash
+npm install my-jekyll-plugin
+```
+
+```yaml
+plugins:
+  - jekyll-seo-tag           # Built-in
+  - my-jekyll-plugin         # npm plugin
+  - @myorg/jekyll-plugin     # Scoped npm plugin
+```
+
+> 📖 See [PLUGINS.md](./docs/PLUGINS.md) for detailed plugin documentation and how to create custom plugins.
 
 ## Development
 
@@ -343,12 +395,13 @@ See [ROADMAP.md](./docs/ROADMAP.md) for complete timeline.
 - Asset pipeline improvements
 
 **Future** (v1.0.0+):
-- Custom plugin system
 - Advanced configuration options
 - Performance optimizations
 - Ecosystem building
 
 > **Note**: Ruby-based Jekyll plugins are not directly supported and require TypeScript reimplementation. See the [Compatibility Plan](./docs/jekyll-compatibility-plan.md) for details.
+>
+> 📖 **Plugin Documentation**: See [PLUGINS.md](./docs/PLUGINS.md) for detailed documentation on using and creating plugins.
 
 ## Contributing
 

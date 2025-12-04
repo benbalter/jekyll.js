@@ -1,12 +1,13 @@
 import { createServer, IncomingMessage, ServerResponse, Server as HttpServer } from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
-import { resolve, join, extname } from 'path';
+import { extname, join } from 'path';
 import { readFile, stat } from 'fs/promises';
 import chalk from 'chalk';
 import { lookup as mimeTypeLookup } from 'mime-types';
 import { Builder } from '../core';
 import { Site } from '../core';
 import { FileWatcher } from '../utils/watcher';
+import { resolveUrlToFilePath, PathTraversalError } from '../utils/path-security';
 
 export interface DevServerOptions {
   /**
@@ -199,7 +200,20 @@ export class DevServer {
   private async handleRequest(req: IncomingMessage, res: ServerResponse): Promise<void> {
     try {
       const url = req.url || '/';
-      let filepath = this.resolveFilePath(url);
+
+      // Securely resolve URL to file path, preventing directory traversal
+      let filepath: string;
+      try {
+        filepath = this.resolveFilePath(url);
+      } catch (error) {
+        if (error instanceof PathTraversalError) {
+          // Log the attempt for security monitoring
+          console.warn(chalk.red('[Security]'), `Path traversal attempt blocked: ${url}`);
+          this.send403(res, url);
+          return;
+        }
+        throw error;
+      }
 
       if (this.options.verbose) {
         console.log(chalk.gray(`[${req.method}] ${url} -> ${filepath}`));
@@ -238,22 +252,48 @@ export class DevServer {
   }
 
   /**
-   * Resolve URL to file path
+   * Resolve URL to file path securely
+   * @throws PathTraversalError if the URL attempts to escape the destination directory
    */
   private resolveFilePath(url: string): string {
-    // Remove query string
-    const cleanUrl = url.split('?')[0] || '/';
+    // Use secure URL to file path resolution that prevents directory traversal
+    return resolveUrlToFilePath(this.options.destination, url);
+  }
 
-    // Resolve to destination directory
-    const filepath = join(this.options.destination, cleanUrl);
+  /**
+   * Send 403 Forbidden response
+   */
+  private send403(res: ServerResponse, url: string): void {
+    const escapedUrl = this.escapeHtml(url);
+    const content = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>403 Forbidden</title>
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 2rem; max-width: 600px; margin: 0 auto; }
+    h1 { color: #dc3545; }
+    code { background: #f5f5f5; padding: 0.2rem 0.4rem; border-radius: 3px; }
+  </style>
+</head>
+<body>
+  <h1>403 Forbidden</h1>
+  <p>Access to <code>${escapedUrl}</code> is forbidden.</p>
+</body>
+</html>`;
 
-    return resolve(filepath);
+    res.writeHead(403, {
+      'Content-Type': 'text/html',
+      'Content-Length': Buffer.byteLength(content),
+    });
+    res.end(content);
   }
 
   /**
    * Send 404 response
    */
   private send404(res: ServerResponse, url: string): void {
+    const escapedUrl = this.escapeHtml(url);
     const content = `<!DOCTYPE html>
 <html>
 <head>
@@ -267,15 +307,28 @@ export class DevServer {
 </head>
 <body>
   <h1>404 Not Found</h1>
-  <p>The requested URL <code>${url}</code> was not found on this server.</p>
+  <p>The requested URL <code>${escapedUrl}</code> was not found on this server.</p>
 </body>
 </html>`;
 
     res.writeHead(404, {
       'Content-Type': 'text/html',
-      'Content-Length': content.length,
+      'Content-Length': Buffer.byteLength(content),
     });
     res.end(content);
+  }
+
+  /**
+   * Escape HTML special characters to prevent XSS attacks
+   * Escapes &, <, >, ", and ' in that order to prevent double-escaping
+   */
+  private escapeHtml(str: string): string {
+    return str
+      .replace(/&/g, '&amp;') // Must be first to prevent double-escaping
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
   /**

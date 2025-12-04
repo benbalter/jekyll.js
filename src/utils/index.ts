@@ -32,3 +32,11 @@ export {
   createSpinner,
   type ProgressOptions,
 } from './progress';
+  isPathWithinBase,
+  validateAndResolvePath,
+  sanitizeUrlPath,
+  resolveUrlToFilePath,
+  isPermalinkSafe,
+  sanitizePermalink,
+  PathTraversalError,
+} from './path-security';

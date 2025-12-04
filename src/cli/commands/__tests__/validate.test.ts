@@ -124,17 +124,13 @@ markdown: redcarpet
           throw new Error(`process.exit(${code})`);
         });
 
-      try {
-        await validateCommand({
+      await expect(
+        validateCommand({
           source: testSiteDir,
           config: '_config.yml',
           strict: true,
-        });
-        // Should not reach here
-        expect(true).toBe(false);
-      } catch (error) {
-        expect((error as Error).message).toBe('process.exit(1)');
-      }
+        })
+      ).rejects.toThrow('process.exit(1)');
 
       mockExit.mockRestore();
     });
@@ -155,15 +151,12 @@ port: 99999
           throw new Error(`process.exit(${code})`);
         });
 
-      try {
-        await validateCommand({
+      await expect(
+        validateCommand({
           source: testSiteDir,
           config: '_config.yml',
-        });
-        expect(true).toBe(false);
-      } catch (error) {
-        expect((error as Error).message).toBe('process.exit(1)');
-      }
+        })
+      ).rejects.toThrow('process.exit(1)');
 
       mockExit.mockRestore();
     });
@@ -183,15 +176,12 @@ liquid:
           throw new Error(`process.exit(${code})`);
         });
 
-      try {
-        await validateCommand({
+      await expect(
+        validateCommand({
           source: testSiteDir,
           config: '_config.yml',
-        });
-        expect(true).toBe(false);
-      } catch (error) {
-        expect((error as Error).message).toBe('process.exit(1)');
-      }
+        })
+      ).rejects.toThrow('process.exit(1)');
 
       mockExit.mockRestore();
     });
@@ -210,15 +200,12 @@ encoding: invalid-encoding
           throw new Error(`process.exit(${code})`);
         });
 
-      try {
-        await validateCommand({
+      await expect(
+        validateCommand({
           source: testSiteDir,
           config: '_config.yml',
-        });
-        expect(true).toBe(false);
-      } catch (error) {
-        expect((error as Error).message).toBe('process.exit(1)');
-      }
+        })
+      ).rejects.toThrow('process.exit(1)');
 
       mockExit.mockRestore();
     });
@@ -232,15 +219,12 @@ encoding: invalid-encoding
           throw new Error(`process.exit(${code})`);
         });
 
-      try {
-        await validateCommand({
+      await expect(
+        validateCommand({
           source: testSiteDir,
           config: '_config.yml',
-        });
-        expect(true).toBe(false);
-      } catch (error) {
-        expect((error as Error).message).toBe('process.exit(1)');
-      }
+        })
+      ).rejects.toThrow('process.exit(1)');
 
       mockExit.mockRestore();
     });

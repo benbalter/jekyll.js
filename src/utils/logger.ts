@@ -224,7 +224,8 @@ class JekyllLogger {
         ...(error.column && { column: error.column }),
       };
 
-      this.error(error.getFormattedMessage(), context);
+      // Use enhanced message which includes source snippet and suggestion
+      this.error(error.getEnhancedMessage(), context);
 
       // In verbose mode, show the stack trace
       if (this.verbose && error.stack) {

@@ -17,6 +17,24 @@ import { z } from 'zod';
 import { logger } from '../utils/logger';
 
 /**
+ * Valid file encodings for reading source files
+ * This list matches Node.js BufferEncoding values
+ */
+export const VALID_ENCODINGS: readonly BufferEncoding[] = [
+  'ascii',
+  'utf8',
+  'utf-8',
+  'utf16le',
+  'ucs2',
+  'ucs-2',
+  'base64',
+  'base64url',
+  'latin1',
+  'binary',
+  'hex',
+] as const;
+
+/**
  * Zod schema for Jekyll configuration
  * This provides runtime validation with TypeScript type inference
  */
@@ -73,22 +91,8 @@ export const JekyllConfigSchema = z
     // Conversion
     markdown_ext: z.string().optional(),
 
-    // File encoding
-    encoding: z
-      .enum([
-        'ascii',
-        'utf8',
-        'utf-8',
-        'utf16le',
-        'ucs2',
-        'ucs-2',
-        'base64',
-        'base64url',
-        'latin1',
-        'binary',
-        'hex',
-      ])
-      .optional(),
+    // File encoding - uses VALID_ENCODINGS constant
+    encoding: z.enum(VALID_ENCODINGS as unknown as [string, ...string[]]).optional(),
 
     // Front matter defaults
     defaults: z

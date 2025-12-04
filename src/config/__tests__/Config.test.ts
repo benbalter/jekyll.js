@@ -671,6 +671,55 @@ exclude:
       expect(config.exclude).toContain('drafts');
       expect(config.exclude).toContain('temp');
     });
+
+    it('should return empty string for missing env var without default', () => {
+      delete process.env.TEST_UNDEFINED_VAR;
+
+      const configPath = join(testConfigDir, '_config.yml');
+      writeFileSync(
+        configPath,
+        `
+title: prefix-\${TEST_UNDEFINED_VAR}-suffix
+`
+      );
+
+      const config = loadConfig(configPath);
+
+      expect(config.title).toBe('prefix--suffix');
+    });
+
+    it('should handle multiple env vars in a single value', () => {
+      process.env.TEST_PROTOCOL = 'https';
+      process.env.TEST_DOMAIN = 'example.com';
+      process.env.TEST_PORT = '8080';
+
+      const configPath = join(testConfigDir, '_config.yml');
+      writeFileSync(
+        configPath,
+        `
+url: \${TEST_PROTOCOL}://\${TEST_DOMAIN}:\${TEST_PORT}
+`
+      );
+
+      const config = loadConfig(configPath);
+
+      expect(config.url).toBe('https://example.com:8080');
+    });
+
+    it('should preserve invalid env var syntax unchanged', () => {
+      const configPath = join(testConfigDir, '_config.yml');
+      writeFileSync(
+        configPath,
+        `
+title: "Empty var: \${} and \${:-default}"
+`
+      );
+
+      const config = loadConfig(configPath);
+
+      // Invalid syntax should be preserved unchanged
+      expect(config.title).toBe('Empty var: ${} and ${:-default}');
+    });
   });
 
   describe('getDefaultConfig with new options', () => {

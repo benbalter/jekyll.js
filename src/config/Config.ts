@@ -11,6 +11,7 @@ import chalk from 'chalk';
 import merge from 'lodash.merge';
 import { minimatch } from 'minimatch';
 import { ConfigError } from '../utils/errors';
+import { VALID_ENCODINGS } from './validation';
 
 /**
  * Jekyll configuration interface
@@ -72,7 +73,7 @@ export interface JekyllConfig {
   /**
    * File encoding for reading source files
    * Default: 'utf-8'
-   * @example 'utf-8', 'utf-16', 'latin1', 'ascii'
+   * @example 'utf-8', 'utf16le', 'latin1', 'ascii'
    */
   encoding?: BufferEncoding;
 
@@ -230,7 +231,12 @@ export function expandEnvVariables(value: string): string {
   //   :-         - literal :-
   //   ([^}]*)    - capture group 2: default value (any chars except })
   // \}           - matches literal }
-  return value.replace(/\$\{([^}:]+)(?::-([^}]*))?\}/g, (_, varName, defaultValue) => {
+  return value.replace(/\$\{([^}:]+)(?::-([^}]*))?\}/g, (match, varName, defaultValue) => {
+    // Validate that variable name is not empty or whitespace-only
+    if (!varName || varName.trim() === '') {
+      // Return the original match unchanged if varName is empty
+      return match;
+    }
     const envValue = process.env[varName];
     if (envValue !== undefined) {
       return envValue;
@@ -374,6 +380,9 @@ export function loadConfig(
   for (const path of configPaths) {
     // Resolve relative paths against the source path (first config's directory)
     // Absolute paths are used as-is
+    // Note: This matches Jekyll's behavior where all relative config paths are resolved
+    // relative to the first config file's directory, even if that file doesn't exist.
+    // This ensures predictable resolution when using multiple configs from the same project.
     const resolvedPath = isAbsolute(path) ? path : resolve(sourcePath, path);
     const config = loadSingleConfigFile(resolvedPath, verbose);
 
@@ -636,7 +645,8 @@ export function validateConfig(config: JekyllConfig): ConfigValidation {
       Intl.DateTimeFormat(undefined, { timeZone: config.timezone });
     } catch {
       // Basic fallback pattern check for common formats
-      const validTimezonePattern = /^(UTC|GMT|local|[A-Za-z_]+\/[A-Za-z_]+|[+-]\d{2}:?\d{2})$/;
+      // Note: 'local' is not a valid IANA timezone and is intentionally not supported
+      const validTimezonePattern = /^(UTC|GMT|[A-Za-z_]+\/[A-Za-z_]+|[+-]\d{2}:?\d{2})$/;
       if (!validTimezonePattern.test(config.timezone)) {
         warnings.push(
           `Timezone "${config.timezone}" may not be a valid IANA timezone identifier. ` +
@@ -646,24 +656,11 @@ export function validateConfig(config: JekyllConfig): ConfigValidation {
     }
   }
 
-  // Validate encoding
+  // Validate encoding using the shared VALID_ENCODINGS constant
   if (config.encoding) {
-    const validEncodings: BufferEncoding[] = [
-      'ascii',
-      'utf8',
-      'utf-8',
-      'utf16le',
-      'ucs2',
-      'ucs-2',
-      'base64',
-      'base64url',
-      'latin1',
-      'binary',
-      'hex',
-    ];
-    if (!validEncodings.includes(config.encoding as BufferEncoding)) {
+    if (!VALID_ENCODINGS.includes(config.encoding as BufferEncoding)) {
       errors.push(
-        `Invalid encoding: "${config.encoding}". ` + `Valid options: ${validEncodings.join(', ')}.`
+        `Invalid encoding: "${config.encoding}". ` + `Valid options: ${VALID_ENCODINGS.join(', ')}.`
       );
     }
   }
@@ -677,7 +674,7 @@ export function validateConfig(config: JekyllConfig): ConfigValidation {
     if (invalidExtensions.length > 0) {
       warnings.push(
         `Invalid markdown extensions: "${invalidExtensions.join(', ')}". ` +
-          `Extensions should contain only letters, numbers, hyphens, or underscores (without dots).`
+          `Extensions should contain only letters, numbers, hyphens, or underscores (no dots or special characters).`
       );
     }
   }

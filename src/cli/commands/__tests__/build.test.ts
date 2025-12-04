@@ -113,4 +113,57 @@ describe('buildCommand', () => {
 
   // Note: We don't test --watch mode here because it would hang the test suite
   // Watch mode should be tested manually or with a timeout mechanism
+
+  describe('--source argument', () => {
+    it('should use source directory when --source is provided with default config', async () => {
+      // When using `jekyll-ts build --source <path>`, the config should be resolved
+      // relative to the source directory (default is '_config.yml' in source)
+      await buildCommand({
+        source: testSiteDir,
+        destination: outputDir,
+        config: '_config.yml', // Default relative config path
+      });
+
+      // Check that site was built from the source directory
+      expect(existsSync(outputDir)).toBe(true);
+      expect(existsSync(join(outputDir, 'index.html'))).toBe(true);
+
+      // Check content came from the test site
+      const content = readFileSync(join(outputDir, 'index.html'), 'utf-8');
+      expect(content).toContain('Hello World');
+    });
+
+    it('should resolve relative config path from source directory', async () => {
+      // Create a custom config in a subdirectory of the source
+      const configDir = join(testSiteDir, 'config');
+      mkdirSync(configDir, { recursive: true });
+      writeFileSync(join(configDir, 'custom.yml'), 'title: Custom Config Site\n');
+
+      await buildCommand({
+        source: testSiteDir,
+        destination: outputDir,
+        config: 'config/custom.yml', // Relative to source
+      });
+
+      // Check that site was built
+      expect(existsSync(outputDir)).toBe(true);
+      expect(existsSync(join(outputDir, 'index.html'))).toBe(true);
+    });
+
+    it('should use source directory even when cwd is different', async () => {
+      // This test verifies that --source works even when the current working directory
+      // is not the source directory. The config should be resolved relative to source.
+      const alternateOutputDir = join(testSiteDir, 'custom-output');
+
+      await buildCommand({
+        source: testSiteDir,
+        destination: alternateOutputDir,
+        config: '_config.yml', // Should resolve to testSiteDir/_config.yml
+      });
+
+      // Check that site was built in the alternate output directory
+      expect(existsSync(alternateOutputDir)).toBe(true);
+      expect(existsSync(join(alternateOutputDir, 'index.html'))).toBe(true);
+    });
+  });
 });

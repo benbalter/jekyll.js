@@ -471,7 +471,8 @@ export function validateConfig(config: JekyllConfig): ConfigValidation {
     const unsupportedPlugins = config.plugins.filter((plugin) => !isSupportedPlugin(plugin));
     if (unsupportedPlugins.length > 0) {
       warnings.push(
-        `The following plugins are not supported: ${unsupportedPlugins.join(', ')}. Ruby plugins must be reimplemented in TypeScript.`
+        `The following plugins have invalid names or are not supported: ${unsupportedPlugins.join(', ')}. ` +
+          'Plugins must be either built-in plugins or valid npm package names.'
       );
     }
   }
@@ -538,14 +539,92 @@ export function validateConfig(config: JekyllConfig): ConfigValidation {
 
 /**
  * Check if a plugin is supported
+ * A plugin is considered supported if:
+ * 1. It's a known built-in plugin
+ * 2. It has a valid npm package name format (could be an npm plugin)
+ *
  * @param pluginName Name of the plugin
  * @returns Whether the plugin is supported
  */
 function isSupportedPlugin(pluginName: string): boolean {
-  // List of supported plugins (will be expanded as we implement them)
-  const supportedPlugins = ['jekyll-seo-tag', 'jekyll-sitemap', 'jekyll-feed'];
+  // List of built-in plugins
+  const builtInPlugins = [
+    'jekyll-seo-tag',
+    'jekyll-sitemap',
+    'jekyll-feed',
+    'jekyll-jemoji',
+    'jekyll-redirect-from',
+    'jekyll-avatar',
+    'jekyll-github-metadata',
+    'jekyll-mentions',
+  ];
 
-  return supportedPlugins.includes(pluginName);
+  // If it's a built-in plugin, it's supported
+  if (builtInPlugins.includes(pluginName)) {
+    return true;
+  }
+
+  // If it looks like a valid npm package name, assume it's an npm plugin
+  // npm package names can be:
+  // - Unscoped: my-plugin, jekyll-custom-plugin
+  // - Scoped: @scope/my-plugin, @myorg/jekyll-plugin
+  if (isValidNpmPackageNameForConfig(pluginName)) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Check if a string is a valid npm package name format
+ * This is a simplified check for configuration validation
+ * @param name Package name to check
+ * @returns Whether it looks like a valid npm package name
+ */
+function isValidNpmPackageNameForConfig(name: string): boolean {
+  if (!name || typeof name !== 'string' || name.length === 0 || name.length > 214) {
+    return false;
+  }
+
+  // Check for path traversal attempts and absolute paths
+  if (name.includes('..') || name.includes('/..') || name.includes('../')) {
+    return false;
+  }
+
+  // Check for absolute paths and backslashes (Windows-style path separators)
+  if (name.startsWith('/') || name.includes('\\')) {
+    return false;
+  }
+
+  // Scoped packages: @scope/package-name
+  if (name.startsWith('@')) {
+    const parts = name.split('/');
+    if (parts.length !== 2) {
+      return false;
+    }
+    const scope = parts[0]?.substring(1); // Remove @
+    const pkgName = parts[1];
+    return isValidUnscopedName(scope || '') && isValidUnscopedName(pkgName || '');
+  }
+
+  return isValidUnscopedName(name);
+}
+
+/**
+ * Check if a string is a valid unscoped npm package name
+ * @param name Name to check
+ * @returns Whether it's valid
+ */
+function isValidUnscopedName(name: string): boolean {
+  if (!name || name.length === 0) {
+    return false;
+  }
+  // Must not start with . or _
+  if (name.startsWith('.') || name.startsWith('_')) {
+    return false;
+  }
+  // Must be lowercase and contain only valid characters: a-z, 0-9, -, _, ., ~
+  return /^[a-z0-9][-a-z0-9._~]*$/.test(name);
 }
 
 /**

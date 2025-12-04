@@ -347,18 +347,35 @@ defaults:
       expect(validation.warnings[0]).toContain('pygments');
     });
 
-    it('should warn about unsupported plugins', () => {
+    it('should warn about invalid plugin names', () => {
+      // Use invalid npm package names that will trigger warnings
       const config: JekyllConfig = {
-        plugins: ['jekyll-paginate', 'jekyll-gist', 'jekyll-seo-tag'],
+        plugins: ['..invalid', '_invalid-start', 'jekyll-seo-tag'],
       };
 
       const validation = validateConfig(config);
 
       expect(validation.valid).toBe(true);
       expect(validation.warnings.length).toBeGreaterThan(0);
-      expect(validation.warnings[0]).toContain('jekyll-paginate');
-      expect(validation.warnings[0]).toContain('jekyll-gist');
-      expect(validation.warnings[0]).not.toContain('jekyll-seo-tag'); // Supported
+      expect(validation.warnings[0]).toContain('..invalid');
+      expect(validation.warnings[0]).toContain('_invalid-start');
+      expect(validation.warnings[0]).not.toContain('jekyll-seo-tag'); // Supported built-in
+    });
+
+    it('should accept valid npm package names as plugins', () => {
+      // These look like valid npm packages, so they should be accepted
+      const config: JekyllConfig = {
+        plugins: ['jekyll-paginate', 'jekyll-gist', 'my-custom-plugin', '@myorg/jekyll-plugin'],
+      };
+
+      const validation = validateConfig(config);
+
+      expect(validation.valid).toBe(true);
+      // No warnings about unsupported plugins since they are valid npm names
+      const pluginWarnings = validation.warnings.filter(
+        (w) => w.includes('plugins') && w.includes('not supported')
+      );
+      expect(pluginWarnings.length).toBe(0);
     });
 
     it('should warn about LSI', () => {

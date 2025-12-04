@@ -3,6 +3,7 @@ import { existsSync, readFileSync, readdirSync, rmSync, statSync } from 'fs';
 import { join, resolve, relative } from 'path';
 import { Site, Builder, BuildTimings, TimedOperation } from '../../../core';
 import { loadConfig } from '../../../config';
+import { getMemoryStats, formatBytes, MemoryTracker } from '../../../utils';
 
 /**
  * Benchmark test to compare jekyll-ts performance against Ruby Jekyll.
@@ -659,4 +660,141 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
     // Future: Add assertions for specific files or match percentage thresholds
     expect(totalFiles).toBeGreaterThan(0);
   }, 60000); // 60 second timeout for both builds and comparison
+
+  it('should profile memory usage during build', async () => {
+    printHeader('💾 Memory Profiling');
+
+    const memoryTracker = new MemoryTracker();
+    memoryTracker.start();
+
+    // Get initial memory state
+    const initialMemory = getMemoryStats();
+
+    // Run a timed build with memory sampling
+    const configPath = join(fixtureDir, '_config.yml');
+    const config = loadConfig(configPath, false);
+    config.source = fixtureDir;
+    config.destination = destDirTs;
+
+    const site = new Site(fixtureDir, config);
+    const builder = new Builder(site, {
+      clean: true,
+      verbose: false,
+      timing: true,
+    });
+
+    // Sample memory during build phases
+    memoryTracker.sample();
+
+    const timings = await builder.build();
+
+    // Final memory sample
+    memoryTracker.sample();
+
+    const memoryResults = memoryTracker.getResults();
+    const finalMemory = getMemoryStats();
+
+    // Print memory statistics
+    process.stdout.write('\n');
+    printStat('Initial Heap:', formatBytes(initialMemory.heapUsed));
+    printStat('Final Heap:', formatBytes(finalMemory.heapUsed));
+    printStat('Peak Heap:', formatBytes(memoryResults.peakHeapUsed));
+    printStat('Memory Delta:', formatBytes(memoryResults.memoryDelta));
+    printStat('RSS:', formatBytes(finalMemory.rss));
+
+    // Print build timing alongside memory
+    if (timings) {
+      process.stdout.write('\n');
+      process.stdout.write(`  Build Time:    ${formatTime(timings.totalDuration)}\n`);
+    }
+
+    process.stdout.write(`  ${SEPARATOR}\n`);
+
+    // Verify output was created
+    expect(existsSync(destDirTs)).toBe(true);
+    expect(existsSync(join(destDirTs, 'index.html'))).toBe(true);
+
+    // Memory should stay within reasonable bounds for a small site
+    // Note: The threshold is set higher (500MB) to account for Jest's memory overhead,
+    // TypeScript/ts-jest compilation, and varying CI environment base memory usage.
+    // The actual build typically uses much less memory.
+    expect(memoryResults.peakHeapUsed).toBeLessThan(500 * 1024 * 1024);
+  }, 30000);
+
+  it('should track memory efficiency across multiple builds', async () => {
+    printHeader('🔄 Memory Efficiency Test');
+
+    const runs = 3;
+    const memoryReadings: { heapUsed: number; heapTotal: number }[] = [];
+    const durations: number[] = [];
+
+    process.stdout.write('\n');
+
+    for (let i = 0; i < runs; i++) {
+      // Clean up before each run
+      cleanupDirs();
+
+      // Force garbage collection if available (run with --expose-gc)
+      if (global.gc) {
+        global.gc();
+      }
+
+      const beforeMemory = getMemoryStats();
+
+      const configPath = join(fixtureDir, '_config.yml');
+      const config = loadConfig(configPath, false);
+      config.source = fixtureDir;
+      config.destination = destDirTs;
+
+      const site = new Site(fixtureDir, config);
+      const builder = new Builder(site, {
+        clean: true,
+        verbose: false,
+        timing: true,
+      });
+
+      const startTime = Date.now();
+      await builder.build();
+      const duration = Date.now() - startTime;
+
+      const afterMemory = getMemoryStats();
+
+      memoryReadings.push({
+        heapUsed: afterMemory.heapUsed - beforeMemory.heapUsed,
+        heapTotal: afterMemory.heapTotal,
+      });
+      durations.push(duration);
+
+      printStat(
+        `Run ${i + 1}:`,
+        `${formatTime(duration)} | Heap: ${formatBytes(afterMemory.heapUsed)}`
+      );
+    }
+
+    // Calculate memory statistics
+    const avgHeapIncrease =
+      memoryReadings.reduce((sum, r) => sum + r.heapUsed, 0) / memoryReadings.length;
+    const avgDuration = durations.reduce((a, b) => a + b, 0) / durations.length;
+
+    process.stdout.write('\n');
+    process.stdout.write(`  ${SEPARATOR}\n`);
+    process.stdout.write('  📊 Summary\n');
+    process.stdout.write(`  ${SEPARATOR}\n`);
+    printStat('Avg Time:', `${avgDuration.toFixed(0)}ms`);
+    printStat('Avg Heap Δ:', formatBytes(avgHeapIncrease));
+
+    // Check for memory leaks - heap increase per run should stabilize
+    // This is a basic check; more sophisticated leak detection would need longer runs
+    const lastTwoHeapIncreases = memoryReadings.slice(-2).map((r) => r.heapUsed);
+    if (lastTwoHeapIncreases.length === 2) {
+      const heapDiff = Math.abs(lastTwoHeapIncreases[1]! - lastTwoHeapIncreases[0]!);
+      const isStable = heapDiff < 10 * 1024 * 1024; // Less than 10MB difference
+      printStat('Memory Stable:', isStable ? 'Yes ✓' : 'No (may indicate leak)');
+    }
+
+    process.stdout.write(`  ${SEPARATOR}\n`);
+
+    // Verify last build completed successfully
+    expect(existsSync(destDirTs)).toBe(true);
+  }, 60000);
 });

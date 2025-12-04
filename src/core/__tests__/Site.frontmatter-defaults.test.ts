@@ -21,7 +21,7 @@ describe('Site with front matter defaults', () => {
     }
   });
 
-  it('should apply defaults to all pages in the site', () => {
+  it('should apply defaults to all pages in the site', async () => {
     // Create test site structure
     writeFileSync(
       join(testDir, 'index.md'),
@@ -49,7 +49,7 @@ About us`
     };
 
     const site = new Site(testDir, config);
-    site.read();
+    await site.read();
 
     expect(site.pages.length).toBe(2);
     expect(site.pages[0]!.data.layout).toBe('page');
@@ -58,7 +58,7 @@ About us`
     expect(site.pages[1]!.data.author).toBe('Site Admin');
   });
 
-  it('should apply defaults to all posts in the site', () => {
+  it('should apply defaults to all posts in the site', async () => {
     const postsDir = join(testDir, '_posts');
     mkdirSync(postsDir);
 
@@ -89,7 +89,7 @@ Content`
     };
 
     const site = new Site(testDir, config);
-    site.read();
+    await site.read();
 
     expect(site.posts.length).toBe(2);
 
@@ -104,7 +104,7 @@ Content`
     expect(secondPost?.data.comments).toBe(true);
   });
 
-  it('should apply defaults to collections', () => {
+  it('should apply defaults to collections', async () => {
     const recipesDir = join(testDir, '_recipes');
     mkdirSync(recipesDir);
 
@@ -140,7 +140,7 @@ Recipe content`
     };
 
     const site = new Site(testDir, config);
-    site.read();
+    await site.read();
 
     const recipes = site.collections.get('recipes');
     expect(recipes?.length).toBe(2);
@@ -156,7 +156,7 @@ Recipe content`
     expect(pieRecipe?.data.category).toBe('desserts');
   });
 
-  it('should apply path-specific defaults', () => {
+  it('should apply path-specific defaults', async () => {
     const projectsDir = join(testDir, 'projects');
     mkdirSync(projectsDir);
 
@@ -198,7 +198,7 @@ Content`
     };
 
     const site = new Site(testDir, config);
-    site.read();
+    await site.read();
 
     // Home page should have default layout
     const homePage = site.pages.find((p) => p.basename === 'index');
@@ -215,7 +215,7 @@ Content`
     expect(projectB?.data.featured).toBe(true);
   });
 
-  it('should handle complex multi-scope defaults', () => {
+  it('should handle complex multi-scope defaults', async () => {
     const postsDir = join(testDir, '_posts');
     mkdirSync(postsDir);
     const techPostsDir = join(postsDir, 'tech');
@@ -258,7 +258,7 @@ Content`
     };
 
     const site = new Site(testDir, config);
-    site.read();
+    await site.read();
 
     expect(site.posts.length).toBe(2);
 
@@ -277,7 +277,7 @@ Content`
     expect(techPost?.data.category).toBe('technology');
   });
 
-  it('should work with empty defaults array', () => {
+  it('should work with empty defaults array', async () => {
     writeFileSync(
       join(testDir, 'index.md'),
       `---
@@ -292,13 +292,13 @@ Welcome`
     };
 
     const site = new Site(testDir, config);
-    site.read();
+    await site.read();
 
     expect(site.pages.length).toBe(1);
     expect(site.pages[0]!.data.layout).toBe('custom');
   });
 
-  it('should work without defaults configuration', () => {
+  it('should work without defaults configuration', async () => {
     writeFileSync(
       join(testDir, 'index.md'),
       `---
@@ -311,13 +311,13 @@ Welcome`
     const config: JekyllConfig = {};
 
     const site = new Site(testDir, config);
-    site.read();
+    await site.read();
 
     expect(site.pages.length).toBe(1);
     expect(site.pages[0]!.data.layout).toBe('custom');
   });
 
-  it('should apply defaults across different document types', () => {
+  it('should apply defaults across different document types', async () => {
     const postsDir = join(testDir, '_posts');
     mkdirSync(postsDir);
     const recipesDir = join(testDir, '_recipes');
@@ -374,7 +374,7 @@ Ingredients`
     };
 
     const site = new Site(testDir, config);
-    site.read();
+    await site.read();
 
     // Page
     const page = site.pages.find((p) => p.basename === 'index');

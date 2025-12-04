@@ -11,6 +11,7 @@ Welcome to the jekyll.js documentation! This directory contains comprehensive gu
 | Document | Purpose | When to Read |
 |----------|---------|--------------|
 | [**Main README**](../README.md) | Getting started, installation | Start here! |
+| [**MIGRATION.md**](./MIGRATION.md) | Migration guide from Ruby Jekyll | Migrating an existing site |
 | [**PARITY.md**](./PARITY.md) | Parity with Ruby Jekyll & improvements | Understanding compatibility |
 | [**FEATURES.md**](./FEATURES.md) | Feature status reference | Check if feature is supported |
 | [**PLUGINS.md**](./PLUGINS.md) | Plugin documentation | Using and creating plugins |
@@ -42,6 +43,22 @@ The main entry point for jekyll.js. Contains:
 - Development setup
 
 **Read this first** if you're new to jekyll.js.
+
+---
+
+### [MIGRATION.md](./MIGRATION.md)
+**Length**: ~500 lines  
+**Target Audience**: Users migrating from Ruby Jekyll
+
+Complete migration guide from Ruby Jekyll to Jekyll.js. Includes:
+- Step-by-step migration instructions
+- How to opt into modern features/enhancements
+- Common migration scenarios with examples
+- Plugin and theme migration
+- Troubleshooting common issues
+- Configuration changes reference
+
+**Use this** when migrating an existing Jekyll site.
 
 ---
 
@@ -172,6 +189,12 @@ Liquid template engine documentation. Contains:
 
 **...get started with jekyll.js**
 → Read [Main README](../README.md)
+
+**...migrate from Ruby Jekyll**
+→ Read [MIGRATION.md](./MIGRATION.md)
+
+**...enable modern features/enhancements**
+→ Read [MIGRATION.md](./MIGRATION.md#opting-into-modern-features)
 
 **...understand compatibility with Ruby Jekyll**
 → Read [PARITY.md](./PARITY.md)
@@ -311,7 +334,7 @@ When updating documentation:
 ### Planned Documentation
 
 **Short Term (v0.4.0)**:
-- [ ] Migration guides (Jekyll.rb → jekyll.js)
+- [x] Migration guides (Jekyll.rb → jekyll.js)
 - [ ] Performance tuning guide
 - [ ] Troubleshooting guide
 
@@ -353,4 +376,4 @@ All documentation is licensed under MIT License, same as the project.
 
 **Maintained by**: @benbalter  
 **Contributors**: Welcome!  
-**Last Updated**: 2025-12-03
+**Last Updated**: 2025-12-04

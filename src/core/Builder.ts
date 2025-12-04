@@ -18,7 +18,7 @@ import {
 } from 'fs';
 import { join, dirname, extname, basename, relative, sep, resolve } from 'path';
 import { rmSync } from 'fs';
-import { registerPlugins } from '../plugins';
+import { registerPlugins, PluginRegistry, Hooks } from '../plugins';
 import { CacheManager } from './CacheManager';
 import matter from 'gray-matter';
 import {
@@ -172,6 +172,12 @@ export class Builder {
         collections: Array.from(this.site.collections.keys()).join(', '),
       });
 
+      // Trigger posts:post_init hook
+      await Hooks.trigger('posts', 'post_init', { site: this.site, renderer: this.renderer });
+
+      // Trigger pages:post_init hook
+      await Hooks.trigger('pages', 'post_init', { site: this.site, renderer: this.renderer });
+
       // Clean destination directory if needed (skip for incremental)
       if (this.options.clean && !this.options.incremental) {
         if (this.timer) {
@@ -199,6 +205,13 @@ export class Builder {
         this.generateUrls();
       }
 
+      // Run generator plugins after URLs are generated but before rendering
+      if (this.timer) {
+        await this.timer.timeAsync('Run generators', () => this.runGenerators());
+      } else {
+        await this.runGenerators();
+      }
+
       // Pre-cache site data before batch rendering operations for better performance
       this.renderer.preloadSiteData();
 
@@ -211,6 +224,9 @@ export class Builder {
       } else {
         await this.renderer.initializeMarkdownProcessor();
       }
+
+      // Trigger site:pre_render hook
+      await Hooks.trigger('site', 'pre_render', { site: this.site, renderer: this.renderer });
 
       // Determine what needs to be rebuilt
       let pagesToRender = this.site.pages;
@@ -325,10 +341,16 @@ export class Builder {
         }
       }
 
+      // Trigger site:post_render hook (after all rendering is complete)
+      await Hooks.trigger('site', 'post_render', { site: this.site, renderer: this.renderer });
+
       // Save cache if incremental mode is enabled
       if (this.options.incremental) {
         this.cacheManager.save();
       }
+
+      // Trigger site:post_write hook (after all files are written)
+      await Hooks.trigger('site', 'post_write', { site: this.site, renderer: this.renderer });
 
       logger.success(`Site built successfully to ${this.site.destination}`);
 
@@ -1053,6 +1075,63 @@ export class Builder {
    */
   private isJekyllDirectory(name: string): boolean {
     return name.startsWith('_') || name === '.git';
+  }
+
+  /**
+   * Run all registered generator plugins
+   * Generators create additional content like sitemaps, feeds, archive pages, etc.
+   */
+  private async runGenerators(): Promise<void> {
+    const generators = PluginRegistry.getGenerators();
+
+    if (generators.length === 0) {
+      return;
+    }
+
+    logger.info(`Running ${generators.length} generator plugins...`);
+
+    for (const generator of generators) {
+      try {
+        logger.debug(`Running generator: ${generator.name}`);
+        const result = await generator.generate(this.site, this.renderer);
+
+        // Handle generated files
+        if (result?.files) {
+          for (const file of result.files) {
+            const outputPath = join(this.site.destination, file.path);
+            const resolvedPath = resolve(outputPath);
+
+            // Security check: Ensure the output path is within the destination directory
+            if (!isPathWithinBase(this.site.destination, resolvedPath)) {
+              logger.warn(
+                `Security warning: Generator '${generator.name}' tried to write outside destination: ${file.path}`
+              );
+              continue;
+            }
+
+            // Ensure directory exists
+            mkdirSync(dirname(resolvedPath), { recursive: true });
+
+            // Write file
+            writeFileSync(resolvedPath, file.content, 'utf-8');
+            logger.debug(`Generator '${generator.name}' created: ${file.path}`);
+          }
+        }
+
+        // Handle generated documents (future enhancement - add to site for rendering)
+        if (result?.documents && result.documents.length > 0) {
+          logger.debug(
+            `Generator '${generator.name}' created ${result.documents.length} documents`
+          );
+          // Documents would be added to site.pages or collections here
+          // This is a future enhancement
+        }
+      } catch (error) {
+        logger.warn(
+          `Generator '${generator.name}' failed: ${error instanceof Error ? error.message : String(error)}`
+        );
+      }
+    }
   }
 
   /**

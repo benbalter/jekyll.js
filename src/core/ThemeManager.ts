@@ -484,23 +484,60 @@ export class ThemeManager {
     // Collect assets from theme's assets directory
     const themeAssetsDir = this.theme.assetsDir;
     if (existsSync(themeAssetsDir)) {
-      this.collectThemeStaticFiles(themeAssetsDir, 'assets', siteSource, staticFiles);
+      // Pre-build set of site files for efficient lookup
+      const siteFiles = this.collectSiteFiles(join(siteSource, 'assets'), 'assets');
+      this.collectThemeStaticFiles(themeAssetsDir, 'assets', siteFiles, staticFiles);
     }
 
     return staticFiles;
   }
 
   /**
+   * Recursively collect site files into a Set for efficient lookup
+   * @param dir Directory to scan
+   * @param relativeBase Relative base path
+   * @returns Set of relative file paths that exist in the site
+   */
+  private collectSiteFiles(dir: string, relativeBase: string): Set<string> {
+    const files = new Set<string>();
+
+    if (!existsSync(dir)) {
+      return files;
+    }
+
+    const entries = readdirSync(dir);
+
+    for (const entry of entries) {
+      const fullPath = join(dir, entry);
+      const relativePath = join(relativeBase, entry);
+
+      const stats = statSync(fullPath);
+
+      if (stats.isDirectory()) {
+        // Recurse into subdirectory
+        const subFiles = this.collectSiteFiles(fullPath, relativePath);
+        for (const file of subFiles) {
+          files.add(file);
+        }
+      } else if (stats.isFile()) {
+        files.add(relativePath);
+      }
+    }
+
+    return files;
+  }
+
+  /**
    * Recursively collect theme static files that are not overridden by site files
    * @param dir Directory to scan
    * @param relativeBase Relative base path
-   * @param siteSource Site source directory for checking overrides
+   * @param siteFiles Set of site files for efficient lookup
    * @param files Accumulator array
    */
   private collectThemeStaticFiles(
     dir: string,
     relativeBase: string,
-    siteSource: string,
+    siteFiles: Set<string>,
     files: Array<{ sourcePath: string; relativePath: string }>
   ): void {
     if (!existsSync(dir)) {
@@ -512,16 +549,15 @@ export class ThemeManager {
     for (const entry of entries) {
       const fullPath = join(dir, entry);
       const relativePath = join(relativeBase, entry);
-      const siteOverridePath = join(siteSource, relativePath);
 
       const stats = statSync(fullPath);
 
       if (stats.isDirectory()) {
         // Recurse into subdirectory
-        this.collectThemeStaticFiles(fullPath, relativePath, siteSource, files);
+        this.collectThemeStaticFiles(fullPath, relativePath, siteFiles, files);
       } else if (stats.isFile()) {
-        // Only add if not overridden by site file
-        if (!existsSync(siteOverridePath)) {
+        // Only add if not overridden by site file (efficient Set lookup)
+        if (!siteFiles.has(relativePath)) {
           files.push({
             sourcePath: fullPath,
             relativePath: relativePath,

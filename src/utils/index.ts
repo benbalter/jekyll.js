@@ -23,6 +23,5 @@ export {
   readFilesParallel,
   statFilesParallel,
   parallelMap,
-  type FileInfo,
   type WalkOptions,
 } from './parallel-fs';

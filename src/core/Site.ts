@@ -329,7 +329,14 @@ export class Site {
   }
 
   /**
-   * Create documents in parallel batches for better performance
+   * Create documents in batches for error handling and progress tracking.
+   *
+   * Note: While this method uses async/await and Promise.all, the Document constructor
+   * uses synchronous I/O (readFileSync, statSync). This means file reads still happen
+   * sequentially on the main thread. True parallelism would require refactoring
+   * Document to use async I/O (fs/promises). The batching provides error isolation
+   * and allows for potential future async refactoring.
+   *
    * @param files Array of file paths
    * @param type Document type
    * @param collection Optional collection name
@@ -342,7 +349,6 @@ export class Site {
     collection?: string,
     config?: JekyllConfig
   ): Promise<Document[]> {
-    // Use a reasonable batch size for parallel document creation
     const BATCH_SIZE = 50;
     const documents: Document[] = [];
 
@@ -350,7 +356,6 @@ export class Site {
       const batch = files.slice(i, i + BATCH_SIZE);
       const batchPromises = batch.map(async (file) => {
         try {
-          // Document constructor is synchronous but we wrap in Promise for parallel execution
           return new Document(file, this.source, type, collection, config);
         } catch (error) {
           logger.warn(`Failed to create document ${file}`, {
@@ -368,12 +373,18 @@ export class Site {
   }
 
   /**
-   * Create static files in parallel batches for better performance
+   * Create static files in batches for error handling and progress tracking.
+   *
+   * Note: While this method uses async/await and Promise.all, the StaticFile constructor
+   * uses synchronous I/O (statSync). This means stat calls still happen sequentially
+   * on the main thread. True parallelism would require refactoring StaticFile to use
+   * async I/O (fs/promises). The batching provides error isolation and allows for
+   * potential future async refactoring.
+   *
    * @param files Array of file paths
    * @returns Array of created static files
    */
   private async createStaticFilesParallel(files: string[]): Promise<StaticFile[]> {
-    // Use a reasonable batch size for parallel static file creation
     const BATCH_SIZE = 100;
     const staticFiles: StaticFile[] = [];
 

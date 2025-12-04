@@ -121,7 +121,7 @@ export function generateHintTag(hint: ResourceHint): string {
   }
 
   if (hint.type) {
-    parts.push(`type="${hint.type}"`);
+    parts.push(`type="${escapeHtml(hint.type)}"`);
   }
 
   if (hint.crossorigin !== undefined) {

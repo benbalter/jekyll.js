@@ -96,7 +96,7 @@ export class ProgressIndicator {
     }
 
     const percentage = this.total > 0 ? Math.round((this.current / this.total) * 100) : 0;
-    const filledWidth = Math.round((this.current / this.total) * this.width);
+    const filledWidth = this.total > 0 ? Math.round((this.current / this.total) * this.width) : 0;
     const emptyWidth = this.width - filledWidth;
 
     // Build progress bar
@@ -181,7 +181,8 @@ export class Spinner {
    */
   setText(message: string): void {
     this.message = message;
-    if (!this.interval && process.stdout.isTTY) {
+    // Only render when spinner is actively running
+    if (this.interval && process.stdout.isTTY) {
       this.render();
     }
   }
@@ -192,7 +193,10 @@ export class Spinner {
   succeed(message?: string): void {
     this.stop();
     const finalMessage = message || this.message;
-    const elapsed = ((Date.now() - this.startTime) / 1000).toFixed(2);
+    const elapsed =
+      this.startTime > 0
+        ? ((Date.now() - this.startTime) / 1000).toFixed(2)
+        : '0.00';
 
     if (this.colors) {
       console.log(chalk.green('✓') + ' ' + finalMessage + chalk.gray(` (${elapsed}s)`));

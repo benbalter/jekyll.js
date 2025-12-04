@@ -7,16 +7,6 @@ import { readdir, stat, readFile } from 'fs/promises';
 import { join } from 'path';
 
 /**
- * File info returned from walkDirectoryAsync
- */
-export interface FileInfo {
-  /** Full absolute path to the file */
-  path: string;
-  /** Whether this is a directory (for intermediate results) */
-  isDirectory: boolean;
-}
-
-/**
  * Options for parallel directory walking
  */
 export interface WalkOptions {
@@ -41,35 +31,37 @@ const DEFAULT_CONCURRENCY = 10;
  * @param items Items to process
  * @param processor Async function to process each item
  * @param concurrency Maximum number of concurrent operations
- * @returns Array of results
+ * @returns Array of results in input order
  */
 export async function parallelMap<T, R>(
   items: T[],
   processor: (item: T) => Promise<R>,
   concurrency: number = DEFAULT_CONCURRENCY
 ): Promise<R[]> {
-  const results: R[] = [];
+  const results: (R | undefined)[] = new Array(items.length);
   const executing: Promise<void>[] = [];
+  let index = 0;
+
+  const enqueue = (i: number, item: T): Promise<void> => {
+    const promise = processor(item).then((result) => {
+      results[i] = result;
+    });
+    const wrapped = promise.finally(() => {
+      executing.splice(executing.indexOf(wrapped), 1);
+    });
+    executing.push(wrapped);
+    return wrapped;
+  };
 
   for (const item of items) {
-    const promise = processor(item).then((result) => {
-      results.push(result);
-    });
-
-    executing.push(promise);
-
     if (executing.length >= concurrency) {
       await Promise.race(executing);
-      // Remove completed promises
-      const completed = executing.filter(
-        (p) => (p as unknown as { _resolved?: boolean })._resolved
-      );
-      executing.splice(0, executing.length, ...executing.filter((p) => !completed.includes(p)));
     }
+    enqueue(index++, item);
   }
 
   await Promise.all(executing);
-  return results;
+  return results as R[];
 }
 
 /**

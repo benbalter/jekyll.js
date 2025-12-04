@@ -26,6 +26,13 @@ export {
   type WalkOptions,
 } from './parallel-fs';
 export {
+  ProgressIndicator,
+  Spinner,
+  createProgressIndicator,
+  createSpinner,
+  type ProgressOptions,
+} from './progress';
+export {
   isPathWithinBase,
   validateAndResolvePath,
   sanitizeUrlPath,

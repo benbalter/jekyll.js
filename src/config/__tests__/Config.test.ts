@@ -347,18 +347,35 @@ defaults:
       expect(validation.warnings[0]).toContain('pygments');
     });
 
-    it('should warn about unsupported plugins', () => {
+    it('should warn about invalid plugin names', () => {
+      // Use invalid npm package names that will trigger warnings
       const config: JekyllConfig = {
-        plugins: ['jekyll-paginate', 'jekyll-gist', 'jekyll-seo-tag'],
+        plugins: ['..invalid', '_invalid-start', 'jekyll-seo-tag'],
       };
 
       const validation = validateConfig(config);
 
       expect(validation.valid).toBe(true);
       expect(validation.warnings.length).toBeGreaterThan(0);
-      expect(validation.warnings[0]).toContain('jekyll-paginate');
-      expect(validation.warnings[0]).toContain('jekyll-gist');
-      expect(validation.warnings[0]).not.toContain('jekyll-seo-tag'); // Supported
+      expect(validation.warnings[0]).toContain('..invalid');
+      expect(validation.warnings[0]).toContain('_invalid-start');
+      expect(validation.warnings[0]).not.toContain('jekyll-seo-tag'); // Supported built-in
+    });
+
+    it('should accept valid npm package names as plugins', () => {
+      // These look like valid npm packages, so they should be accepted
+      const config: JekyllConfig = {
+        plugins: ['jekyll-paginate', 'jekyll-gist', 'my-custom-plugin', '@myorg/jekyll-plugin'],
+      };
+
+      const validation = validateConfig(config);
+
+      expect(validation.valid).toBe(true);
+      // No warnings about unsupported plugins since they are valid npm names
+      const pluginWarnings = validation.warnings.filter(
+        (w) => w.includes('plugins') && w.includes('not supported')
+      );
+      expect(pluginWarnings.length).toBe(0);
     });
 
     it('should warn about LSI', () => {
@@ -464,6 +481,256 @@ defaults:
         w.includes('plugins are not supported')
       );
       expect(pluginWarning).toBeUndefined();
+    });
+
+    it('should error on invalid encoding', () => {
+      const config: JekyllConfig = {
+        encoding: 'invalid-encoding' as BufferEncoding,
+      };
+
+      const validation = validateConfig(config);
+
+      expect(validation.valid).toBe(false);
+      expect(validation.errors.length).toBeGreaterThan(0);
+      expect(validation.errors[0]).toContain('Invalid encoding');
+    });
+
+    it('should accept valid encoding options', () => {
+      const config: JekyllConfig = {
+        encoding: 'utf-8',
+      };
+
+      const validation = validateConfig(config);
+
+      expect(validation.valid).toBe(true);
+      expect(validation.errors).toHaveLength(0);
+    });
+
+    it('should warn about invalid timezone format', () => {
+      const config: JekyllConfig = {
+        timezone: 'invalid timezone format',
+      };
+
+      const validation = validateConfig(config);
+
+      expect(validation.valid).toBe(true);
+      expect(validation.warnings.some((w) => w.includes('timezone'))).toBe(true);
+    });
+
+    it('should accept valid timezone formats', () => {
+      const configs: JekyllConfig[] = [
+        { timezone: 'America/New_York' },
+        { timezone: 'UTC' },
+        { timezone: 'Europe/London' },
+      ];
+
+      for (const config of configs) {
+        const validation = validateConfig(config);
+        expect(validation.valid).toBe(true);
+        const timezoneWarning = validation.warnings.find((w) => w.includes('timezone'));
+        expect(timezoneWarning).toBeUndefined();
+      }
+    });
+
+    it('should warn about invalid markdown extension format', () => {
+      const config: JekyllConfig = {
+        markdown_ext: 'md,.invalid,markdown',
+      };
+
+      const validation = validateConfig(config);
+
+      expect(validation.valid).toBe(true);
+      expect(validation.warnings.some((w) => w.includes('markdown extensions'))).toBe(true);
+    });
+  });
+
+  describe('multiple config files', () => {
+    it('should load multiple config files separated by comma', () => {
+      const configPath1 = join(testConfigDir, '_config.yml');
+      const configPath2 = join(testConfigDir, '_config.prod.yml');
+
+      writeFileSync(
+        configPath1,
+        `
+title: Base Site
+url: http://localhost:4000
+port: 4000
+`
+      );
+      writeFileSync(
+        configPath2,
+        `
+url: https://example.com
+port: 8080
+`
+      );
+
+      const config = loadConfig(`${configPath1},${configPath2}`);
+
+      expect(config.title).toBe('Base Site'); // From first config
+      expect(config.url).toBe('https://example.com'); // Overridden by second config
+      expect(config.port).toBe(8080); // Overridden by second config
+    });
+
+    it('should handle non-existent second config file', () => {
+      const configPath1 = join(testConfigDir, '_config.yml');
+      const configPath2 = join(testConfigDir, '_config.nonexistent.yml');
+
+      writeFileSync(
+        configPath1,
+        `
+title: My Site
+`
+      );
+
+      const config = loadConfig(`${configPath1},${configPath2}`);
+
+      expect(config.title).toBe('My Site');
+    });
+  });
+
+  describe('environment variables in config', () => {
+    const originalEnv = process.env;
+
+    beforeEach(() => {
+      process.env = { ...originalEnv };
+    });
+
+    afterEach(() => {
+      process.env = originalEnv;
+    });
+
+    it('should expand environment variables in config values', () => {
+      process.env.TEST_SITE_URL = 'https://test.example.com';
+      process.env.TEST_SITE_TITLE = 'My Test Site';
+
+      const configPath = join(testConfigDir, '_config.yml');
+      writeFileSync(
+        configPath,
+        `
+url: \${TEST_SITE_URL}
+title: \${TEST_SITE_TITLE}
+`
+      );
+
+      const config = loadConfig(configPath);
+
+      expect(config.url).toBe('https://test.example.com');
+      expect(config.title).toBe('My Test Site');
+    });
+
+    it('should support default values in environment variables', () => {
+      // Don't set the env variable to test default value
+      delete process.env.TEST_MISSING_VAR;
+
+      const configPath = join(testConfigDir, '_config.yml');
+      writeFileSync(
+        configPath,
+        `
+url: \${TEST_MISSING_VAR:-http://localhost:4000}
+`
+      );
+
+      const config = loadConfig(configPath);
+
+      expect(config.url).toBe('http://localhost:4000');
+    });
+
+    it('should handle nested environment variables', () => {
+      process.env.TEST_NESTED_VALUE = 'nested-value';
+
+      const configPath = join(testConfigDir, '_config.yml');
+      writeFileSync(
+        configPath,
+        `
+custom:
+  nested: \${TEST_NESTED_VALUE}
+`
+      );
+
+      const config = loadConfig(configPath);
+
+      expect(config.custom?.nested).toBe('nested-value');
+    });
+
+    it('should handle environment variables in arrays', () => {
+      process.env.TEST_EXCLUDE_PATH = 'temp';
+
+      const configPath = join(testConfigDir, '_config.yml');
+      writeFileSync(
+        configPath,
+        `
+exclude:
+  - drafts
+  - \${TEST_EXCLUDE_PATH}
+`
+      );
+
+      const config = loadConfig(configPath);
+
+      expect(config.exclude).toContain('drafts');
+      expect(config.exclude).toContain('temp');
+    });
+
+    it('should return empty string for missing env var without default', () => {
+      delete process.env.TEST_UNDEFINED_VAR;
+
+      const configPath = join(testConfigDir, '_config.yml');
+      writeFileSync(
+        configPath,
+        `
+title: prefix-\${TEST_UNDEFINED_VAR}-suffix
+`
+      );
+
+      const config = loadConfig(configPath);
+
+      expect(config.title).toBe('prefix--suffix');
+    });
+
+    it('should handle multiple env vars in a single value', () => {
+      process.env.TEST_PROTOCOL = 'https';
+      process.env.TEST_DOMAIN = 'example.com';
+      process.env.TEST_PORT = '8080';
+
+      const configPath = join(testConfigDir, '_config.yml');
+      writeFileSync(
+        configPath,
+        `
+url: \${TEST_PROTOCOL}://\${TEST_DOMAIN}:\${TEST_PORT}
+`
+      );
+
+      const config = loadConfig(configPath);
+
+      expect(config.url).toBe('https://example.com:8080');
+    });
+
+    it('should preserve invalid env var syntax unchanged', () => {
+      const configPath = join(testConfigDir, '_config.yml');
+      writeFileSync(
+        configPath,
+        `
+title: "Empty var: \${} and \${:-default}"
+`
+      );
+
+      const config = loadConfig(configPath);
+
+      // Invalid syntax should be preserved unchanged
+      expect(config.title).toBe('Empty var: ${} and ${:-default}');
+    });
+  });
+
+  describe('getDefaultConfig with new options', () => {
+    it('should include default encoding', () => {
+      const config = getDefaultConfig(testConfigDir);
+      expect(config.encoding).toBe('utf-8');
+    });
+
+    it('should include default markdown_ext', () => {
+      const config = getDefaultConfig(testConfigDir);
+      expect(config.markdown_ext).toBe('markdown,mkdown,mkdn,mkd,md');
     });
   });
 });

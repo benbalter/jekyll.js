@@ -25,3 +25,19 @@ export {
   parallelMap,
   type WalkOptions,
 } from './parallel-fs';
+export {
+  ProgressIndicator,
+  Spinner,
+  createProgressIndicator,
+  createSpinner,
+  type ProgressOptions,
+} from './progress';
+export {
+  isPathWithinBase,
+  validateAndResolvePath,
+  sanitizeUrlPath,
+  resolveUrlToFilePath,
+  isPermalinkSafe,
+  sanitizePermalink,
+  PathTraversalError,
+} from './path-security';

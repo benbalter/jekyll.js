@@ -13,15 +13,40 @@ import { Site } from '../core/Site';
 import { Document } from '../core/Document';
 
 /**
+ * Get feed URL configuration from site config
+ */
+function getFeedUrlInfo(site: Site): { siteUrl: string; feedPath: string; feedUrl: string } {
+  const config = site.config;
+  const baseUrl = config.url || '';
+  const baseurl = config.baseurl || '';
+  const siteUrl = `${baseUrl}${baseurl}`;
+  const feedPath = config.feed?.path || '/feed.xml';
+  // Ensure feedPath starts with /
+  const normalizedPath = feedPath.startsWith('/') ? feedPath : '/' + feedPath;
+  const feedUrl = `${siteUrl}${normalizedPath}`;
+  return { siteUrl, feedPath: normalizedPath, feedUrl };
+}
+
+/**
  * Feed Plugin implementation
  */
 export class FeedPlugin implements Plugin {
   name = 'jekyll-feed';
 
-  register(_renderer: Renderer, site: Site): void {
+  register(renderer: Renderer, site: Site): void {
     // Store a reference to generate feed during build
     // This will be called by the Builder after all documents are processed
     (site as any)._feedPlugin = this;
+
+    // Register the feed_meta tag
+    renderer.getLiquid().registerTag('feed_meta', {
+      parse(_token: any) {
+        // No arguments needed for feed_meta tag
+      },
+      render: function () {
+        return generateFeedMetaTag(site);
+      },
+    });
   }
 
   /**
@@ -29,11 +54,7 @@ export class FeedPlugin implements Plugin {
    */
   generateFeed(site: Site): string {
     const config = site.config;
-    const baseUrl = config.url || '';
-    const baseurl = config.baseurl || '';
-    const siteUrl = `${baseUrl}${baseurl}`;
-    const feedPath = config.feed?.path || '/feed.xml';
-    const feedUrl = `${siteUrl}${feedPath}`;
+    const { siteUrl, feedUrl } = getFeedUrlInfo(site);
 
     // Feed metadata
     const title = config.title || 'Feed';
@@ -164,6 +185,30 @@ export class FeedPlugin implements Plugin {
     lines.push('  </entry>');
     return lines.join('\n');
   }
+}
+
+/**
+ * Generate the feed_meta link tag for the HTML head
+ * @see https://github.com/jekyll/jekyll-feed/blob/master/lib/jekyll-feed/meta-tag.rb
+ */
+function generateFeedMetaTag(site: Site): string {
+  const config = site.config;
+  const { feedUrl } = getFeedUrlInfo(site);
+  const title = config.title || config.name || '';
+
+  // Build the link tag attributes
+  const attributes: string[] = [
+    'type="application/atom+xml"',
+    'rel="alternate"',
+    `href="${escapeXml(feedUrl)}"`,
+  ];
+
+  // Add title attribute if available
+  if (title) {
+    attributes.push(`title="${escapeXml(title)}"`);
+  }
+
+  return `<link ${attributes.join(' ')} />`;
 }
 
 /**

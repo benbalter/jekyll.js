@@ -13,6 +13,51 @@ import { Site } from '../core/Site';
 import { escapeHtml } from '../utils/html';
 
 /**
+ * Parse a quoted string without using regex to avoid ReDoS
+ * Supports escaped quotes within the string
+ * @param input The input string starting with a quote character
+ * @param quoteChar The quote character (' or ")
+ * @returns The unescaped content between quotes, or null if invalid
+ */
+function parseQuotedString(input: string, quoteChar: string): string | null {
+  if (!input.startsWith(quoteChar)) {
+    return null;
+  }
+
+  let result = '';
+  let i = 1; // Start after the opening quote
+  const maxLen = Math.min(input.length, 1000); // Limit parsing length for safety
+
+  while (i < maxLen) {
+    const char = input[i];
+
+    if (char === quoteChar) {
+      // Found closing quote
+      return result;
+    } else if (char === '\\' && i + 1 < maxLen) {
+      // Escape sequence
+      const nextChar = input[i + 1];
+      if (nextChar === quoteChar || nextChar === '\\') {
+        result += nextChar;
+        i += 2;
+      } else {
+        // Keep the backslash and continue
+        result += char;
+        i++;
+      }
+    } else if (char !== undefined) {
+      result += char;
+      i++;
+    } else {
+      break;
+    }
+  }
+
+  // No closing quote found
+  return null;
+}
+
+/**
  * GitHub repository metadata interface
  */
 export interface GitHubRepository {
@@ -197,17 +242,20 @@ export class GitHubMetadataPlugin implements Plugin {
         // Parse optional link text argument from quotes
         // Supports escaped quotes within the text (e.g., "Say \"Hello\"" or 'It\'s here')
         const args = token.args.trim();
-        const doubleQuoteMatch = args.match(/^"((?:[^"\\]|\\.)*)"/);
-        const singleQuoteMatch = args.match(/^'((?:[^'\\]|\\.)*)'/);
-        if (doubleQuoteMatch) {
-          // Unescape escaped double quotes
-          this.linkText = doubleQuoteMatch[1].replace(/\\"/g, '"').replace(/\\\\/g, '\\');
-        } else if (singleQuoteMatch) {
-          // Unescape escaped single quotes
-          this.linkText = singleQuoteMatch[1].replace(/\\'/g, "'").replace(/\\\\/g, '\\');
-        } else {
-          this.linkText = null;
+
+        // Use a safer parsing approach that avoids ReDoS
+        // Match quoted strings using bounded patterns
+        let linkText: string | null = null;
+
+        if (args.startsWith('"')) {
+          // Double-quoted string - parse character by character
+          linkText = parseQuotedString(args, '"');
+        } else if (args.startsWith("'")) {
+          // Single-quoted string - parse character by character
+          linkText = parseQuotedString(args, "'");
         }
+
+        this.linkText = linkText;
       },
       render: function (ctx: any) {
         // Get github metadata from site data

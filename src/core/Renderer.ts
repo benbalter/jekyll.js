@@ -1280,7 +1280,8 @@ export class Renderer {
     }
 
     // Trigger documents:pre_render hook before conversion
-    // Note: Hooks should not modify content at this stage; modifications should be done in post_render
+    // Note: Content is provided for inspection but modifications will not be captured;
+    // use documents:post_render hook to modify content
     await Hooks.trigger('documents', 'pre_render', {
       document,
       site: this.site,
@@ -1331,12 +1332,16 @@ export class Renderer {
     }
 
     // Trigger documents:post_render hook after conversion but before layout
-    await Hooks.trigger('documents', 'post_render', {
+    // Hooks can modify the content by updating hookContext.content
+    const postRenderContext = {
       document,
       site: this.site,
       renderer: this,
       content,
-    });
+    };
+    await Hooks.trigger('documents', 'post_render', postRenderContext);
+    // Capture any content modifications made by hooks
+    content = postRenderContext.content ?? content;
 
     // Update context with rendered content
     (context.page as Record<string, unknown>).content = content;

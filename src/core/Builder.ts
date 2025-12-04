@@ -772,6 +772,15 @@ export class Builder {
         this.cacheManager.updateFile(doc.path, doc.relativePath, dependencies);
       }
 
+      // Trigger documents:post_write hook after document is written
+      await Hooks.trigger('documents', 'post_write', {
+        document: doc,
+        site: this.site,
+        renderer: this.renderer,
+        content: html,
+        outputPath,
+      });
+
       logger.debug(
         `Rendered: ${doc.relativePath} → ${relative(this.site.destination, outputPath)}`
       );

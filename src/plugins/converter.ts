@@ -40,6 +40,9 @@ export interface ConverterPlugin {
    * Get the output file extension
    * @param ext Input file extension
    * @returns Output file extension (typically '.html')
+   * @note Currently this method is defined for future compatibility but is not
+   * used to determine the output file extension. Documents retain their original
+   * extension-based URL patterns.
    */
   outputExt(ext: string): string;
 

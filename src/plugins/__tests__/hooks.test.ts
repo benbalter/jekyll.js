@@ -310,4 +310,123 @@ describe('Plugin Hooks System', () => {
       expect(capturedContext!.renderer).toBe(renderer);
     });
   });
+
+  describe('Content Modification', () => {
+    it('should allow hooks to modify content in post_render context', async () => {
+      // Create a test file
+      const testFile = join(testSiteDir, 'content-test.md');
+      writeFileSync(testFile, '---\ntitle: Content Test\n---\nOriginal content');
+
+      // Register a hook that modifies content
+      Hooks.register(
+        'documents',
+        'post_render',
+        (ctx) => {
+          const docCtx = ctx as DocumentHookContext;
+          if (docCtx.content) {
+            docCtx.content = docCtx.content.toUpperCase();
+          }
+        },
+        'content-modifier-plugin'
+      );
+
+      const site = new Site(testSiteDir);
+      const renderer = new Renderer(site);
+      const document = new Document(testFile, testSiteDir, DocumentType.PAGE);
+
+      const hookContext = {
+        document,
+        site,
+        renderer,
+        content: 'original content',
+      };
+
+      await Hooks.trigger('documents', 'post_render', hookContext);
+
+      // Content should be modified by the hook
+      expect(hookContext.content).toBe('ORIGINAL CONTENT');
+    });
+
+    it('should pass content to pre_render hook for inspection', async () => {
+      // Create a test file
+      const testFile = join(testSiteDir, 'pre-render-test.md');
+      writeFileSync(testFile, '---\ntitle: Pre Render Test\n---\nTest content');
+
+      let capturedContent: string | undefined;
+
+      // Register a hook that captures content
+      Hooks.register(
+        'documents',
+        'pre_render',
+        (ctx) => {
+          const docCtx = ctx as DocumentHookContext;
+          capturedContent = docCtx.content;
+        },
+        'content-inspector-plugin'
+      );
+
+      const site = new Site(testSiteDir);
+      const renderer = new Renderer(site);
+      const document = new Document(testFile, testSiteDir, DocumentType.PAGE);
+
+      await Hooks.trigger('documents', 'pre_render', {
+        document,
+        site,
+        renderer,
+        content: 'some content to inspect',
+      });
+
+      expect(capturedContent).toBe('some content to inspect');
+    });
+
+    it('should support multiple hooks modifying content in sequence', async () => {
+      // Create a test file
+      const testFile = join(testSiteDir, 'multi-hook-test.md');
+      writeFileSync(testFile, '---\ntitle: Multi Hook Test\n---\nTest');
+
+      // Register first hook (adds prefix)
+      Hooks.register(
+        'documents',
+        'post_render',
+        (ctx) => {
+          const docCtx = ctx as DocumentHookContext;
+          if (docCtx.content) {
+            docCtx.content = 'PREFIX: ' + docCtx.content;
+          }
+        },
+        'prefix-plugin',
+        10 // High priority - runs first
+      );
+
+      // Register second hook (adds suffix)
+      Hooks.register(
+        'documents',
+        'post_render',
+        (ctx) => {
+          const docCtx = ctx as DocumentHookContext;
+          if (docCtx.content) {
+            docCtx.content = docCtx.content + ' :SUFFIX';
+          }
+        },
+        'suffix-plugin',
+        90 // Low priority - runs second
+      );
+
+      const site = new Site(testSiteDir);
+      const renderer = new Renderer(site);
+      const document = new Document(testFile, testSiteDir, DocumentType.PAGE);
+
+      const hookContext = {
+        document,
+        site,
+        renderer,
+        content: 'content',
+      };
+
+      await Hooks.trigger('documents', 'post_render', hookContext);
+
+      // Both hooks should have modified the content in order
+      expect(hookContext.content).toBe('PREFIX: content :SUFFIX');
+    });
+  });
 });

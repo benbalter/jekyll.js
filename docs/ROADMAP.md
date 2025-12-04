@@ -149,7 +149,7 @@ This roadmap outlines the development timeline for jekyll.js to achieve full com
   - Debug tools
   - Progress indicators
 
-- [ ] **Documentation Improvements**
+- [x] **Documentation Improvements**
   - Migration guides from Jekyll.rb
   - API documentation
   - More example sites

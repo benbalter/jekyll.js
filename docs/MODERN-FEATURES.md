@@ -9,6 +9,8 @@ Jekyll.js leverages modern JavaScript packages to provide enhanced functionality
 1. **Syntax Highlighting with Shiki** - Modern, fast, VSCode-powered syntax highlighting
 2. **Image Optimization with Sharp** - High-performance image processing and optimization
 3. **Configuration Validation with Zod** - Runtime type validation with TypeScript-first schemas
+4. **HTML Minification** - Reduce HTML file sizes for faster page loads
+5. **Resource Hints** - Preload/prefetch for optimized resource loading
 
 All features are **opt-in** and do not affect existing Jekyll sites unless explicitly enabled in configuration.
 
@@ -175,6 +177,110 @@ if (result.success) {
 - **IntelliSense**: Full TypeScript autocomplete support
 - **Validation**: Ensure config values are valid (e.g., port numbers in range)
 
+## HTML Minification
+
+HTML minification reduces file sizes by removing unnecessary whitespace, comments, and optimizing markup.
+
+### Features
+
+- Remove HTML comments
+- Collapse whitespace
+- Minify inline CSS and JavaScript
+- Collapse boolean attributes
+- Remove empty attributes
+- Preserve whitespace in pre/textarea elements
+
+### Usage
+
+```typescript
+import { minifyHtml } from 'jekyll-ts/plugins/html-minifier';
+
+const result = await minifyHtml(html, {
+  enabled: true,
+  removeComments: true,
+  collapseWhitespace: true,
+  minifyCSS: true,
+  minifyJS: true,
+});
+
+console.log(`Reduced by ${result.reduction.toFixed(1)}%`);
+```
+
+### Configuration
+
+Enable in `_config.yml`:
+
+```yaml
+modern:
+  htmlMinification:
+    enabled: true
+    removeComments: true
+    collapseWhitespace: true
+    minifyCSS: true
+    minifyJS: true
+    collapseBooleanAttributes: true
+    removeEmptyAttributes: true
+```
+
+### Benefits
+
+- **Smaller files**: Typically 10-30% size reduction
+- **Faster loads**: Less data to transfer
+- **Cache efficiency**: Smaller files improve caching
+- **Zero configuration**: Sensible defaults
+
+## Resource Hints (Preload/Prefetch)
+
+Resource hints tell browsers to fetch critical resources earlier, improving perceived page load performance.
+
+### Features
+
+- **Preload**: Load critical resources (CSS, fonts, hero images)
+- **Prefetch**: Load likely next-page resources
+- **Preconnect**: Establish early connections to important origins
+- **DNS Prefetch**: Resolve DNS for external domains early
+
+### Usage
+
+```typescript
+import { injectResourceHints } from 'jekyll-ts/plugins/resource-hints';
+
+const html = injectResourceHints(originalHtml, {
+  enabled: true,
+  preloadStyles: true,
+  preloadFonts: true,
+  preconnectOrigins: ['https://fonts.googleapis.com'],
+});
+```
+
+### Configuration
+
+Enable in `_config.yml`:
+
+```yaml
+modern:
+  resourceHints:
+    enabled: true
+    preloadStyles: true
+    preloadFonts: true
+    preloadHeroImages: false
+    preconnectOrigins:
+      - https://fonts.googleapis.com
+      - https://fonts.gstatic.com
+    prefetchUrls:
+      - /about/
+      - /contact/
+    dnsPrefetchDomains:
+      - https://analytics.example.com
+```
+
+### Benefits
+
+- **Faster page loads**: Critical resources load earlier
+- **Better Core Web Vitals**: Improved LCP and FID scores
+- **Automatic detection**: Extracts stylesheets and fonts from HTML
+- **Common CDNs**: Auto-detects popular CDN origins
+
 ## Backward Compatibility
 
 All modern features:
@@ -194,6 +300,8 @@ Modern packages are chosen for both functionality and performance:
 - **Shiki**: Pre-generates HTML, zero runtime overhead
 - **Sharp**: Native libraries, 4-5x faster than JavaScript alternatives
 - **Zod**: Minimal runtime overhead, tree-shakeable
+- **HTML Minifier**: Async processing, preserves content integrity
+- **Resource Hints**: Zero runtime cost (static HTML injection)
 
 ## Dependencies
 
@@ -201,9 +309,10 @@ The following modern packages are included:
 
 ```json
 {
-  "shiki": "^1.22.0",    // Syntax highlighting
-  "sharp": "^0.33.5",    // Image optimization
-  "zod": "^3.24.1"       // Schema validation
+  "shiki": "^1.22.0",             // Syntax highlighting
+  "sharp": "^0.33.5",             // Image optimization
+  "zod": "^3.24.1",               // Schema validation
+  "html-minifier-terser": "^7.2.0" // HTML minification
 }
 ```
 

@@ -59,6 +59,8 @@ export function getBuiltInPlugins(): Plugin[] {
 
 /**
  * Register plugins based on site configuration
+ * Plugins are only registered if explicitly listed in the `plugins` config array.
+ * If no plugins are configured, no plugins will be registered.
  * @param renderer Renderer instance
  * @param site Site instance
  */
@@ -67,8 +69,8 @@ export function registerPlugins(renderer: Renderer, site: Site): void {
   const allPlugins = getBuiltInPlugins();
 
   for (const plugin of allPlugins) {
-    // Only register if the plugin is listed in config or if no plugins are configured
-    if (configuredPlugins.length === 0 || configuredPlugins.includes(plugin.name)) {
+    // Only register if the plugin is explicitly listed in config
+    if (configuredPlugins.includes(plugin.name)) {
       plugin.register(renderer, site);
     }
   }

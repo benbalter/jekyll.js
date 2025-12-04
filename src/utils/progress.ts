@@ -193,10 +193,7 @@ export class Spinner {
   succeed(message?: string): void {
     this.stop();
     const finalMessage = message || this.message;
-    const elapsed =
-      this.startTime > 0
-        ? ((Date.now() - this.startTime) / 1000).toFixed(2)
-        : '0.00';
+    const elapsed = this.startTime > 0 ? ((Date.now() - this.startTime) / 1000).toFixed(2) : '0.00';
 
     if (this.colors) {
       console.log(chalk.green('✓') + ' ' + finalMessage + chalk.gray(` (${elapsed}s)`));

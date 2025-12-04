@@ -2,6 +2,7 @@ import { watch, FSWatcher } from 'chokidar';
 import { relative } from 'path';
 import chalk from 'chalk';
 import { Builder } from '../core';
+import { Hooks } from '../plugins/hooks';
 
 export interface WatcherOptions {
   /**
@@ -83,6 +84,12 @@ export class FileWatcher {
     this.isRebuilding = true;
 
     try {
+      // Trigger site:after_reset hook before rebuild (for watch/serve mode rebuilds)
+      await Hooks.trigger('site', 'after_reset', {
+        site: this.options.builder.getSite(),
+        renderer: this.options.builder.getRenderer(),
+      });
+
       // Rebuild the site
       console.log(chalk.yellow('Rebuilding...'));
       await this.options.builder.build();

@@ -994,6 +994,10 @@ export class Renderer {
     const includeTag = this.liquid.tags['include'];
     if (includeTag) {
       this.liquid.registerTag('include_cached', includeTag);
+    } else {
+      logger.warn(
+        'Could not register include_cached tag: built-in include tag not found in liquidjs'
+      );
     }
 
     // The 'highlight' tag would require custom implementation with a syntax highlighter

@@ -126,7 +126,9 @@ describe('buildCommand', () => {
     );
     expect(buildTimeCalls.length).toBeGreaterThan(0);
     // Verify format matches "Done in X.XXX seconds."
-    expect(buildTimeCalls[0][0]).toMatch(/Done in \d+\.\d{3} seconds\./);
+    const buildTimeOutput = buildTimeCalls[0]?.[0] as string | undefined;
+    expect(buildTimeOutput).toBeDefined();
+    expect(buildTimeOutput).toMatch(/Done in \d+\.\d{3} seconds\./);
 
     consoleSpy.mockRestore();
   });

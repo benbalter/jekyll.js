@@ -252,6 +252,51 @@ defaults:
 
       expect(merged.collections?.recipes).toEqual({ output: true });
     });
+
+    it('should automatically exclude destination directory by default', () => {
+      const userConfig: JekyllConfig = {};
+
+      const merged = mergeWithDefaults(userConfig, testConfigDir);
+
+      // Default destination is _site, which should be automatically excluded
+      expect(merged.exclude).toContain('_site');
+    });
+
+    it('should exclude custom destination directory inside source', () => {
+      const userConfig: JekyllConfig = {
+        destination: 'dist',
+      };
+
+      const merged = mergeWithDefaults(userConfig, testConfigDir);
+
+      // Custom destination 'dist' is inside source, should be excluded
+      expect(merged.exclude).toContain('dist');
+    });
+
+    it('should not duplicate destination in exclude list if already present', () => {
+      const userConfig: JekyllConfig = {
+        destination: 'dist',
+        exclude: ['dist'],
+      };
+
+      const merged = mergeWithDefaults(userConfig, testConfigDir);
+
+      // Should not have duplicates
+      const distCount = merged.exclude?.filter((item) => item === 'dist').length;
+      expect(distCount).toBe(1);
+    });
+
+    it('should not add destination to exclude if outside source', () => {
+      const userConfig: JekyllConfig = {
+        destination: '/tmp/output',
+      };
+
+      const merged = mergeWithDefaults(userConfig, testConfigDir);
+
+      // Destination is outside source, should not be in exclude
+      expect(merged.exclude).not.toContain('/tmp/output');
+      expect(merged.exclude).not.toContain('tmp/output');
+    });
   });
 
   describe('validateConfig', () => {

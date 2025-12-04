@@ -10,6 +10,7 @@
 import { Plugin } from './index';
 import { Renderer } from '../core/Renderer';
 import { Site } from '../core/Site';
+import { escapeHtml } from '../utils/html';
 
 /**
  * GitHub repository metadata interface
@@ -157,7 +158,8 @@ interface SiteConfigWithGitHub {
   url?: string;
   description?: string;
   branch?: string;
-  source?: string;
+  /** GitHub Pages source path (e.g., "docs/" or "/"). NOT the Jekyll source directory. */
+  github_pages_source_path?: string;
 }
 
 /**
@@ -166,7 +168,7 @@ interface SiteConfigWithGitHub {
 export class GitHubMetadataPlugin implements Plugin {
   name = 'jekyll-github-metadata';
 
-  register(_renderer: Renderer, site: Site): void {
+  register(renderer: Renderer, site: Site): void {
     // Initialize github metadata on the site
     const metadata = this.getMetadata(site);
 
@@ -179,6 +181,60 @@ export class GitHubMetadataPlugin implements Plugin {
     // Also add to site config for backward compatibility
     // Note: Using type assertion since JekyllConfig doesn't include github property
     (site.config as SiteConfigWithGitHub & { github: GitHubMetadata }).github = metadata;
+
+    // Register the github_edit_link tag
+    this.registerGitHubEditLinkTag(renderer, site);
+  }
+
+  /**
+   * Register the github_edit_link liquid tag
+   * @param renderer Renderer instance
+   * @param site Site instance
+   */
+  private registerGitHubEditLinkTag(renderer: Renderer, site: Site): void {
+    renderer.getLiquid().registerTag('github_edit_link', {
+      parse(token: any) {
+        // Parse optional link text argument from quotes
+        // Supports escaped quotes within the text (e.g., "Say \"Hello\"" or 'It\'s here')
+        const args = token.args.trim();
+        const doubleQuoteMatch = args.match(/^"((?:[^"\\]|\\.)*)"/);
+        const singleQuoteMatch = args.match(/^'((?:[^'\\]|\\.)*)'/);
+        if (doubleQuoteMatch) {
+          // Unescape escaped double quotes
+          this.linkText = doubleQuoteMatch[1].replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+        } else if (singleQuoteMatch) {
+          // Unescape escaped single quotes
+          this.linkText = singleQuoteMatch[1].replace(/\\'/g, "'").replace(/\\\\/g, '\\');
+        } else {
+          this.linkText = null;
+        }
+      },
+      render: function (ctx: any) {
+        // Get github metadata from site data
+        const github = site.data.github as GitHubMetadata;
+        if (!github || !github.repository_url) {
+          return '';
+        }
+
+        // Get page path from context
+        const page = ctx.environments?.page || ctx.page || ctx.scopes?.[0]?.page;
+        const pagePath = page?.path || '';
+
+        // Build the edit URL
+        const editUrl = buildEditUrl(github, pagePath);
+
+        if (!editUrl) {
+          return '';
+        }
+
+        // Return link or just URL based on whether link text was provided
+        if (this.linkText) {
+          return `<a href="${escapeHtml(editUrl)}">${escapeHtml(this.linkText)}</a>`;
+        }
+
+        return escapeHtml(editUrl);
+      },
+    });
   }
 
   /**
@@ -211,7 +267,8 @@ export class GitHubMetadataPlugin implements Plugin {
 
     // Source information
     const branch = config.branch || 'main';
-    const sourcePath = config.source || '';
+    // GitHub Pages source path (e.g., "docs/" or "/"), NOT the Jekyll source directory
+    const sourcePath = config.github_pages_source_path || '';
 
     return {
       api_url: apiUrl,
@@ -316,4 +373,39 @@ export class GitHubMetadataPlugin implements Plugin {
 
     return { owner: '', name: '' };
   }
+}
+
+/**
+ * Build the GitHub edit URL for a page
+ * @param github GitHub metadata
+ * @param pagePath Path to the page file
+ * @returns The edit URL or empty string if missing data
+ */
+function buildEditUrl(github: GitHubMetadata, pagePath: string): string {
+  const repositoryUrl = github.repository_url;
+  const branch = github.source?.branch || 'main';
+  const sourcePath = github.source?.path || '';
+
+  if (!repositoryUrl || !pagePath) {
+    return '';
+  }
+
+  // Normalize parts: remove leading slashes and ensure trailing slashes where needed
+  const normalizedRepoUrl = repositoryUrl.endsWith('/')
+    ? repositoryUrl.slice(0, -1)
+    : repositoryUrl;
+  const normalizedBranch = branch.replace(/^\//, '').replace(/\/$/, '');
+  const normalizedSourcePath = sourcePath.replace(/^\//, '').replace(/\/$/, '');
+  const normalizedPagePath = pagePath.replace(/^\//, '');
+
+  // Build URL parts
+  const parts = [normalizedRepoUrl, 'edit', normalizedBranch];
+
+  if (normalizedSourcePath) {
+    parts.push(normalizedSourcePath);
+  }
+
+  parts.push(normalizedPagePath);
+
+  return parts.join('/');
 }

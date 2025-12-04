@@ -246,7 +246,7 @@ export class ThemeManager {
 
   /**
    * Get path to a bundled theme if it exists
-   * Bundled themes are included in the jekyll-ts package under src/themes/
+   * Bundled themes are included in the jekyll-ts package under themes/
    * @param themeName Theme name
    * @returns Path to bundled theme or null if not found
    */
@@ -259,18 +259,26 @@ export class ThemeManager {
     }
 
     // Get the path to the themes directory
-    // In development: src/themes/
-    // In production: dist/themes/
+    // The themes directory is at the same level as core/ in the package structure
+    // In compiled code: dist/themes/ (relative to dist/core/ThemeManager.js)
+    // In source/test: src/themes/ (relative to src/core/ThemeManager.ts)
     const possiblePaths = [
-      // Production path (when installed as a package)
+      // Standard path: themes/ is a sibling of core/
       join(__dirname, '..', 'themes', themeName),
-      // Development path (when running from source)
+      // Alternative path for different directory structures
       join(__dirname, '..', '..', 'themes', themeName),
     ];
 
     for (const themePath of possiblePaths) {
+      // Verify it's a valid theme directory by checking for required directories
       if (existsSync(themePath) && statSync(themePath).isDirectory()) {
-        return themePath;
+        // Check for essential theme marker files/directories
+        const hasLayouts = existsSync(join(themePath, '_layouts'));
+        const hasPackageJson = existsSync(join(themePath, 'package.json'));
+
+        if (hasLayouts || hasPackageJson) {
+          return themePath;
+        }
       }
     }
 

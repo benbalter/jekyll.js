@@ -3,6 +3,7 @@ import { resolve, join, isAbsolute } from 'path';
 import { loadConfig, validateConfig, printValidation } from '../../config';
 import { Site, Builder } from '../../core';
 import { DevServer } from '../../server';
+import { logger } from '../../utils/logger';
 
 interface ServeOptions {
   source: string;
@@ -14,6 +15,7 @@ interface ServeOptions {
   drafts?: boolean;
   future?: boolean;
   verbose?: boolean;
+  debug?: boolean;
 }
 
 /**
@@ -21,6 +23,16 @@ interface ServeOptions {
  * Builds the site and starts a development server
  */
 export async function serveCommand(options: ServeOptions): Promise<void> {
+  // Configure logger - debug mode enables verbose
+  const isDebug = options.debug || false;
+  const isVerbose = options.verbose || isDebug;
+  logger.setVerbose(isVerbose);
+
+  // Set DEBUG env var if debug mode is enabled
+  if (isDebug) {
+    process.env.DEBUG = '1';
+  }
+
   try {
     // Resolve source directory from CLI option (defaults to '.')
     const sourcePath = resolve(options.source);
@@ -29,11 +41,20 @@ export async function serveCommand(options: ServeOptions): Promise<void> {
     const configPath = isAbsolute(options.config)
       ? options.config
       : resolve(sourcePath, options.config);
-    const config = loadConfig(configPath, options.verbose);
+
+    if (isDebug) {
+      logger.section('Debug Mode');
+      console.log(chalk.cyan('  🔧 Debug mode enabled'));
+      console.log(chalk.gray('  Node version:'), process.version);
+      console.log(chalk.gray('  Platform:'), process.platform);
+      console.log(chalk.gray('  Working directory:'), process.cwd());
+    }
+
+    const config = loadConfig(configPath, isVerbose);
 
     // Validate configuration
     const validation = validateConfig(config);
-    printValidation(validation, options.verbose);
+    printValidation(validation, isVerbose);
 
     if (!validation.valid) {
       throw new Error('Configuration validation failed. Please fix the errors above.');
@@ -61,7 +82,7 @@ export async function serveCommand(options: ServeOptions): Promise<void> {
     }
     config.livereload = options.livereload;
 
-    if (options.verbose) {
+    if (isVerbose) {
       console.log(chalk.blue('\nFinal configuration:'));
       console.log('  Source:', sourcePath);
       console.log('  Destination:', destPath);
@@ -70,6 +91,7 @@ export async function serveCommand(options: ServeOptions): Promise<void> {
       if (config.livereload) console.log('  LiveReload:', 'enabled');
       if (config.show_drafts) console.log('  Drafts:', 'enabled');
       if (config.future) console.log('  Future:', 'enabled');
+      if (isDebug) console.log('  Debug:', 'enabled');
     }
 
     // Build the site first
@@ -85,17 +107,30 @@ export async function serveCommand(options: ServeOptions): Promise<void> {
       showDrafts: options.drafts,
       showFuture: options.future,
       clean: true,
-      verbose: options.verbose,
+      verbose: isVerbose,
+      timing: isDebug,
     });
 
     // Build the site
     const startTime = Date.now();
-    await builder.build();
+    const timings = await builder.build();
     const buildTime = ((Date.now() - startTime) / 1000).toFixed(3);
 
     console.log(chalk.green('✓'), 'Site built successfully!');
     console.log('  Output:', destPath);
     console.log(`  Done in ${buildTime} seconds.`);
+
+    // Show timing profile if debug mode is enabled
+    if (isDebug && timings) {
+      logger.section('Build Profile');
+      const sortedOps = timings.getMostCostlyOperations();
+      console.log(chalk.gray('  Operation timings (sorted by duration):'));
+      for (const op of sortedOps) {
+        const duration = (op.duration / 1000).toFixed(3);
+        const details = op.details ? chalk.gray(` (${op.details})`) : '';
+        console.log(`    ${chalk.cyan(op.name)}: ${duration}s${details}`);
+      }
+    }
 
     // Start the development server
     console.log(chalk.green('\nStarting server...'));
@@ -108,7 +143,7 @@ export async function serveCommand(options: ServeOptions): Promise<void> {
       livereload: config.livereload,
       site,
       builder,
-      verbose: options.verbose,
+      verbose: isVerbose,
     });
 
     await server.start();
@@ -125,7 +160,7 @@ export async function serveCommand(options: ServeOptions): Promise<void> {
   } catch (error) {
     if (error instanceof Error) {
       console.error(chalk.red('\nServer failed:'), error.message);
-      if (options.verbose && error.stack) {
+      if (isVerbose && error.stack) {
         console.error(error.stack);
       }
     }

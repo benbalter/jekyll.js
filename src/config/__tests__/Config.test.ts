@@ -44,10 +44,18 @@ describe('Config', () => {
     it('should include default exclude patterns', () => {
       const config = getDefaultConfig(testConfigDir);
 
+      // Ruby Jekyll default excludes
+      // See: https://github.com/jekyll/jekyll/blob/master/lib/jekyll/configuration.rb
       expect(config.exclude).toContain('.sass-cache');
+      expect(config.exclude).toContain('.jekyll-cache');
+      expect(config.exclude).toContain('gemfiles');
       expect(config.exclude).toContain('Gemfile');
       expect(config.exclude).toContain('Gemfile.lock');
+      expect(config.exclude).toContain('node_modules');
       expect(config.exclude).toContain('vendor/bundle/');
+      expect(config.exclude).toContain('vendor/cache/');
+      expect(config.exclude).toContain('vendor/gems/');
+      expect(config.exclude).toContain('vendor/ruby/');
     });
 
     it('should set default liquid options', () => {

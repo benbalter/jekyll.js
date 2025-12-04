@@ -56,10 +56,10 @@ export class FeedPlugin implements Plugin, GeneratorPlugin {
   generate(site: Site, _renderer: Renderer): GeneratorResult {
     const { feedPath } = getFeedUrlInfo(site);
     const content = this.generateFeed(site);
-    
+
     // Remove leading slash for file path (destination expects relative path)
     const filePath = feedPath.replace(/^\//, '');
-    
+
     return {
       files: [
         {

@@ -205,24 +205,34 @@ Liquid template engine documentation. Contains:
 
 As of **v0.1.0**:
 
-- **✅ Implemented**: 27/46 features (59%)
-- **🟡 Partial**: 5 features
-- **🔴 Planned**: 19 features
+- **✅ Implemented**: 45/51 features (88%)
+- **🟡 Partial**: 2 features
+- **🔴 Planned**: 4 features
 - **⚫ Not Planned**: 0 features (Ruby-specific only)
 
-**Next Version (v0.2.0)**: +5 high-priority features
+**Completed**: All Phase 1 and Phase 2 features
 
 See [FEATURES.md](./FEATURES.md) for complete breakdown.
 
 ---
 
-## 🚀 Current Priorities (v0.2.0)
+## 🚀 Key Features
 
-1. **Data Files** (`_data` directory) - Medium complexity
-2. **Watch Mode** for builds - Medium complexity
-3. **SASS/SCSS** Processing - Medium complexity
-4. **Front Matter Defaults** - Medium complexity
-5. **Additional Liquid Filters** - Low complexity
+Jekyll.js now includes:
+
+- ✅ CLI commands (`new`, `build`, `serve`)
+- ✅ Data files (`_data` directory) - YAML and JSON
+- ✅ Watch mode (`--watch` flag)
+- ✅ Incremental builds (`--incremental` flag)
+- ✅ SASS/SCSS processing
+- ✅ Front matter defaults
+- ✅ Pagination with paginator object
+- ✅ Theme support (npm-based)
+- ✅ 60+ Liquid filters
+- ✅ 8 built-in plugins (SEO, sitemap, feed, jemoji, mentions, redirect-from, avatar, github-metadata)
+- ✅ Live reload development server
+- ✅ Shiki syntax highlighting
+- ✅ Sharp image optimization
 
 See [Compatibility Plan](./jekyll-compatibility-plan.md) for detailed specifications.
 
@@ -252,7 +262,7 @@ Look for **"good first issue"** labels on GitHub!
 
 ## 🔄 Document Updates
 
-Documentation is actively maintained. Last major update: **2025-11-21**
+Documentation is actively maintained. Last major update: **2025-12-04**
 
 If you find outdated information:
 1. Open an issue
@@ -296,19 +306,17 @@ When updating documentation:
 
 ### Planned Documentation
 
-**Short Term (v0.2.0)**:
+**Short Term (v0.4.0)**:
 - [ ] Migration guides (Jekyll.rb → jekyll.js)
-- [ ] Feature tutorials (data files, SASS, etc.)
-- [ ] Troubleshooting guide
 - [ ] Performance tuning guide
+- [ ] Troubleshooting guide
 
-**Medium Term (v0.3.0)**:
+**Medium Term (v1.0.0)**:
 - [x] Theme development guide
 - [ ] Plugin development guide
 - [ ] API reference documentation
-- [ ] Video tutorials
 
-**Long Term (v1.0.0)**:
+**Long Term**:
 - [ ] Complete cookbook (recipes for common tasks)
 - [ ] Architecture documentation
 - [ ] Deployment guides

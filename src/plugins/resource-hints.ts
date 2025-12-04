@@ -147,21 +147,23 @@ export function generateHintTag(hint: ResourceHint): string {
  * @returns Array of stylesheet URLs
  */
 export function extractStylesheets(html: string): string[] {
-  const styleRegex = /<link[^>]*rel=["']stylesheet["'][^>]*href=["']([^"']+)["'][^>]*>/gi;
-  const styleRegex2 = /<link[^>]*href=["']([^"']+)["'][^>]*rel=["']stylesheet["'][^>]*>/gi;
-
+  // First, find all <link> tags using a simple pattern to avoid ReDoS
+  const linkTagRegex = /<link\s[^>]{0,500}>/gi;
   const stylesheets: string[] = [];
 
-  let match;
-  while ((match = styleRegex.exec(html)) !== null) {
-    if (match[1]) {
-      stylesheets.push(match[1]);
-    }
-  }
+  let linkMatch;
+  while ((linkMatch = linkTagRegex.exec(html)) !== null) {
+    const linkTag = linkMatch[0];
 
-  while ((match = styleRegex2.exec(html)) !== null) {
-    if (match[1]) {
-      stylesheets.push(match[1]);
+    // Check if this link tag is a stylesheet
+    if (!/rel\s*=\s*["']stylesheet["']/i.test(linkTag)) {
+      continue;
+    }
+
+    // Extract href value with a simple pattern
+    const hrefMatch = linkTag.match(/href\s*=\s*["']([^"']{0,500})["']/i);
+    if (hrefMatch?.[1]) {
+      stylesheets.push(hrefMatch[1]);
     }
   }
 
@@ -175,25 +177,33 @@ export function extractStylesheets(html: string): string[] {
  * @returns Array of font URLs
  */
 export function extractFonts(html: string): string[] {
-  // Match preload links for fonts
-  const fontPreloadRegex =
-    /<link[^>]*rel=["']preload["'][^>]*as=["']font["'][^>]*href=["']([^"']+)["'][^>]*>/gi;
-
-  // Match font URLs in inline styles
-  const fontFaceRegex = /url\(["']?([^"')]+\.(?:woff2?|ttf|otf|eot))["']?\)/gi;
-
   const fonts: string[] = [];
 
-  let match;
-  while ((match = fontPreloadRegex.exec(html)) !== null) {
-    if (match[1]) {
-      fonts.push(match[1]);
+  // Match preload links for fonts using a two-step approach to avoid ReDoS
+  // First find all <link> tags
+  const linkTagRegex = /<link\s[^>]{0,500}>/gi;
+
+  let linkMatch;
+  while ((linkMatch = linkTagRegex.exec(html)) !== null) {
+    const linkTag = linkMatch[0];
+
+    // Check if this is a font preload link
+    if (/rel\s*=\s*["']preload["']/i.test(linkTag) && /as\s*=\s*["']font["']/i.test(linkTag)) {
+      // Extract href value
+      const hrefMatch = linkTag.match(/href\s*=\s*["']([^"']{0,500})["']/i);
+      if (hrefMatch?.[1]) {
+        fonts.push(hrefMatch[1]);
+      }
     }
   }
 
-  while ((match = fontFaceRegex.exec(html)) !== null) {
-    if (match[1]) {
-      fonts.push(match[1]);
+  // Match font URLs in inline styles - safe pattern with bounded quantifier
+  const fontFaceRegex = /url\(["']?([^"')]{0,500}\.(?:woff2?|ttf|otf|eot))["']?\)/gi;
+
+  let fontMatch;
+  while ((fontMatch = fontFaceRegex.exec(html)) !== null) {
+    if (fontMatch[1]) {
+      fonts.push(fontMatch[1]);
     }
   }
 
@@ -210,30 +220,45 @@ export function extractHeroImage(html: string): string | undefined {
   // Look for first image that's likely to be a hero image
   // Priority: images with loading="eager", images in header/hero sections, first large image
 
-  // Match images with specific classes suggesting hero/banner
-  const heroClassRegex =
-    /<img[^>]*class=["'][^"']*(?:hero|banner|cover|featured)[^"']*["'][^>]*src=["']([^"']+)["'][^>]*>/i;
+  // Find all <img> tags using a bounded pattern to avoid ReDoS
+  const imgTagRegex = /<img\s[^>]{0,1000}>/gi;
 
-  // Match first image in header or main
-  const headerImgRegex = /<(?:header|main)[^>]*>[\s\S]*?<img[^>]*src=["']([^"']+)["'][^>]*>/i;
+  let imgMatch;
+  while ((imgMatch = imgTagRegex.exec(html)) !== null) {
+    const imgTag = imgMatch[0];
 
-  // Match any image with loading="eager"
-  const eagerImgRegex = /<img[^>]*loading=["']eager["'][^>]*src=["']([^"']+)["'][^>]*>/i;
-  const eagerImgRegex2 = /<img[^>]*src=["']([^"']+)["'][^>]*loading=["']eager["'][^>]*>/i;
+    // Extract src value
+    const srcMatch = imgTag.match(/src\s*=\s*["']([^"']{0,500})["']/i);
+    if (!srcMatch?.[1]) {
+      continue;
+    }
+    const srcValue = srcMatch[1];
 
-  let match = heroClassRegex.exec(html);
-  if (match?.[1]) {
-    return match[1];
+    // Check for hero class
+    const classMatch = imgTag.match(/class\s*=\s*["']([^"']{0,500})["']/i);
+    if (classMatch?.[1] && /(?:hero|banner|cover|featured)/i.test(classMatch[1])) {
+      return srcValue;
+    }
+
+    // Check for loading="eager"
+    if (/loading\s*=\s*["']eager["']/i.test(imgTag)) {
+      return srcValue;
+    }
   }
 
-  match = eagerImgRegex.exec(html) || eagerImgRegex2.exec(html);
-  if (match?.[1]) {
-    return match[1];
-  }
-
-  match = headerImgRegex.exec(html);
-  if (match?.[1]) {
-    return match[1];
+  // Check for images inside header or main tags
+  // Use a simpler approach: find header/main opening tags, then look for first img after
+  const headerMainRegex = /<(?:header|main)[\s>]/i;
+  const headerMatch = html.match(headerMainRegex);
+  if (headerMatch && headerMatch.index !== undefined) {
+    const afterHeader = html.slice(headerMatch.index);
+    const firstImgMatch = afterHeader.match(/<img\s[^>]{0,1000}>/i);
+    if (firstImgMatch) {
+      const srcMatch = firstImgMatch[0].match(/src\s*=\s*["']([^"']{0,500})["']/i);
+      if (srcMatch?.[1]) {
+        return srcMatch[1];
+      }
+    }
   }
 
   return undefined;
@@ -421,8 +446,8 @@ export function injectResourceHints(html: string, options: ResourceHintsOptions 
     return html;
   }
 
-  // Try to inject after <head> tag
-  const headMatch = html.match(/<head[^>]*>/i);
+  // Try to inject after <head> tag - use bounded pattern to avoid ReDoS
+  const headMatch = html.match(/<head(?:\s[^>]{0,200})?>/i);
   if (headMatch) {
     const insertPos = (headMatch.index ?? 0) + headMatch[0].length;
     return html.slice(0, insertPos) + '\n' + hintsHtml + html.slice(insertPos);

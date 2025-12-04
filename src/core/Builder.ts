@@ -938,8 +938,8 @@ export class Builder {
   private generatePluginFiles(): void {
     const configuredPlugins = this.site.config.plugins || [];
 
-    // Generate sitemap if plugin is enabled
-    if (configuredPlugins.length === 0 || configuredPlugins.includes('jekyll-sitemap')) {
+    // Generate sitemap if plugin is explicitly enabled
+    if (configuredPlugins.includes('jekyll-sitemap')) {
       const sitemapPlugin = (this.site as any)._sitemapPlugin;
       if (sitemapPlugin) {
         try {
@@ -955,8 +955,8 @@ export class Builder {
       }
     }
 
-    // Generate feed if plugin is enabled
-    if (configuredPlugins.length === 0 || configuredPlugins.includes('jekyll-feed')) {
+    // Generate feed if plugin is explicitly enabled
+    if (configuredPlugins.includes('jekyll-feed')) {
       const feedPlugin = (this.site as any)._feedPlugin;
       if (feedPlugin) {
         try {

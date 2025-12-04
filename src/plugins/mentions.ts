@@ -3,6 +3,7 @@
  *
  * Implements jekyll-mentions functionality using remark-github
  * Converts @mentions to GitHub profile links automatically in markdown
+ * Note: Only @mentions are processed, not issues (#123), PRs, or commits
  *
  * @see https://github.com/jekyll/jekyll-mentions
  */
@@ -16,7 +17,8 @@ import { escapeHtml } from '../utils/html';
  * Mentions Plugin implementation
  *
  * Uses remark-github for automatic @mention conversion in markdown content,
- * and provides the mentionify filter for use in Liquid templates
+ * and provides the mentionify filter for use in Liquid templates.
+ * Only @mentions are converted to links - issues, PRs, and commits are not processed.
  */
 export class MentionsPlugin implements Plugin {
   name = 'jekyll-mentions';
@@ -28,12 +30,8 @@ export class MentionsPlugin implements Plugin {
       site.config.mentions?.base_url ||
       'https://github.com';
 
-    // Get repository for GitHub references (issues, PRs, etc.)
-    const repository = site.config.repository || process.env.GITHUB_REPOSITORY || undefined;
-
-    // Enable GitHub mentions/references processing in markdown
+    // Enable @mention processing in markdown (issues, PRs, commits are not linked)
     renderer.enableGitHubMentions({
-      repository,
       mentionStrong: false,
     });
 

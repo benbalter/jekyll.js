@@ -1411,9 +1411,10 @@ export class Renderer {
   }
 
   /**
-   * Enable GitHub-style mentions/references in markdown (for jekyll-mentions plugin)
+   * Enable GitHub-style @mentions in markdown (for jekyll-mentions plugin)
    * When enabled, @mentions are automatically converted to links
-   * @param options Optional GitHub options (repository for linking issues/PRs)
+   * Note: Only @mentions are processed, not issues, PRs, or commits
+   * @param options Optional settings (mentionStrong wraps mentions in strong tags)
    */
   enableGitHubMentions(options?: { repository?: string; mentionStrong?: boolean }): void {
     this.markdownOptions.githubMentions = options || true;

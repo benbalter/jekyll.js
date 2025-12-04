@@ -18,6 +18,7 @@
  */
 
 import { logger } from '../utils/logger';
+import { escapeHtml } from '../utils/html';
 
 /**
  * Resource hint types
@@ -457,19 +458,4 @@ export function getResourceHintsOptions(config: {
     ...DEFAULT_OPTIONS,
     ...config.modern?.resourceHints,
   };
-}
-
-/**
- * Escape HTML special characters
- */
-function escapeHtml(str: string): string {
-  const htmlEscapes: Record<string, string> = {
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#39;',
-  };
-
-  return str.replace(/[&<>"']/g, (char) => htmlEscapes[char] || char);
 }

@@ -208,9 +208,7 @@ describe('Resource Hints Plugin', () => {
     it('should include custom preloads', () => {
       const hints = generateResourceHints('<html></html>', {
         enabled: true,
-        customPreloads: [
-          { href: '/custom.css', rel: 'preload', as: 'style' },
-        ],
+        customPreloads: [{ href: '/custom.css', rel: 'preload', as: 'style' }],
       });
 
       expect(hints.some((h) => h.href === '/custom.css')).toBe(true);

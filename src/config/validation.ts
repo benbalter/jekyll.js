@@ -161,12 +161,16 @@ export const JekyllConfigSchema = z
             enabled: z.boolean().optional(),
             removeComments: z.boolean().optional(),
             collapseWhitespace: z.boolean().optional(),
+            keepClosingSlash: z.boolean().optional(),
             minifyCSS: z.boolean().optional(),
             minifyJS: z.boolean().optional(),
             removeOptionalTags: z.boolean().optional(),
             removeAttributeQuotes: z.boolean().optional(),
             collapseBooleanAttributes: z.boolean().optional(),
             removeEmptyAttributes: z.boolean().optional(),
+            processConditionalComments: z.boolean().optional(),
+            sortAttributes: z.boolean().optional(),
+            sortClassName: z.boolean().optional(),
           })
           .optional(),
 
@@ -180,6 +184,18 @@ export const JekyllConfigSchema = z
             preconnectOrigins: z.array(z.string()).optional(),
             prefetchUrls: z.array(z.string()).optional(),
             dnsPrefetchDomains: z.array(z.string()).optional(),
+            customPreloads: z
+              .array(
+                z.object({
+                  href: z.string(),
+                  rel: z.enum(['preload', 'prefetch', 'preconnect', 'dns-prefetch']),
+                  as: z.enum(['style', 'script', 'font', 'image', 'fetch', 'document']).optional(),
+                  type: z.string().optional(),
+                  crossorigin: z.enum(['anonymous', 'use-credentials', '']).optional(),
+                  media: z.string().optional(),
+                })
+              )
+              .optional(),
           })
           .optional(),
 

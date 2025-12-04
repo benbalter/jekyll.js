@@ -13,6 +13,7 @@ Welcome to the jekyll.js documentation! This directory contains comprehensive gu
 | [**Main README**](../README.md) | Getting started, installation | Start here! |
 | [**PARITY.md**](./PARITY.md) | Parity with Ruby Jekyll & improvements | Understanding compatibility |
 | [**FEATURES.md**](./FEATURES.md) | Feature status reference | Check if feature is supported |
+| [**PLUGINS.md**](./PLUGINS.md) | Plugin documentation | Using and creating plugins |
 | [**COMPARISON.md**](./COMPARISON.md) | jekyll.js vs Jekyll.rb | Deciding which to use |
 | [**liquid-rendering.md**](./liquid-rendering.md) | Template engine guide | Using Liquid templates |
 | [**theme-development.md**](./theme-development.md) | Theme creation guide | Creating or using themes |
@@ -178,6 +179,9 @@ Liquid template engine documentation. Contains:
 **...check if a feature is supported**
 → Check [FEATURES.md](./FEATURES.md)
 
+**...use or create plugins**
+→ Read [PLUGINS.md](./PLUGINS.md)
+
 **...compare with Jekyll.rb**
 → Read [COMPARISON.md](./COMPARISON.md)
 
@@ -313,7 +317,7 @@ When updating documentation:
 
 **Medium Term (v1.0.0)**:
 - [x] Theme development guide
-- [ ] Plugin development guide
+- [x] Plugin development guide
 - [ ] API reference documentation
 
 **Long Term**:

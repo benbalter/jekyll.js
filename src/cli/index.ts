@@ -5,6 +5,7 @@ import chalk from 'chalk';
 import { buildCommand } from './commands/build';
 import { serveCommand } from './commands/serve';
 import { newCommand } from './commands/new';
+import { validateCommand } from './commands/validate';
 
 const program = new Command();
 
@@ -54,6 +55,16 @@ program
   .option('--blank', 'Create a blank site without default theme')
   .option('--force', 'Force creation even if path already exists')
   .action(newCommand);
+
+// Validate command
+program
+  .command('validate')
+  .description('Validate your site configuration')
+  .option('-s, --source <path>', 'Source directory', '.')
+  .option('--config <file>', 'Custom configuration file', '_config.yml')
+  .option('--verbose', 'Print verbose output')
+  .option('--strict', 'Treat warnings as errors')
+  .action(validateCommand);
 
 // Error handling
 program.exitOverride();

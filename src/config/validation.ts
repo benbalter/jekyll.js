@@ -124,16 +124,16 @@ export const JekyllConfigSchema = z
     // LSI (latent semantic indexing)
     lsi: z.boolean().optional(),
 
-    // Limit posts
-    limit_posts: z.number().int().positive().optional(),
+    // Limit posts (0 means no limit)
+    limit_posts: z.number().int().nonnegative().optional(),
 
     // Watch/Serve
     watch: z.boolean().optional(),
     force_polling: z.boolean().optional(),
     livereload: z.boolean().optional(),
     livereload_port: z.number().int().min(1).max(65535).optional(),
-    livereload_min_delay: z.number().int().positive().optional(),
-    livereload_max_delay: z.number().int().positive().optional(),
+    livereload_min_delay: z.number().int().nonnegative().optional(),
+    livereload_max_delay: z.number().int().nonnegative().optional(),
     livereload_ignore: z.array(z.string()).optional(),
 
     // Build settings

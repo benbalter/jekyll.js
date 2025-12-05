@@ -320,108 +320,30 @@ jekyll.js/
 └── test-fixtures/    # Test Jekyll sites
 ```
 
-## Roadmap
+## Compatibility
 
-> 📋 For detailed feature roadmap and implementation plans, see:
-> - [**ROADMAP.md**](./docs/ROADMAP.md) - Development timeline and release schedule
-> - [**Jekyll Compatibility Plan**](./docs/jekyll-compatibility-plan.md) - Comprehensive feature specifications
+Jekyll.js aims to be a drop-in replacement for Ruby Jekyll 4.x. Most Jekyll sites work without modification.
+
+> 📖 See the [**docs folder**](./docs/README.md) for comprehensive documentation including:
+> - [**MIGRATION.md**](./docs/MIGRATION.md) - Step-by-step migration guide from Ruby Jekyll
+> - [**FEATURES.md**](./docs/FEATURES.md) - Complete feature status reference
+> - [**PARITY.md**](./docs/PARITY.md) - Parity details and improvements
+> - [**ROADMAP.md**](./docs/ROADMAP.md) - Development timeline and plans
+> - [**MODERN-FEATURES.md**](./docs/MODERN-FEATURES.md) - Modern JavaScript enhancements
 
 ### Current Status (v0.1.0)
 
-- [x] Project scaffolding and CLI commands
-- [x] Configuration parsing (`_config.yml`)
-- [x] Liquid template rendering
-- [x] Page and post processing
-- [x] Collections support
-- [x] Data files support (`_data` directory)
-- [x] Markdown processing (using Remark)
-- [x] Plugin system
-- [x] Built-in plugins (SEO, sitemap, feed)
-- [x] Development server with live reload
-- [x] Theme support (npm package-based)
-- [x] Incremental builds
+**88% feature parity** with Ruby Jekyll. All core features implemented:
 
-### Next Version (v0.2.0 - Phase 1)
+- ✅ CLI commands, configuration, Liquid templating (60+ filters)
+- ✅ Pages, posts, collections, layouts, includes, data files
+- ✅ SASS/SCSS, front matter defaults, pagination, themes
+- ✅ 8 built-in plugins (SEO, sitemap, feed, jemoji, mentions, redirect-from, avatar, github-metadata)
+- ✅ Watch mode, incremental builds, live reload dev server
 
-- [x] Data files (`_data` directory)
-- [x] Watch mode for builds
-- [x] Front matter defaults
-- [ ] SASS/SCSS processing
-- [ ] Additional Liquid filters
+**Ruby plugins are not supported** - they require TypeScript reimplementation.
 
-## Compatibility
-
-This project aims to be compatible with Jekyll 4.x. While the goal is 100% compatibility, some features may not be available in early versions.
-
-> 📖 **Migration Guide**: See [**MIGRATION.md**](./docs/MIGRATION.md) for step-by-step instructions to migrate from Ruby Jekyll, including how to opt into modern enhancements.
->
-> 📖 **Parity & Improvements**: See [**PARITY.md**](./docs/PARITY.md) for a complete guide to features with full parity with Ruby Jekyll and backwards-compatible improvements.
->
-> 📖 **Modern Features**: Jekyll.js includes optional modern JavaScript enhancements. See [**MODERN-FEATURES.md**](./docs/MODERN-FEATURES.md) for details on syntax highlighting, image optimization, and advanced validation.
-
-### Features with Full Parity
-
-These features work identically to Ruby Jekyll - no changes needed for existing sites:
-
-- ✅ CLI commands (`new`, `build`, `serve`)
-- ✅ Configuration parsing (`_config.yml`)
-- ✅ Liquid templates with 50+ Jekyll-specific filters and tags
-- ✅ Pages, posts, drafts, and future posts
-- ✅ Collections with custom permalinks
-- ✅ Layouts and includes with parameter support
-- ✅ Data files (`_data` directory) - YAML and JSON support
-- ✅ Front matter (YAML) and front matter defaults
-- ✅ Markdown processing (using Remark with GFM support)
-- ✅ Permalinks and URL generation
-- ✅ Built-in plugins:
-  - `jekyll-seo-tag` - SEO meta tags and JSON-LD
-  - `jekyll-sitemap` - XML sitemap generation
-  - `jekyll-feed` - Atom feed generation
-- ✅ Theme support (npm package-based themes)
-- ✅ Watch mode and incremental builds
-- ✅ Development server with live reload
-
-### Backwards-Compatible Improvements
-
-Jekyll.js includes optional modern enhancements (disabled by default):
-
-- 🆕 **Shiki syntax highlighting** - VSCode-powered, 100+ languages
-- 🆕 **Sharp image optimization** - WebP/AVIF generation, 30-70% size reduction
-- 🆕 **Zod configuration validation** - Clear error messages for invalid config
-- 🆕 **npm-based themes** - Standard JavaScript package management
-- 🆕 **Enhanced error messages** - File/line references and suggestions
-
-Enable modern features in `_config.yml`:
-```yaml
-modern:
-  syntaxHighlighting:
-    enabled: true
-  imageOptimization:
-    enabled: true
-```
-
-### Planned Features
-
-See [ROADMAP.md](./docs/ROADMAP.md) for complete timeline.
-
-**High Priority** (v0.2.0):
-- Data files (`_data` directory) - completed
-- Watch mode for builds - completed
-- Front matter defaults - completed
-- SASS/SCSS processing
-
-**Medium Priority** (v0.3.0):
-- Pagination
-- Asset pipeline improvements
-
-**Future** (v1.0.0+):
-- Advanced configuration options
-- Performance optimizations
-- Ecosystem building
-
-> **Note**: Ruby-based Jekyll plugins are not directly supported and require TypeScript reimplementation. See the [Compatibility Plan](./docs/jekyll-compatibility-plan.md) for details.
->
-> 📖 **Plugin Documentation**: See [PLUGINS.md](./docs/PLUGINS.md) for detailed documentation on using and creating plugins.
+> **Note**: See [PLUGINS.md](./docs/PLUGINS.md) for plugin documentation and how to create custom plugins.
 
 ## Contributing
 

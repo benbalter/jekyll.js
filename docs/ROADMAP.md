@@ -4,7 +4,7 @@ This roadmap outlines the development timeline for jekyll.js to achieve full com
 
 > 📋 For detailed feature specifications, see [Jekyll Compatibility Plan](./jekyll-compatibility-plan.md)
 > 
-> ⏰ **Note**: Target dates are estimates and may be adjusted based on progress and community feedback. Last updated: 2025-12-04
+> ⏰ **Note**: Target dates are estimates and may be adjusted based on progress and community feedback. Last updated: 2025-12-05
 
 ---
 
@@ -73,7 +73,7 @@ This roadmap outlines the development timeline for jekyll.js to achieve full com
   - Modern filters (reading_time, toc, heading_anchors, external_links, auto_excerpt)
 
 ### Success Criteria ✅
-- ✅ All features have comprehensive tests (1065 tests passing)
+- ✅ All features have comprehensive tests (1163 tests passing)
 - ✅ Documentation updated
 - ✅ Benchmark tests available
 - ✅ Real Jekyll sites build successfully
@@ -411,6 +411,6 @@ Jekyll.js will be considered successful when:
 
 ---
 
-**Last Updated**: 2025-12-04  
+**Last Updated**: 2025-12-05  
 **Maintained by**: @benbalter  
 **License**: MIT

@@ -71,17 +71,18 @@ export async function buildCommand(options: BuildOptions): Promise<void> {
           : join(sourcePath, '_site');
 
     // Apply CLI flags to config
-    if (options.drafts) {
-      config.show_drafts = true;
+    // CLI options override config when explicitly set (true or false via --no- flags)
+    if (options.drafts !== undefined) {
+      config.show_drafts = options.drafts;
     }
-    if (options.future) {
-      config.future = true;
+    if (options.future !== undefined) {
+      config.future = options.future;
     }
-    if (options.watch) {
-      config.watch = true;
+    if (options.watch !== undefined) {
+      config.watch = options.watch;
     }
-    if (options.incremental) {
-      config.incremental = true;
+    if (options.incremental !== undefined) {
+      config.incremental = options.incremental;
     }
 
     if (isVerbose) {

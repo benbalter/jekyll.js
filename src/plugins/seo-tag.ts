@@ -10,6 +10,7 @@
 import { Plugin } from './types';
 import { Renderer } from '../core/Renderer';
 import { Site } from '../core/Site';
+import { escapeHtml } from '../utils/html';
 
 /**
  * SEO Tag Plugin implementation
@@ -217,16 +218,4 @@ function generateJsonLd(
   }
 
   return JSON.stringify(data);
-}
-
-/**
- * Escape HTML special characters to prevent XSS
- */
-function escapeHtml(str: string): string {
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
 }

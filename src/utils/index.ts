@@ -16,7 +16,7 @@ export {
   parseErrorLocation,
 } from './errors';
 export { FileWatcher, type WatcherOptions } from './watcher';
-export { escapeHtml, escapeJs } from './html';
+export { escapeHtml, unescapeHtml, escapeJs } from './html';
 export { PerformanceTimer, type TimedOperation, type BuildTimings } from './timer';
 export {
   walkDirectoryAsync,

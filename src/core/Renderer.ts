@@ -5,6 +5,7 @@ import { Paginator } from './Paginator';
 import { logger } from '../utils/logger';
 import { TemplateError, parseErrorLocation } from '../utils/errors';
 import { processMarkdown, initMarkdownProcessor, MarkdownOptions } from './markdown';
+import { escapeHtml } from '../utils/html';
 import slugifyLib from 'slugify';
 import { format, parseISO, formatISO, formatRFC7231, isValid } from 'date-fns';
 import striptags from 'striptags';
@@ -1035,13 +1036,6 @@ export class Renderer {
       render: async function* (_ctx: any): any {
         const content = yield this.liquid.renderer.renderTemplates(this.templates, _ctx);
         // Escape HTML special characters in content to prevent XSS
-        const escapeHtml = (str: string) =>
-          String(str)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
         const escapedContent = escapeHtml(content);
         return `<div class="highlight"><pre class="highlight"><code class="language-${this.language}">${escapedContent}</code></pre></div>`;
       },

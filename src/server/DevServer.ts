@@ -8,6 +8,7 @@ import { Builder } from '../core';
 import { Site } from '../core';
 import { FileWatcher } from '../utils/watcher';
 import { resolveUrlToFilePath, PathTraversalError } from '../utils/path-security';
+import { escapeHtml } from '../utils/html';
 
 export interface DevServerOptions {
   /**
@@ -285,7 +286,7 @@ export class DevServer {
       return;
     }
 
-    const escapedUrl = this.escapeHtml(url);
+    const escapedUrl = escapeHtml(url);
     const content = `<!DOCTYPE html>
 <html>
 <head>
@@ -323,7 +324,7 @@ export class DevServer {
       return;
     }
 
-    const escapedUrl = this.escapeHtml(url);
+    const escapedUrl = escapeHtml(url);
     const content = `<!DOCTYPE html>
 <html>
 <head>
@@ -362,7 +363,7 @@ export class DevServer {
     }
 
     const message = error instanceof Error ? error.message : 'Unknown error';
-    const escapedMessage = this.escapeHtml(message);
+    const escapedMessage = escapeHtml(message);
     const content = `<!DOCTYPE html>
 <html>
 <head>
@@ -389,19 +390,6 @@ export class DevServer {
     } catch {
       // Ignore network errors when client has disconnected
     }
-  }
-
-  /**
-   * Escape HTML special characters to prevent XSS attacks
-   * Escapes &, <, >, ", and ' in that order to prevent double-escaping
-   */
-  private escapeHtml(str: string): string {
-    return str
-      .replace(/&/g, '&amp;') // Must be first to prevent double-escaping
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
   }
 
   /**

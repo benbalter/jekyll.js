@@ -11,6 +11,7 @@ describe('GitHubMetadataPlugin', () => {
   let site: Site;
   let renderer: Renderer;
   let plugin: GitHubMetadataPlugin;
+  let consoleWarnSpy: jest.SpyInstance;
 
   // Store original env vars
   const originalEnv = { ...process.env };
@@ -25,12 +26,17 @@ describe('GitHubMetadataPlugin', () => {
     delete process.env.GITHUB_SHA;
     delete process.env.JEKYLL_ENV;
     delete process.env.GITHUB_PAGES;
+
+    // Disable colors for easier testing and suppress console warnings
+    logger.configure({ colors: false });
+    consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
   });
 
   afterEach(() => {
     rmSync(testSiteDir, { recursive: true, force: true });
     // Restore original env vars
     process.env = { ...originalEnv };
+    consoleWarnSpy.mockRestore();
   });
 
   it('should have the correct name', () => {
@@ -463,19 +469,6 @@ describe('GitHubMetadataPlugin', () => {
   });
 
   describe('missing required information warnings', () => {
-    let consoleWarnSpy: jest.SpyInstance;
-
-    beforeEach(() => {
-      // Disable colors for easier testing
-      logger.configure({ colors: false });
-      // Spy on console.warn to capture warnings
-      consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
-    });
-
-    afterEach(() => {
-      consoleWarnSpy.mockRestore();
-    });
-
     it('should warn when repository is missing from config and environment', () => {
       const config = {
         title: 'Test Site',
@@ -499,6 +492,22 @@ describe('GitHubMetadataPlugin', () => {
         title: 'Test Site',
         url: 'https://example.com',
         repository: 'owner/repo',
+      };
+      site = new Site(testSiteDir, config);
+      renderer = new Renderer(site);
+      plugin = new GitHubMetadataPlugin();
+      plugin.register(renderer, site);
+
+      expect(consoleWarnSpy).not.toHaveBeenCalled();
+    });
+
+    it('should not warn when github.repository_nwo is configured', () => {
+      const config = {
+        title: 'Test Site',
+        url: 'https://example.com',
+        github: {
+          repository_nwo: 'owner/repo',
+        },
       };
       site = new Site(testSiteDir, config);
       renderer = new Renderer(site);

@@ -16,6 +16,7 @@ import {
   copyFileSync,
   readFileSync,
 } from 'fs';
+import { writeFile, mkdir } from 'fs/promises';
 import { join, dirname, extname, basename, relative, sep, resolve, normalize } from 'path';
 import { rmSync } from 'fs';
 import { registerPlugins, PluginRegistry, Hooks } from '../plugins';
@@ -585,12 +586,14 @@ export class Builder {
 
   /**
    * Render all pages
+   * Uses optimized batch rendering for better performance with many pages
    */
   private async renderPages(pages?: Document[]): Promise<void> {
     const pagesToRender = pages || this.site.pages;
     logger.info(`Rendering ${pagesToRender.length} pages...`);
 
-    await Promise.all(pagesToRender.map((page) => this.renderDocument(page)));
+    // Use optimized batch rendering for better performance
+    await this.renderDocumentsBatch(pagesToRender);
   }
 
   /**
@@ -615,6 +618,7 @@ export class Builder {
 
   /**
    * Render all posts
+   * Uses optimized batch rendering for better performance with many posts
    * @param posts Optional array of posts to render (for incremental builds)
    */
   private async renderPosts(posts?: Document[]): Promise<void> {
@@ -622,7 +626,125 @@ export class Builder {
 
     logger.info(`Rendering ${filteredPosts.length} posts...`);
 
-    await Promise.all(filteredPosts.map((post) => this.renderDocument(post)));
+    // Use optimized batch rendering for better performance
+    await this.renderDocumentsBatch(filteredPosts);
+  }
+
+  /**
+   * Pre-create all unique output directories for a set of documents
+   * This avoids redundant mkdir calls during parallel rendering
+   * @param docs Documents to create directories for
+   */
+  private async preCreateDirectories(docs: Document[]): Promise<void> {
+    const uniqueDirs = new Set<string>();
+
+    for (const doc of docs) {
+      try {
+        const outputPath = this.getOutputPath(doc);
+        const dir = dirname(outputPath);
+        uniqueDirs.add(dir);
+      } catch {
+        // Skip documents that can't generate valid output paths
+        // These will be handled during individual rendering
+      }
+    }
+
+    // Create all directories in parallel
+    await Promise.all(
+      Array.from(uniqueDirs).map((dir) =>
+        mkdir(dir, { recursive: true }).catch(() => {
+          // Directory may already exist or fail - individual renders will handle errors
+        })
+      )
+    );
+  }
+
+  /**
+   * Render a batch of documents with optimized I/O
+   * Pre-creates directories and uses parallel async writes
+   * @param docs Documents to render
+   */
+  private async renderDocumentsBatch(docs: Document[]): Promise<void> {
+    if (docs.length === 0) return;
+
+    // Pre-create all output directories in parallel
+    await this.preCreateDirectories(docs);
+
+    // Render all documents in parallel with async file writes
+    await Promise.all(docs.map((doc) => this.renderDocumentAsync(doc)));
+  }
+
+  /**
+   * Render a single document with async file operations
+   * This is an optimized version of renderDocument that uses async writes
+   * @param doc Document to render
+   */
+  private async renderDocumentAsync(doc: Document): Promise<void> {
+    try {
+      // Render the document
+      let html = await this.renderer.renderDocument(doc);
+
+      // Apply modern features (opt-in via config)
+      html = await this.applyModernFeatures(html);
+
+      // Get output path
+      const outputPath = this.getOutputPath(doc);
+
+      // Write file asynchronously (directory already created by preCreateDirectories)
+      try {
+        await writeFile(outputPath, html, 'utf-8');
+      } catch (_error) {
+        // If write fails, try creating directory again (race condition handling)
+        try {
+          await mkdir(dirname(outputPath), { recursive: true });
+          await writeFile(outputPath, html, 'utf-8');
+        } catch (retryError) {
+          throw new FileSystemError('Failed to write output file', {
+            file: outputPath,
+            cause: retryError instanceof Error ? retryError : undefined,
+          });
+        }
+      }
+
+      // Update cache with document and its dependencies
+      if (this.options.incremental) {
+        const dependencies: string[] = [];
+
+        // Track layout dependency
+        if (doc.layout) {
+          const layout = this.site.getLayout(doc.layout);
+          if (layout) {
+            dependencies.push(layout.relativePath);
+          }
+        }
+
+        // Update cache
+        this.cacheManager.updateFile(doc.path, doc.relativePath, dependencies);
+      }
+
+      // Trigger documents:post_write hook after document is written
+      await Hooks.trigger('documents', 'post_write', {
+        document: doc,
+        site: this.site,
+        renderer: this.renderer,
+        content: html,
+        outputPath,
+      });
+
+      logger.debug(
+        `Rendered: ${doc.relativePath} → ${relative(this.site.destination, outputPath)}`
+      );
+    } catch (error) {
+      // Wrap error with document context for structured error handling
+      // The build() method will handle final error logging
+      throw new BuildError(
+        `Failed to render document: ${error instanceof Error ? error.message : String(error)}`,
+        {
+          file: doc.relativePath,
+          cause: error instanceof Error ? error : undefined,
+        }
+      );
+    }
   }
 
   /**
@@ -716,85 +838,11 @@ export class Builder {
 
       logger.info(`Rendering ${documents.length} documents from collection '${collectionName}'...`);
 
-      collectionPromises.push(Promise.all(documents.map((doc) => this.renderDocument(doc))));
+      // Use optimized batch rendering for better performance
+      collectionPromises.push(this.renderDocumentsBatch(documents).then(() => []));
     }
 
     await Promise.all(collectionPromises);
-  }
-
-  /**
-   * Render a single document and write to destination
-   */
-  private async renderDocument(doc: Document): Promise<void> {
-    try {
-      // Render the document
-      let html = await this.renderer.renderDocument(doc);
-
-      // Apply modern features (opt-in via config)
-      html = await this.applyModernFeatures(html);
-
-      // Get output path
-      const outputPath = this.getOutputPath(doc);
-
-      // Ensure directory exists
-      try {
-        mkdirSync(dirname(outputPath), { recursive: true });
-      } catch (error) {
-        throw new FileSystemError('Failed to create output directory', {
-          file: dirname(outputPath),
-          cause: error instanceof Error ? error : undefined,
-        });
-      }
-
-      // Write file
-      try {
-        writeFileSync(outputPath, html, 'utf-8');
-      } catch (error) {
-        throw new FileSystemError('Failed to write output file', {
-          file: outputPath,
-          cause: error instanceof Error ? error : undefined,
-        });
-      }
-
-      // Update cache with document and its dependencies
-      if (this.options.incremental) {
-        const dependencies: string[] = [];
-
-        // Track layout dependency
-        if (doc.layout) {
-          const layout = this.site.getLayout(doc.layout);
-          if (layout) {
-            dependencies.push(layout.relativePath);
-          }
-        }
-
-        // Update cache
-        this.cacheManager.updateFile(doc.path, doc.relativePath, dependencies);
-      }
-
-      // Trigger documents:post_write hook after document is written
-      await Hooks.trigger('documents', 'post_write', {
-        document: doc,
-        site: this.site,
-        renderer: this.renderer,
-        content: html,
-        outputPath,
-      });
-
-      logger.debug(
-        `Rendered: ${doc.relativePath} → ${relative(this.site.destination, outputPath)}`
-      );
-    } catch (error) {
-      // Wrap error with document context for structured error handling
-      // The build() method will handle final error logging
-      throw new BuildError(
-        `Failed to render document: ${error instanceof Error ? error.message : String(error)}`,
-        {
-          file: doc.relativePath,
-          cause: error instanceof Error ? error : undefined,
-        }
-      );
-    }
   }
 
   /**

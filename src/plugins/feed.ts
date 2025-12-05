@@ -3,10 +3,13 @@
  *
  * Implements jekyll-feed functionality
  * Generates an Atom feed (feed.xml) for blog posts
+ * Uses the 'feed' npm package for feed generation
  *
  * @see https://github.com/jekyll/jekyll-feed
+ * @see https://github.com/jpmonette/feed
  */
 
+import { Feed } from 'feed';
 import { Plugin, GeneratorPlugin, GeneratorResult, GeneratorPriority } from './types';
 import { Renderer } from '../core/Renderer';
 import { Site } from '../core/Site';
@@ -71,7 +74,7 @@ export class FeedPlugin implements Plugin, GeneratorPlugin {
   }
 
   /**
-   * Generate the Atom feed XML content
+   * Generate the Atom feed XML content using the feed library
    */
   generateFeed(site: Site): string {
     const config = site.config;
@@ -102,53 +105,40 @@ export class FeedPlugin implements Plugin, GeneratorPlugin {
     const latestPost = feedPosts[0];
     const updated = latestPost?.date || new Date();
 
-    const lines: string[] = [
-      '<?xml version="1.0" encoding="utf-8"?>',
-      '<feed xmlns="http://www.w3.org/2005/Atom">',
-    ];
-
-    // Feed metadata
-    lines.push(`  <title>${escapeXml(title)}</title>`);
-    if (description) {
-      lines.push(`  <subtitle>${escapeXml(description)}</subtitle>`);
-    }
-    lines.push(`  <link href="${escapeXml(feedUrl)}" rel="self" type="application/atom+xml"/>`);
-    lines.push(`  <link href="${escapeXml(siteUrl)}/" rel="alternate" type="text/html"/>`);
-    lines.push(`  <updated>${new Date(updated).toISOString()}</updated>`);
-    lines.push(`  <id>${escapeXml(siteUrl)}/</id>`);
-
-    // Author information
-    if (authorName) {
-      lines.push('  <author>');
-      lines.push(`    <name>${escapeXml(authorName)}</name>`);
-      if (authorEmail) {
-        lines.push(`    <email>${escapeXml(authorEmail)}</email>`);
-      }
-      if (authorUri) {
-        lines.push(`    <uri>${escapeXml(authorUri)}</uri>`);
-      }
-      lines.push('  </author>');
-    }
-
-    // Generator tag
-    lines.push(
-      '  <generator uri="https://github.com/benbalter/jekyll.js" version="0.1.0">Jekyll.js</generator>'
-    );
+    // Create Feed using the feed library
+    const feed = new Feed({
+      title: title,
+      description: description || undefined,
+      id: `${siteUrl}/`,
+      link: `${siteUrl}/`,
+      updated: new Date(updated),
+      generator: 'Jekyll.js',
+      copyright: '', // Empty string as copyright is optional for Jekyll-style feeds
+      feedLinks: {
+        atom: feedUrl,
+      },
+      author: authorName
+        ? {
+            name: authorName,
+            email: authorEmail || undefined,
+            link: authorUri || undefined,
+          }
+        : undefined,
+    });
 
     // Add entries for each post
     for (const post of feedPosts) {
-      lines.push(this.generateEntry(post, site, siteUrl));
+      this.addFeedEntry(feed, post, site, siteUrl);
     }
 
-    lines.push('</feed>');
-    return lines.join('\n');
+    // Generate Atom 1.0 feed
+    return feed.atom1();
   }
 
   /**
-   * Generate a single feed entry for a post
+   * Add a single feed entry for a post using the feed library
    */
-  private generateEntry(post: Document, site: Site, siteUrl: string): string {
-    const lines: string[] = [];
+  private addFeedEntry(feed: Feed, post: Document, site: Site, siteUrl: string): void {
     const postUrl = `${siteUrl}${post.url || ''}`;
     const postDate = post.date || new Date();
     const postTitle = post.title || 'Untitled';
@@ -162,49 +152,28 @@ export class FeedPlugin implements Plugin, GeneratorPlugin {
     // Get post excerpt or description
     const excerpt = post.data.excerpt || post.data.description || '';
 
-    lines.push('  <entry>');
-    lines.push(`    <title type="html">${escapeXml(postTitle)}</title>`);
-    lines.push(
-      `    <link href="${escapeXml(postUrl)}" rel="alternate" type="text/html" title="${escapeXml(postTitle)}"/>`
-    );
-    lines.push(`    <published>${new Date(postDate).toISOString()}</published>`);
+    feed.addItem({
+      title: postTitle,
+      id: postUrl,
+      link: postUrl,
+      description: excerpt || undefined,
+      content: excerpt || undefined,
+      date: new Date(postDate),
+      published: new Date(postDate),
+      author: authorName
+        ? [
+            {
+              name: authorName,
+              email: authorEmail || undefined,
+              link: authorUri || undefined,
+            },
+          ]
+        : undefined,
+      category: post.categories.map((cat) => ({ name: cat })),
+    });
 
-    // Use last_modified_at if available, otherwise use date
-    const updatedDate = post.data.last_modified_at || postDate;
-    lines.push(`    <updated>${new Date(updatedDate).toISOString()}</updated>`);
-
-    lines.push(`    <id>${escapeXml(postUrl)}</id>`);
-
-    // Content - use excerpt or full content
-    if (excerpt) {
-      lines.push(`    <content type="html">${escapeXml(excerpt)}</content>`);
-    }
-
-    // Author for this entry
-    if (authorName) {
-      lines.push('    <author>');
-      lines.push(`      <name>${escapeXml(authorName)}</name>`);
-      if (authorEmail) {
-        lines.push(`      <email>${escapeXml(authorEmail)}</email>`);
-      }
-      if (authorUri) {
-        lines.push(`      <uri>${escapeXml(authorUri)}</uri>`);
-      }
-      lines.push('    </author>');
-    }
-
-    // Categories
-    for (const category of post.categories) {
-      lines.push(`    <category term="${escapeXml(category)}"/>`);
-    }
-
-    // Summary/excerpt
-    if (excerpt) {
-      lines.push(`    <summary type="html">${escapeXml(excerpt)}</summary>`);
-    }
-
-    lines.push('  </entry>');
-    return lines.join('\n');
+    // Note: The feed library doesn't have a direct 'updated' field per item in atom1()
+    // but it handles the main feed's updated time based on items
   }
 }
 

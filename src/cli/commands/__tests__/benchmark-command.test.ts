@@ -179,4 +179,71 @@ describe('benchmarkCommand', () => {
     // Check that site was built using defaults
     expect(existsSync(outputDir)).toBe(true);
   });
+
+  describe('error handling', () => {
+    it('should fail when source directory does not exist', async () => {
+      const mockExit = jest
+        .spyOn(process, 'exit')
+        .mockImplementation((code?: string | number | null | undefined): never => {
+          throw new Error(`process.exit(${code})`);
+        });
+
+      const nonExistentDir = join(testSiteDir, 'non-existent-dir');
+
+      await expect(
+        benchmarkCommand({
+          source: nonExistentDir,
+          destination: outputDir,
+          config: '_config.yml',
+          runs: 1,
+        })
+      ).rejects.toThrow('process.exit(1)');
+
+      mockExit.mockRestore();
+    });
+
+    it('should fail when build encounters an error', async () => {
+      const mockExit = jest
+        .spyOn(process, 'exit')
+        .mockImplementation((code?: string | number | null | undefined): never => {
+          throw new Error(`process.exit(${code})`);
+        });
+
+      // Create an invalid layout that will cause a build error
+      writeFileSync(join(testSiteDir, '_layouts', 'default.html'), '{% invalid_tag %}');
+
+      await expect(
+        benchmarkCommand({
+          source: testSiteDir,
+          destination: outputDir,
+          config: '_config.yml',
+          runs: 1,
+        })
+      ).rejects.toThrow('process.exit(1)');
+
+      mockExit.mockRestore();
+    });
+
+    it('should fail when configuration validation fails', async () => {
+      const mockExit = jest
+        .spyOn(process, 'exit')
+        .mockImplementation((code?: string | number | null | undefined): never => {
+          throw new Error(`process.exit(${code})`);
+        });
+
+      // Create an invalid config with wrong port type
+      writeFileSync(join(testSiteDir, '_config.yml'), 'port: invalid_port\n');
+
+      await expect(
+        benchmarkCommand({
+          source: testSiteDir,
+          destination: outputDir,
+          config: '_config.yml',
+          runs: 1,
+        })
+      ).rejects.toThrow('process.exit(1)');
+
+      mockExit.mockRestore();
+    });
+  });
 });

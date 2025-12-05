@@ -106,7 +106,7 @@ async function runBenchmarkBuild(
 export async function benchmarkCommand(options: BenchmarkOptions): Promise<void> {
   const isVerbose = options.verbose || false;
   const trackMemory = options.memory || false;
-  const numRuns = Math.max(1, options.runs || 3); // Ensure at least 1 run
+  const numRuns = options.runs ?? 3;
 
   logger.setVerbose(isVerbose);
 
@@ -167,6 +167,8 @@ export async function benchmarkCommand(options: BenchmarkOptions): Promise<void>
       if (trackMemory) {
         memoryTracker = new MemoryTracker();
         memoryTracker.start();
+        // Sample before build to establish baseline
+        memoryTracker.sample();
       }
 
       const startTime = Date.now();
@@ -178,6 +180,7 @@ export async function benchmarkCommand(options: BenchmarkOptions): Promise<void>
 
       // Collect memory stats
       if (memoryTracker) {
+        // Sample after build to capture final state
         memoryTracker.sample();
         const memResults = memoryTracker.getResults();
         memoryReadings.push({
@@ -200,7 +203,7 @@ export async function benchmarkCommand(options: BenchmarkOptions): Promise<void>
     const variance =
       durations.reduce((sum, val) => sum + Math.pow(val - avgDuration, 2), 0) / durations.length;
     const stdDev = Math.sqrt(variance);
-    const cv = (stdDev / avgDuration) * 100;
+    const cv = avgDuration > 0 ? (stdDev / avgDuration) * 100 : 0;
 
     // Print summary statistics
     printHeader('📈 Summary Statistics');

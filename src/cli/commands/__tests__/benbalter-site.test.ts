@@ -1,5 +1,5 @@
 import { execSync, spawn } from 'child_process';
-import { existsSync, readFileSync, readdirSync, rmSync, statSync } from 'fs';
+import { existsSync, readFileSync, readdirSync, rmSync, statSync, mkdirSync } from 'fs';
 import { join, resolve, relative } from 'path';
 
 /**
@@ -62,7 +62,7 @@ describe('Integration Test: benbalter/benbalter.github.com', () => {
     try {
       // Create test sites directory if it doesn't exist
       if (!existsSync(testSitesDir)) {
-        execSync(`mkdir -p "${testSitesDir}"`, { stdio: 'pipe' });
+        mkdirSync(testSitesDir, { recursive: true });
       }
 
       // Check if site already exists

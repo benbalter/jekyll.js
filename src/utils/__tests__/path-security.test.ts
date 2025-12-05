@@ -10,6 +10,8 @@ import {
   isPermalinkSafe,
   sanitizePermalink,
   PathTraversalError,
+  normalizePathSeparators,
+  shouldExcludePath,
 } from '../path-security';
 import { resolve, join } from 'path';
 
@@ -201,6 +203,123 @@ describe('path-security', () => {
     it('should be instance of Error', () => {
       const error = new PathTraversalError('Test', '../a', '/b');
       expect(error).toBeInstanceOf(Error);
+    });
+  });
+
+  describe('normalizePathSeparators', () => {
+    it('should convert backslashes to forward slashes', () => {
+      expect(normalizePathSeparators('path\\to\\file')).toBe('path/to/file');
+      expect(normalizePathSeparators('a\\b\\c\\d')).toBe('a/b/c/d');
+    });
+
+    it('should preserve forward slashes', () => {
+      expect(normalizePathSeparators('path/to/file')).toBe('path/to/file');
+      expect(normalizePathSeparators('/absolute/path')).toBe('/absolute/path');
+    });
+
+    it('should handle mixed separators', () => {
+      expect(normalizePathSeparators('path\\to/mixed\\file')).toBe('path/to/mixed/file');
+    });
+
+    it('should handle empty strings', () => {
+      expect(normalizePathSeparators('')).toBe('');
+    });
+
+    it('should handle paths with no separators', () => {
+      expect(normalizePathSeparators('filename.txt')).toBe('filename.txt');
+    });
+
+    it('should handle consecutive backslashes', () => {
+      expect(normalizePathSeparators('path\\\\double')).toBe('path//double');
+    });
+  });
+
+  describe('shouldExcludePath', () => {
+    describe('hidden files (dot prefix)', () => {
+      it('should exclude files starting with dot by default', () => {
+        expect(shouldExcludePath('.github', [], [])).toBe(true);
+        expect(shouldExcludePath('.gitignore', [], [])).toBe(true);
+        expect(shouldExcludePath('.hidden/file.md', [], [])).toBe(true);
+      });
+
+      it('should allow explicitly included dot files', () => {
+        expect(shouldExcludePath('.github', [], ['.github'])).toBe(false);
+        expect(shouldExcludePath('.github/workflows', [], ['.github'])).toBe(false);
+        expect(shouldExcludePath('.gitignore', [], ['.gitignore'])).toBe(false);
+      });
+
+      it('should handle include patterns with leading slash', () => {
+        expect(shouldExcludePath('.github', [], ['/.github'])).toBe(false);
+        expect(shouldExcludePath('.github/file.md', [], ['/.github'])).toBe(false);
+      });
+    });
+
+    describe('hash prefix files', () => {
+      it('should exclude files starting with hash by default', () => {
+        expect(shouldExcludePath('#temp', [], [])).toBe(true);
+        expect(shouldExcludePath('#backup.txt', [], [])).toBe(true);
+      });
+
+      it('should allow explicitly included hash files', () => {
+        expect(shouldExcludePath('#special', [], ['#special'])).toBe(false);
+      });
+    });
+
+    describe('tilde prefix files', () => {
+      it('should exclude files starting with tilde by default', () => {
+        expect(shouldExcludePath('~backup', [], [])).toBe(true);
+        expect(shouldExcludePath('~temp.txt', [], [])).toBe(true);
+      });
+
+      it('should allow explicitly included tilde files', () => {
+        expect(shouldExcludePath('~important', [], ['~important'])).toBe(false);
+      });
+    });
+
+    describe('exclude patterns', () => {
+      it('should exclude exact matches', () => {
+        expect(shouldExcludePath('docs', ['docs'], [])).toBe(true);
+        expect(shouldExcludePath('vendor', ['vendor'], [])).toBe(true);
+      });
+
+      it('should exclude directories and their contents', () => {
+        expect(shouldExcludePath('docs/readme.md', ['docs'], [])).toBe(true);
+        expect(shouldExcludePath('vendor/bundle/gem.rb', ['vendor'], [])).toBe(true);
+      });
+
+      it('should handle exclude patterns with leading slash', () => {
+        expect(shouldExcludePath('docs', ['/docs'], [])).toBe(true);
+        expect(shouldExcludePath('docs/file.md', ['/docs'], [])).toBe(true);
+      });
+
+      it('should not exclude partial matches', () => {
+        expect(shouldExcludePath('documentation', ['docs'], [])).toBe(false);
+        expect(shouldExcludePath('vendor-scripts', ['vendor'], [])).toBe(false);
+      });
+    });
+
+    describe('cross-platform paths', () => {
+      it('should handle Windows-style paths', () => {
+        expect(shouldExcludePath('docs\\file.md', ['docs'], [])).toBe(true);
+        expect(shouldExcludePath('.github\\workflows', [], ['.github'])).toBe(false);
+      });
+
+      it('should handle mixed path separators', () => {
+        expect(shouldExcludePath('docs/sub\\file.md', ['docs'], [])).toBe(true);
+      });
+    });
+
+    describe('non-excluded paths', () => {
+      it('should not exclude regular files', () => {
+        expect(shouldExcludePath('index.html', [], [])).toBe(false);
+        expect(shouldExcludePath('posts/2024/hello.md', [], [])).toBe(false);
+        expect(shouldExcludePath('assets/css/style.css', [], [])).toBe(false);
+      });
+
+      it('should not exclude files not matching any pattern', () => {
+        expect(shouldExcludePath('src/main.ts', ['docs', 'vendor'], [])).toBe(false);
+        expect(shouldExcludePath('README.md', ['node_modules'], [])).toBe(false);
+      });
     });
   });
 });

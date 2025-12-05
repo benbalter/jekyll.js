@@ -8,7 +8,7 @@
  * @see https://github.com/jekyll/jekyll-mentions
  */
 
-import { Plugin } from './index';
+import { Plugin } from './types';
 import { Renderer } from '../core/Renderer';
 import { Site } from '../core/Site';
 import { escapeHtml } from '../utils/html';

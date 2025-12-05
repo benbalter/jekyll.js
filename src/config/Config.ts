@@ -613,6 +613,11 @@ export function mergeWithDefaults(
     }
   }
 
+  // Normalize encoding to lowercase (Jekyll Ruby accepts case-insensitive encoding)
+  if (merged.encoding) {
+    merged.encoding = merged.encoding.toLowerCase() as BufferEncoding;
+  }
+
   return merged;
 }
 
@@ -694,8 +699,10 @@ export function validateConfig(config: JekyllConfig): ConfigValidation {
   }
 
   // Validate encoding using the shared VALID_ENCODINGS constant
+  // Jekyll (Ruby) accepts encoding values case-insensitively
   if (config.encoding) {
-    if (!VALID_ENCODINGS.includes(config.encoding as BufferEncoding)) {
+    const normalizedEncoding = config.encoding.toLowerCase() as BufferEncoding;
+    if (!VALID_ENCODINGS.includes(normalizedEncoding)) {
       errors.push(
         `Invalid encoding: "${config.encoding}". ` + `Valid options: ${VALID_ENCODINGS.join(', ')}.`
       );

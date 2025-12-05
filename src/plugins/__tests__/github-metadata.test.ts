@@ -1,6 +1,7 @@
 import { GitHubMetadataPlugin } from '../github-metadata';
 import { Site } from '../../core/Site';
 import { Renderer } from '../../core/Renderer';
+import { logger } from '../../utils/logger';
 import { mkdirSync, rmSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -10,6 +11,7 @@ describe('GitHubMetadataPlugin', () => {
   let site: Site;
   let renderer: Renderer;
   let plugin: GitHubMetadataPlugin;
+  let consoleWarnSpy: jest.SpyInstance;
 
   // Store original env vars
   const originalEnv = { ...process.env };
@@ -24,12 +26,17 @@ describe('GitHubMetadataPlugin', () => {
     delete process.env.GITHUB_SHA;
     delete process.env.JEKYLL_ENV;
     delete process.env.GITHUB_PAGES;
+
+    // Disable colors for easier testing and suppress console warnings
+    logger.configure({ colors: false });
+    consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
   });
 
   afterEach(() => {
     rmSync(testSiteDir, { recursive: true, force: true });
     // Restore original env vars
     process.env = { ...originalEnv };
+    consoleWarnSpy.mockRestore();
   });
 
   it('should have the correct name', () => {
@@ -458,6 +465,84 @@ describe('GitHubMetadataPlugin', () => {
       expect(result).toBe(
         '<a href="https://github.com/octocat/hello-world/edit/main/page.md">Say &quot;Hello&quot;</a>'
       );
+    });
+  });
+
+  describe('missing required information warnings', () => {
+    it('should warn when repository is missing from config and environment', () => {
+      const config = {
+        title: 'Test Site',
+        url: 'https://example.com',
+      };
+      site = new Site(testSiteDir, config);
+      renderer = new Renderer(site);
+      plugin = new GitHubMetadataPlugin();
+      plugin.register(renderer, site);
+
+      expect(consoleWarnSpy).toHaveBeenCalled();
+      const warnCall = consoleWarnSpy.mock.calls[0][0];
+      expect(warnCall).toContain('jekyll-github-metadata');
+      expect(warnCall).toContain('No GitHub repository found');
+      expect(warnCall).toContain('repository');
+      expect(warnCall).toContain('GITHUB_REPOSITORY');
+    });
+
+    it('should not warn when repository is configured', () => {
+      const config = {
+        title: 'Test Site',
+        url: 'https://example.com',
+        repository: 'owner/repo',
+      };
+      site = new Site(testSiteDir, config);
+      renderer = new Renderer(site);
+      plugin = new GitHubMetadataPlugin();
+      plugin.register(renderer, site);
+
+      expect(consoleWarnSpy).not.toHaveBeenCalled();
+    });
+
+    it('should not warn when github.repository_nwo is configured', () => {
+      const config = {
+        title: 'Test Site',
+        url: 'https://example.com',
+        github: {
+          repository_nwo: 'owner/repo',
+        },
+      };
+      site = new Site(testSiteDir, config);
+      renderer = new Renderer(site);
+      plugin = new GitHubMetadataPlugin();
+      plugin.register(renderer, site);
+
+      expect(consoleWarnSpy).not.toHaveBeenCalled();
+    });
+
+    it('should not warn when GITHUB_REPOSITORY env var is set', () => {
+      process.env.GITHUB_REPOSITORY = 'env-owner/env-repo';
+
+      const config = {
+        title: 'Test Site',
+        url: 'https://example.com',
+      };
+      site = new Site(testSiteDir, config);
+      renderer = new Renderer(site);
+      plugin = new GitHubMetadataPlugin();
+      plugin.register(renderer, site);
+
+      expect(consoleWarnSpy).not.toHaveBeenCalled();
+    });
+
+    it('should not warn when repository can be inferred from github.io URL', () => {
+      const config = {
+        title: 'Test Site',
+        url: 'https://octocat.github.io/hello-world',
+      };
+      site = new Site(testSiteDir, config);
+      renderer = new Renderer(site);
+      plugin = new GitHubMetadataPlugin();
+      plugin.register(renderer, site);
+
+      expect(consoleWarnSpy).not.toHaveBeenCalled();
     });
   });
 });

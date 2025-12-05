@@ -4,6 +4,7 @@ import { Renderer } from '../../core/Renderer';
 import { Document, DocumentType } from '../../core/Document';
 import { mkdirSync, writeFileSync, rmSync, existsSync, readFileSync, statSync } from 'fs';
 import { join } from 'path';
+import sharp from 'sharp';
 
 describe('OgImagePlugin', () => {
   const testSiteDir = join(__dirname, '../../../../../tmp/test-og-image-site');
@@ -146,6 +147,44 @@ describe('OgImagePlugin', () => {
 
     // File should not have been modified
     expect(firstMtime).toBe(secondMtime);
+  });
+
+  it('should regenerate existing images when force is true', async () => {
+    // Create a post file
+    const postFile = join(testSiteDir, '_posts', '2024-01-01-force-test.md');
+    writeFileSync(postFile, '---\ntitle: Force Test\n---\nContent');
+
+    const post = new Document(postFile, testSiteDir, DocumentType.POST);
+    post.url = '/2024/01/01/force-test.html';
+    site.posts.push(post);
+
+    // Generate OG image first time
+    await plugin.generate(site, renderer);
+
+    const imagePath = join(testSiteDir, 'assets/images/og/posts/force-test.png');
+    const firstMtime = existsSync(imagePath) ? statSync(imagePath).mtime.getTime() : 0;
+
+    // Wait a bit and regenerate with force=true
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    // Create new site config with force=true
+    const siteWithForce = new Site(testSiteDir, {
+      title: 'Test Site',
+      url: 'https://example.com',
+      og_image: {
+        output_dir: 'assets/images/og',
+        force: true,
+      },
+    });
+    siteWithForce.posts.push(post);
+    const rendererWithForce = new Renderer(siteWithForce);
+
+    await plugin.generate(siteWithForce, rendererWithForce);
+
+    const secondMtime = existsSync(imagePath) ? statSync(imagePath).mtime.getTime() : 0;
+
+    // File should have been regenerated
+    expect(secondMtime).toBeGreaterThan(firstMtime);
   });
 
   it('should merge post-level og_image config with global config', async () => {
@@ -293,5 +332,104 @@ describe('OgImagePlugin image generation', () => {
 
     const imagePath = join(testSiteDir, 'assets/images/og/posts/long-title.png');
     expect(existsSync(imagePath)).toBe(true);
+  });
+
+  it('should generate image with logo image', async () => {
+    // Create a simple test logo image using sharp
+    
+    const logoPath = join(testSiteDir, 'logo.png');
+    await sharp({
+      create: {
+        width: 200,
+        height: 200,
+        channels: 3,
+        background: { r: 0, g: 128, b: 255 },
+      },
+    })
+      .png()
+      .toFile(logoPath);
+
+    // Create site with logo configured
+    const siteWithLogo = new Site(testSiteDir, {
+      title: 'Test Site',
+      url: 'https://example.com',
+      og_image: {
+        output_dir: 'assets/images/og',
+        image: 'logo.png',
+      },
+    });
+
+    const postFile = join(testSiteDir, '_posts', '2024-01-01-logo-test.md');
+    writeFileSync(postFile, '---\ntitle: Logo Test\ndescription: Testing logo image\n---\nContent');
+
+    const post = new Document(postFile, testSiteDir, DocumentType.POST);
+    post.url = '/2024/01/01/logo-test.html';
+    siteWithLogo.posts.push(post);
+
+    const rendererWithLogo = new Renderer(siteWithLogo);
+
+    await plugin.generate(siteWithLogo, rendererWithLogo);
+
+    const imagePath = join(testSiteDir, 'assets/images/og/posts/logo-test.png');
+    expect(existsSync(imagePath)).toBe(true);
+
+    // Verify it's a valid PNG
+    const buffer = readFileSync(imagePath);
+    expect(buffer[0]).toBe(0x89);
+    expect(buffer[1]).toBe(0x50);
+    expect(buffer[2]).toBe(0x4e);
+    expect(buffer[3]).toBe(0x47);
+  });
+
+  it('should generate image with background image', async () => {
+    // Create a simple test background image using sharp
+    
+    const bgPath = join(testSiteDir, 'background.png');
+    await sharp({
+      create: {
+        width: 1200,
+        height: 600,
+        channels: 3,
+        background: { r: 100, g: 150, b: 200 },
+      },
+    })
+      .png()
+      .toFile(bgPath);
+
+    // Create site with background image configured
+    const siteWithBg = new Site(testSiteDir, {
+      title: 'Test Site',
+      url: 'https://example.com',
+      og_image: {
+        output_dir: 'assets/images/og',
+        canvas: {
+          background_image: 'background.png',
+        },
+      },
+    });
+
+    const postFile = join(testSiteDir, '_posts', '2024-01-01-bg-test.md');
+    writeFileSync(
+      postFile,
+      '---\ntitle: Background Test\ndescription: Testing background image\n---\nContent'
+    );
+
+    const post = new Document(postFile, testSiteDir, DocumentType.POST);
+    post.url = '/2024/01/01/bg-test.html';
+    siteWithBg.posts.push(post);
+
+    const rendererWithBg = new Renderer(siteWithBg);
+
+    await plugin.generate(siteWithBg, rendererWithBg);
+
+    const imagePath = join(testSiteDir, 'assets/images/og/posts/bg-test.png');
+    expect(existsSync(imagePath)).toBe(true);
+
+    // Verify it's a valid PNG
+    const buffer = readFileSync(imagePath);
+    expect(buffer[0]).toBe(0x89);
+    expect(buffer[1]).toBe(0x50);
+    expect(buffer[2]).toBe(0x4e);
+    expect(buffer[3]).toBe(0x47);
   });
 });

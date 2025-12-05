@@ -270,6 +270,11 @@ export class OgImagePlugin implements Plugin, GeneratorPlugin {
 
   /**
    * Generate an OG image for a single post
+   *
+   * Note: This method converts the canvas to PNG buffer multiple times during composition.
+   * While this could be optimized using batched composite operations, the current approach
+   * prioritizes code clarity and maintainability. Since this runs at build time (not on
+   * every request), the performance impact is acceptable for typical site sizes.
    */
   private async generateImageForPost(
     site: Site,
@@ -338,6 +343,10 @@ export class OgImagePlugin implements Plugin, GeneratorPlugin {
             Math.ceil((metadata.height || IMAGE_HEIGHT) * ratio)
           )
           .extract({ left: 0, top: 0, width: IMAGE_WIDTH, height: IMAGE_HEIGHT });
+      } else {
+        logger.warn(
+          `OG Image: Background image not found: ${config.canvas.background_image}, using solid color instead`
+        );
       }
     }
 
@@ -516,7 +525,20 @@ export class OgImagePlugin implements Plugin, GeneratorPlugin {
     if (lines.length > 3 && displayLines[2]) {
       // Safely truncate the third line and add ellipsis
       const lastLine = displayLines[2];
-      displayLines[2] = lastLine.length > 3 ? lastLine.slice(0, -3) + '...' : '...';
+      if (lastLine.length > 6) {
+        displayLines[2] = lastLine.slice(0, -3) + '...';
+      } else if (displayLines.length > 1 && displayLines[1]) {
+        // If the last line is too short, try truncating the previous line instead
+        displayLines.pop();
+        const newLastLine = displayLines[displayLines.length - 1];
+        if (newLastLine) {
+          displayLines[displayLines.length - 1] =
+            newLastLine.length > 6 ? newLastLine.slice(0, -3) + '...' : newLastLine + '...';
+        }
+      } else {
+        // Fallback for single short line: just append ellipsis
+        displayLines[2] = lastLine + '...';
+      }
     }
 
     const lineHeight = Math.round(fontSize * 1.4);
@@ -565,16 +587,16 @@ export class OgImagePlugin implements Plugin, GeneratorPlugin {
     const fontSize = 20;
     const color = config.content.color || '#535358';
     const marginBottom = this.getMarginBottom(config);
+    const svgWidth = 400;
 
-    // Create SVG with text
+    // Create SVG with text anchored at the right edge
     const textSvg = Buffer.from(`
-      <svg width="400" height="${fontSize * 2}">
-        <text x="0" y="${fontSize}" font-size="${fontSize}" fill="${color}" font-family="sans-serif" text-anchor="end">${this.escapeXml(config.domain)}</text>
+      <svg width="${svgWidth}" height="${fontSize * 2}">
+        <text x="${svgWidth}" y="${fontSize}" font-size="${fontSize}" fill="${color}" font-family="sans-serif" text-anchor="end">${this.escapeXml(config.domain)}</text>
       </svg>
     `);
 
     const textImage = await sharp(textSvg).png().toBuffer();
-    const textMetadata = await sharp(textImage).metadata();
 
     // Position at bottom right
     const top = Math.round(IMAGE_HEIGHT - marginBottom - fontSize * 2);
@@ -585,7 +607,7 @@ export class OgImagePlugin implements Plugin, GeneratorPlugin {
       {
         input: textImage,
         top: Math.max(padding, top),
-        left: Math.round(IMAGE_WIDTH - padding - (textMetadata.width || 400)),
+        left: IMAGE_WIDTH - padding - svgWidth,
       },
     ]);
   }
@@ -624,7 +646,12 @@ export class OgImagePlugin implements Plugin, GeneratorPlugin {
 
   /**
    * Simple text wrapping based on character count
-   * This is a simplified version - in production you'd want proper text measurement
+   *
+   * Note: Uses approximation of 0.5 * fontSize for average character width.
+   * This works well for Latin scripts with proportional fonts but may not be
+   * accurate for non-Latin scripts (CJK, Arabic, etc.) or monospace fonts.
+   * For more precise text measurement, consider using a dedicated text
+   * measurement library or Sharp's text rendering capabilities.
    */
   private wrapText(text: string, maxWidth: number, fontSize: number): string[] {
     // Approximate characters per line based on font size and width
@@ -663,6 +690,7 @@ export class OgImagePlugin implements Plugin, GeneratorPlugin {
         b: parseInt(result[3], 16),
       };
     }
+    logger.warn(`OG Image: Invalid hex color "${hex}", using white (#FFFFFF) as fallback`);
     return { r: 255, g: 255, b: 255 };
   }
 

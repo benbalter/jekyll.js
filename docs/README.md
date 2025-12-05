@@ -146,7 +146,7 @@ Development timeline and release plan. Contains:
 ---
 
 ### [QUICK-REFERENCE.md](./QUICK-REFERENCE.md)
-**Length**: ~500 lines  
+**Length**: ~420 lines  
 **Target Audience**: Contributors
 
 Developer quick start guide. Contains:
@@ -236,6 +236,7 @@ As of **v0.1.0**:
 - **🟡 Partial**: 2 features
 - **🔴 Planned**: 4 features
 - **⚫ Not Planned**: 0 features (Ruby-specific only)
+- **🧪 Tests**: 1065 tests passing
 
 **Completed**: All Phase 1 and Phase 2 features
 

@@ -229,7 +229,7 @@ Allow users to create custom plugins in TypeScript.
 - [ ] Memory usage comparable to Jekyll.rb for large sites
 
 ### Quality Metrics
-- ✅ 793 tests passing
+- ✅ 1065 tests passing
 - ✅ All features have integration tests
 - ✅ Comprehensive documentation
 - [ ] Zero critical bugs in issue tracker

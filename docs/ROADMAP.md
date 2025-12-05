@@ -73,7 +73,7 @@ This roadmap outlines the development timeline for jekyll.js to achieve full com
   - Modern filters (reading_time, toc, heading_anchors, external_links, auto_excerpt)
 
 ### Success Criteria ✅
-- ✅ All features have comprehensive tests (793 tests passing)
+- ✅ All features have comprehensive tests (1065 tests passing)
 - ✅ Documentation updated
 - ✅ Benchmark tests available
 - ✅ Real Jekyll sites build successfully
@@ -342,7 +342,7 @@ We follow [Semantic Versioning](https://semver.org/):
 
 ### Core Dependencies
 - **TypeScript**: Latest stable version
-- **Node.js**: LTS versions (20+, required 22+ for full features)
+- **Node.js**: LTS versions (22+ required for full features)
 - **liquidjs**: Liquid template engine
 - **remark**: Markdown processing
 - **chokidar**: File watching

@@ -1115,11 +1115,22 @@ export class Renderer {
         // Search in static files
         if (site.static_files) {
           for (const staticFile of site.static_files) {
-            const filePath =
-              staticFile.relativePath?.replace(/\\/g, '/') || staticFile.path?.replace(/\\/g, '/');
+            // Static files may have different path structures:
+            // - Original StaticFile object: has relativePath property
+            // - Serialized JSON (from toJSON): has 'path' property which is the URL (e.g., "/assets/style.css")
+            let filePath = staticFile.relativePath?.replace(/\\/g, '/');
+
+            // If relativePath not available, reconstruct from URL
+            // In serialized JSON, staticFile.path is the URL, not a file path
+            if (!filePath && staticFile.path) {
+              // Remove leading slash from URL to get relative path for comparison
+              filePath = staticFile.path.replace(/^\//g, '');
+            }
+
             if (filePath === normalizedPath) {
-              // Static files use their relative path as URL
-              return staticFile.url || `/${normalizedPath}`;
+              // Return URL - prefer staticFile.url getter, or the serialized path (which is already a URL)
+              const url = staticFile.url || staticFile.path || `/${normalizedPath}`;
+              return url.startsWith('/') ? url : `/${url}`;
             }
           }
         }

@@ -1328,6 +1328,277 @@ title: Directory Test
         /Path is not a file: 'somedir'/
       );
     });
+
+    describe('link tag', () => {
+      // Helper function to create site context for link/post_url tag tests
+      const createSiteContext = (site: Site) => {
+        const siteData = site.toJSON();
+        return {
+          site: {
+            ...siteData.config,
+            pages: siteData.pages,
+            posts: siteData.posts,
+            static_files: siteData.static_files,
+            collections: siteData.collections,
+          },
+        };
+      };
+
+      it('should resolve link to a page URL', async () => {
+        // Create a page
+        const aboutPath = join(testDir, 'about.md');
+        writeFileSync(
+          aboutPath,
+          `---
+title: About
+---
+About content`
+        );
+
+        site = new Site(testDir);
+        await site.read();
+
+        // Manually set URL for the page (normally done by Builder)
+        const aboutPage = site.pages.find((p) => p.relativePath === 'about.md');
+        if (aboutPage) {
+          aboutPage.url = '/about.html';
+        }
+
+        const renderer = new Renderer(site);
+        const template = '{% link about.md %}';
+        const context = createSiteContext(site);
+
+        const result = await renderer.render(template, context);
+        expect(result).toBe('/about.html');
+      });
+
+      it('should resolve link to a post URL', async () => {
+        // Create a posts directory and post
+        mkdirSync(join(testDir, '_posts'), { recursive: true });
+        const postPath = join(testDir, '_posts', '2024-01-15-my-first-post.md');
+        writeFileSync(
+          postPath,
+          `---
+title: My First Post
+---
+Post content`
+        );
+
+        site = new Site(testDir);
+        await site.read();
+
+        // Manually set URL for the post (normally done by Builder)
+        const post = site.posts.find((p) => p.basename === '2024-01-15-my-first-post');
+        if (post) {
+          post.url = '/2024/01/15/my-first-post.html';
+        }
+
+        const renderer = new Renderer(site);
+        const template = '{% link _posts/2024-01-15-my-first-post.md %}';
+        const context = createSiteContext(site);
+
+        const result = await renderer.render(template, context);
+        expect(result).toBe('/2024/01/15/my-first-post.html');
+      });
+
+      it('should resolve link to a static file URL', async () => {
+        // Create a static file
+        const assetsDir = join(testDir, 'assets');
+        mkdirSync(assetsDir, { recursive: true });
+        writeFileSync(join(assetsDir, 'style.css'), 'body { margin: 0; }');
+
+        site = new Site(testDir);
+        await site.read();
+
+        const renderer = new Renderer(site);
+        const template = '{% link assets/style.css %}';
+
+        const context = createSiteContext(site);
+
+        const result = await renderer.render(template, context);
+        expect(result).toBe('/assets/style.css');
+      });
+
+      it('should throw error when linked file does not exist', async () => {
+        site = new Site(testDir);
+        await site.read();
+
+        const renderer = new Renderer(site);
+        const template = '{% link nonexistent.md %}';
+        const context = createSiteContext(site);
+
+        await expect(renderer.render(template, context)).rejects.toThrow(
+          /Could not find document 'nonexistent.md'/
+        );
+      });
+
+      it('should resolve link to collection document URL', async () => {
+        // Create a collection
+        const projectsDir = join(testDir, '_projects');
+        mkdirSync(projectsDir, { recursive: true });
+        writeFileSync(
+          join(projectsDir, 'project-one.md'),
+          `---
+title: Project One
+---
+Project content`
+        );
+
+        site = new Site(testDir, {
+          collections: {
+            projects: { output: true },
+          },
+        });
+        await site.read();
+
+        // Manually set URL for the collection document (normally done by Builder)
+        const projectDoc = site.getCollection('projects').find((d) => d.basename === 'project-one');
+        if (projectDoc) {
+          projectDoc.url = '/projects/project-one.html';
+        }
+
+        const renderer = new Renderer(site);
+        const template = '{% link _projects/project-one.md %}';
+        const context = createSiteContext(site);
+
+        const result = await renderer.render(template, context);
+        expect(result).toBe('/projects/project-one.html');
+      });
+    });
+
+    describe('post_url tag', () => {
+      // Helper function to create site context for link/post_url tag tests
+      const createSiteContext = (site: Site) => {
+        const siteData = site.toJSON();
+        return {
+          site: {
+            ...siteData.config,
+            pages: siteData.pages,
+            posts: siteData.posts,
+            static_files: siteData.static_files,
+            collections: siteData.collections,
+          },
+        };
+      };
+
+      beforeEach(() => {
+        // Create posts directory
+        mkdirSync(join(testDir, '_posts'), { recursive: true });
+      });
+
+      it('should resolve post_url to a post URL', async () => {
+        // Create a post
+        const postPath = join(testDir, '_posts', '2024-01-15-hello-world.md');
+        writeFileSync(
+          postPath,
+          `---
+title: Hello World
+---
+Hello content`
+        );
+
+        site = new Site(testDir);
+        await site.read();
+
+        // Manually set URL for the post (normally done by Builder)
+        const post = site.posts.find((p) => p.basename === '2024-01-15-hello-world');
+        if (post) {
+          post.url = '/2024/01/15/hello-world.html';
+        }
+
+        const renderer = new Renderer(site);
+        const template = '{% post_url 2024-01-15-hello-world %}';
+        const context = createSiteContext(site);
+
+        const result = await renderer.render(template, context);
+        expect(result).toBe('/2024/01/15/hello-world.html');
+      });
+
+      it('should resolve post_url with subdirectory', async () => {
+        // Create a subdirectory for posts
+        const subdir = join(testDir, '_posts', 'tutorials');
+        mkdirSync(subdir, { recursive: true });
+
+        const postPath = join(subdir, '2024-02-20-getting-started.md');
+        writeFileSync(
+          postPath,
+          `---
+title: Getting Started
+---
+Tutorial content`
+        );
+
+        site = new Site(testDir);
+        await site.read();
+
+        // Manually set URL for the post (normally done by Builder)
+        const post = site.posts.find((p) => p.basename === '2024-02-20-getting-started');
+        if (post) {
+          post.url = '/tutorials/2024/02/20/getting-started.html';
+        }
+
+        const renderer = new Renderer(site);
+        const template = '{% post_url tutorials/2024-02-20-getting-started %}';
+        const context = createSiteContext(site);
+
+        const result = await renderer.render(template, context);
+        expect(result).toBe('/tutorials/2024/02/20/getting-started.html');
+      });
+
+      it('should throw error when post does not exist', async () => {
+        site = new Site(testDir);
+        await site.read();
+
+        const renderer = new Renderer(site);
+        const template = '{% post_url 2024-99-99-nonexistent %}';
+        const context = createSiteContext(site);
+
+        await expect(renderer.render(template, context)).rejects.toThrow(
+          /Could not find post '2024-99-99-nonexistent'/
+        );
+      });
+
+      it('should handle multiple posts with different dates', async () => {
+        // Create multiple posts
+        writeFileSync(
+          join(testDir, '_posts', '2024-01-01-first-post.md'),
+          `---
+title: First Post
+---
+First`
+        );
+        writeFileSync(
+          join(testDir, '_posts', '2024-06-15-second-post.md'),
+          `---
+title: Second Post
+---
+Second`
+        );
+
+        site = new Site(testDir);
+        await site.read();
+
+        // Manually set URLs for the posts
+        for (const post of site.posts) {
+          if (post.basename === '2024-01-01-first-post') {
+            post.url = '/2024/01/01/first-post.html';
+          } else if (post.basename === '2024-06-15-second-post') {
+            post.url = '/2024/06/15/second-post.html';
+          }
+        }
+
+        const renderer = new Renderer(site);
+        const context = createSiteContext(site);
+
+        // Test first post
+        const result1 = await renderer.render('{% post_url 2024-01-01-first-post %}', context);
+        expect(result1).toBe('/2024/01/01/first-post.html');
+
+        // Test second post
+        const result2 = await renderer.render('{% post_url 2024-06-15-second-post %}', context);
+        expect(result2).toBe('/2024/06/15/second-post.html');
+      });
+    });
   });
 
   describe('Modern enhancement filters', () => {

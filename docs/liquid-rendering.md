@@ -145,19 +145,32 @@ const hello = 'world';
 
 ### Link Tag
 
-Link to posts (simplified implementation):
+Link to any page, post, collection document, or static file by its path relative to the site source:
 
 ```liquid
+{% link about.md %}
 {% link _posts/2024-01-15-my-post.md %}
+{% link assets/images/logo.png %}
+{% link _projects/my-project.md %}
 ```
+
+The `link` tag will resolve the path to the document's URL. It throws an error if the file doesn't exist, helping you catch broken links during the build.
 
 ### Post URL Tag
 
-Generate post URLs (simplified implementation):
+Generate post URLs using the post identifier (date-slug format without extension):
 
 ```liquid
 {% post_url 2024-01-15-my-post %}
 ```
+
+For posts in subdirectories within `_posts/`:
+
+```liquid
+{% post_url tutorials/2024-02-20-getting-started %}
+```
+
+The `post_url` tag will resolve to the post's full permalink URL based on your site's permalink configuration.
 
 ## Extending the Renderer
 
@@ -291,10 +304,9 @@ The Renderer aims for compatibility with Jekyll 4.x Liquid templates. Most commo
 - Include relative tag
 - Raw tag (via liquidjs)
 - Highlight tag
+- Link tag (pages, posts, collections, static files)
+- Post URL tag (with subdirectory support)
 - Layout rendering
-
-### Simplified/Partial Support
-- `link` and `post_url` tags (basic implementation)
 
 ### Planned
 - More Jekyll tags (e.g., `gist`, `figure`)

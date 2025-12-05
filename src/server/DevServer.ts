@@ -251,12 +251,16 @@ export class DevServer {
         return;
       }
 
-      res.writeHead(200, {
-        'Content-Type': mimeType,
-        'Content-Length': Buffer.byteLength(responseContent),
-      });
+      try {
+        res.writeHead(200, {
+          'Content-Type': mimeType,
+          'Content-Length': Buffer.byteLength(responseContent),
+        });
 
-      res.end(responseContent);
+        res.end(responseContent);
+      } catch {
+        // Ignore network errors when client has disconnected
+      }
     } catch (_error) {
       // File not found or other error
       this.send404(res, req.url || '/');
@@ -306,7 +310,7 @@ export class DevServer {
       });
       res.end(content);
     } catch {
-      // Socket might be closed, ignore
+      // Ignore network errors when client has disconnected
     }
   }
 
@@ -344,7 +348,7 @@ export class DevServer {
       });
       res.end(content);
     } catch {
-      // Socket might be closed, ignore
+      // Ignore network errors when client has disconnected
     }
   }
 
@@ -383,7 +387,7 @@ export class DevServer {
       });
       res.end(content);
     } catch {
-      // Socket might be closed, ignore
+      // Ignore network errors when client has disconnected
     }
   }
 

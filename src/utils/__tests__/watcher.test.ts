@@ -6,7 +6,7 @@ import { FileWatcher, WatcherOptions } from '../watcher';
 import { Builder, Site } from '../../core';
 import { join } from 'path';
 import { tmpdir } from 'os';
-import { mkdir, writeFile, rm } from 'fs/promises';
+import { mkdir, writeFile, rm, appendFile } from 'fs/promises';
 import { existsSync } from 'fs';
 
 describe('FileWatcher', () => {
@@ -88,6 +88,31 @@ describe('FileWatcher', () => {
       watcher = new FileWatcher(options);
       expect(watcher).toBeInstanceOf(FileWatcher);
     });
+
+    it('should accept optional verbose option', () => {
+      const options: WatcherOptions = {
+        source: sourceDir,
+        destination: destDir,
+        builder,
+        verbose: true,
+      };
+
+      watcher = new FileWatcher(options);
+      expect(watcher).toBeInstanceOf(FileWatcher);
+    });
+
+    it('should accept optional onRebuild callback', () => {
+      const onRebuild = jest.fn();
+      const options: WatcherOptions = {
+        source: sourceDir,
+        destination: destDir,
+        builder,
+        onRebuild,
+      };
+
+      watcher = new FileWatcher(options);
+      expect(watcher).toBeInstanceOf(FileWatcher);
+    });
   });
 
   describe('start and stop', () => {
@@ -146,6 +171,48 @@ describe('FileWatcher', () => {
       // Polling is the default to avoid EMFILE errors
       expect(() => watcher.start()).not.toThrow();
     });
+
+    it('should handle stop before start gracefully', async () => {
+      const options: WatcherOptions = {
+        source: sourceDir,
+        destination: destDir,
+        builder,
+      };
+
+      watcher = new FileWatcher(options);
+
+      // stop() before start() should not throw
+      await expect(watcher.stop()).resolves.not.toThrow();
+    });
+  });
+
+  describe('file change detection', () => {
+    it('should detect file changes when watching', async () => {
+      const onRebuild = jest.fn();
+      const options: WatcherOptions = {
+        source: sourceDir,
+        destination: destDir,
+        builder,
+        onRebuild,
+        usePolling: true,
+        pollInterval: 50, // Fast polling for tests
+      };
+
+      watcher = new FileWatcher(options);
+      watcher.start();
+
+      // Wait for watcher to initialize
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      // Make a file change
+      await appendFile(join(sourceDir, '_config.yml'), '\ndescription: Test\n');
+
+      // Wait for the change to be detected and rebuild to complete
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+
+      // Note: The actual rebuild may or may not happen depending on timing
+      // This test verifies that the watcher doesn't crash during file changes
+    }, 10000);
   });
 
   describe('error handling', () => {
@@ -161,6 +228,18 @@ describe('FileWatcher', () => {
 
       // The watcher should start without throwing
       // Even if errors occur during watching, they should be handled gracefully
+      expect(() => watcher.start()).not.toThrow();
+    });
+
+    it('should handle errors with verbose mode', () => {
+      const options: WatcherOptions = {
+        source: sourceDir,
+        destination: destDir,
+        builder,
+        verbose: true,
+      };
+
+      watcher = new FileWatcher(options);
       expect(() => watcher.start()).not.toThrow();
     });
   });

@@ -989,7 +989,6 @@ export class Renderer {
       '%A': 'EEEE', // Full weekday name
       '%a': 'EEE', // Abbreviated weekday name
       '%j': 'DDD', // Day of year (001-366)
-      '%-j': 'D', // Day of year without leading zeros (1-366)
       '%w': 'e', // Day of week (0-6)
       '%Z': 'zzz', // Timezone name
       '%z': 'xxx', // Timezone offset
@@ -1001,8 +1000,7 @@ export class Renderer {
     const sortedPatterns = Object.entries(conversions).sort((a, b) => b[0].length - a[0].length);
     for (const [pattern, replacement] of sortedPatterns) {
       // Escape special regex characters in the pattern
-      // In this case, patterns like '%Y' only have '%' which needs escaping
-      const escapedPattern = pattern.replace(/[.*+?^${}()|[\]\\%]/g, '\\$&');
+      const escapedPattern = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       result = result.replace(new RegExp(escapedPattern, 'g'), replacement);
     }
     return result;

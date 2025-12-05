@@ -189,11 +189,9 @@ describe('Plugin Registration', () => {
       registerPlugins(renderer, site);
 
       // Verify no warning was logged about missing plugins
-      const warnCalls = (logger.warn as jest.Mock).mock.calls;
-      const missingPluginWarnings = warnCalls.filter(
-        (call) => call[0] && call[0].includes('is configured but was not found')
+      expect(logger.warn).not.toHaveBeenCalledWith(
+        expect.stringContaining('is configured but was not found')
       );
-      expect(missingPluginWarnings).toHaveLength(0);
     });
 
     it('should load and register npm plugins from node_modules', async () => {

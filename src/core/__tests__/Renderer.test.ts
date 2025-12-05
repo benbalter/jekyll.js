@@ -154,6 +154,84 @@ describe('Renderer', () => {
       expect(result).toBe('2');
     });
 
+    it('should support where_exp filter with simple equality', async () => {
+      const renderer = new Renderer(site);
+      const template =
+        '{% assign filtered = items | where_exp: "item", "item.active == true" %}{{ filtered.size }}';
+      const items = [
+        { name: 'a', active: true },
+        { name: 'b', active: false },
+        { name: 'c', active: true },
+      ];
+      const result = await renderer.render(template, { items });
+      expect(result).toBe('2');
+    });
+
+    it('should support where_exp filter with comparison operators', async () => {
+      const renderer = new Renderer(site);
+      const template =
+        '{% assign filtered = items | where_exp: "item", "item.age < 30" %}{{ filtered.size }}';
+      const items = [
+        { name: 'a', age: 25 },
+        { name: 'b', age: 30 },
+        { name: 'c', age: 35 },
+      ];
+      const result = await renderer.render(template, { items });
+      expect(result).toBe('1');
+    });
+
+    it('should support where_exp filter with contains operator', async () => {
+      const renderer = new Renderer(site);
+      const template =
+        "{% assign filtered = items | where_exp: 'item', 'item.tags contains \"js\"' %}{{ filtered.size }}";
+      const items = [
+        { name: 'a', tags: ['js', 'python'] },
+        { name: 'b', tags: ['java', 'go'] },
+        { name: 'c', tags: ['js', 'rust'] },
+      ];
+      const result = await renderer.render(template, { items });
+      expect(result).toBe('2');
+    });
+
+    it('should support where_exp filter with or operator', async () => {
+      const renderer = new Renderer(site);
+      const template =
+        '{% assign filtered = items | where_exp: \'item\', \'item.name == "a" or item.name == "b"\' %}{{ filtered.size }}';
+      const items = [
+        { name: 'a', active: true },
+        { name: 'b', active: false },
+        { name: 'c', active: true },
+      ];
+      const result = await renderer.render(template, { items });
+      expect(result).toBe('2');
+    });
+
+    it('should support where_exp filter with and operator', async () => {
+      const renderer = new Renderer(site);
+      const template =
+        '{% assign filtered = items | where_exp: "item", "item.active == true and item.age > 20" %}{{ filtered.size }}';
+      const items = [
+        { name: 'a', active: true, age: 25 },
+        { name: 'b', active: false, age: 30 },
+        { name: 'c', active: true, age: 15 },
+      ];
+      const result = await renderer.render(template, { items });
+      expect(result).toBe('1');
+    });
+
+    it('should support group_by_exp filter', async () => {
+      const renderer = new Renderer(site);
+      const template =
+        '{% assign groups = items | group_by_exp: "item", "item.type" %}{% for g in groups %}{{ g.name }}:{{ g.items.size }} {% endfor %}';
+      const items = [
+        { name: 'apple', type: 'fruit' },
+        { name: 'carrot', type: 'vegetable' },
+        { name: 'banana', type: 'fruit' },
+      ];
+      const result = await renderer.render(template, { items });
+      expect(result.trim()).toBe('fruit:2 vegetable:1');
+    });
+
     it('should support xml_escape filter', async () => {
       const renderer = new Renderer(site);
       const template = '{{ text | xml_escape }}';

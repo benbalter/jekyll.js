@@ -7,7 +7,7 @@
  * @see https://github.com/jekyll/jekyll-seo-tag
  */
 
-import { Plugin } from './index';
+import { Plugin } from './types';
 import { Renderer } from '../core/Renderer';
 import { Site } from '../core/Site';
 

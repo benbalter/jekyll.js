@@ -19,6 +19,23 @@
  * - PluginHooks class - Convenience wrapper for plugin hook registration
  */
 
+// Re-export all plugin types from the central types module
+// This is the public-facing Plugin API that both built-in and third-party plugins should use
+export {
+  Plugin,
+  GeneratorPlugin,
+  GeneratedFile,
+  GeneratedDocument,
+  GeneratorResult,
+  ConverterPlugin,
+  AnyPlugin,
+  isBasicPlugin,
+  isGeneratorPlugin,
+  isConverterPlugin,
+  GeneratorPriority,
+  ConverterPriority,
+} from './types';
+
 export { SeoTagPlugin } from './seo-tag';
 export { SitemapPlugin } from './sitemap';
 export { FeedPlugin } from './feed';
@@ -51,19 +68,6 @@ export {
   VALID_HOOKS,
 } from './hooks';
 
-// Export generator plugin system
-export {
-  GeneratorPlugin,
-  GeneratedFile,
-  GeneratedDocument,
-  GeneratorResult,
-  isGeneratorPlugin,
-  GeneratorPriority,
-} from './generator';
-
-// Export converter plugin system
-export { ConverterPlugin, isConverterPlugin, ConverterPriority } from './converter';
-
 // Export modern functionality modules - these are exported separately to avoid
 // importing ESM-only dependencies (like shiki) at the top level
 // Users should import these directly when needed:
@@ -88,40 +92,16 @@ import { GitHubMetadataPlugin } from './github-metadata';
 import { MentionsPlugin } from './mentions';
 import { loadNpmPlugins } from './npm-plugin-loader';
 import { logger } from '../utils/logger';
-import { GeneratorPlugin, isGeneratorPlugin } from './generator';
-import { ConverterPlugin, isConverterPlugin } from './converter';
+import {
+  Plugin,
+  GeneratorPlugin,
+  ConverterPlugin,
+  AnyPlugin,
+  isBasicPlugin,
+  isGeneratorPlugin,
+  isConverterPlugin,
+} from './types';
 import { Hooks } from './hooks';
-
-/**
- * Plugin interface that all plugins must implement
- * This is the basic plugin type that registers Liquid tags/filters
- */
-export interface Plugin {
-  /** Plugin name (e.g., 'jekyll-seo-tag') */
-  name: string;
-
-  /** Register the plugin with the renderer */
-  register(renderer: Renderer, site: Site): void;
-}
-
-/**
- * Union type for all plugin types
- */
-export type AnyPlugin = Plugin | GeneratorPlugin | ConverterPlugin;
-
-/**
- * Check if a plugin is a basic Plugin (has register method)
- */
-export function isBasicPlugin(plugin: unknown): plugin is Plugin {
-  return (
-    typeof plugin === 'object' &&
-    plugin !== null &&
-    'name' in plugin &&
-    'register' in plugin &&
-    typeof (plugin as Plugin).name === 'string' &&
-    typeof (plugin as Plugin).register === 'function'
-  );
-}
 
 /**
  * Plugin registry - manages all registered plugins by type

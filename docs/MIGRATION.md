@@ -24,7 +24,7 @@ This guide helps you migrate an existing Jekyll site from Ruby Jekyll to Jekyll.
 
 ### Requirements
 
-- **Node.js 18+** (Node.js 22+ recommended for full features)
+- **Node.js 22+** (required for full feature support)
 - **npm** (comes with Node.js)
 - No Ruby installation required!
 

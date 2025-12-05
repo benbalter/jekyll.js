@@ -298,8 +298,9 @@ The Renderer aims for compatibility with Jekyll 4.x Liquid templates. Most commo
 
 ### Planned
 - More Jekyll tags (e.g., `gist`, `figure`)
-- Pagination support
 - Additional filters as needed
+
+> **Note**: Pagination is fully supported. See the paginator object documentation in [PARITY.md](./PARITY.md).
 
 ## Performance
 

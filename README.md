@@ -285,19 +285,37 @@ jekyll.js/
 │   │   ├── commands/ # Individual command handlers (new, build, serve)
 │   │   └── index.ts  # Main CLI entry point
 │   ├── core/         # Core build engine
-│   │   ├── Builder.ts   # Site build orchestration
-│   │   ├── Document.ts  # Document representation
-│   │   ├── Renderer.ts  # Liquid template rendering
-│   │   ├── Site.ts      # Site management
-│   │   └── markdown.ts  # Markdown processing
+│   │   ├── Builder.ts      # Site build orchestration
+│   │   ├── CacheManager.ts # Incremental build cache
+│   │   ├── Document.ts     # Document representation
+│   │   ├── Paginator.ts    # Pagination support
+│   │   ├── Renderer.ts     # Liquid template rendering
+│   │   ├── SassProcessor.ts # SASS/SCSS compilation
+│   │   ├── Site.ts         # Site management
+│   │   ├── StaticFile.ts   # Static file handling
+│   │   ├── ThemeManager.ts # Theme loading
+│   │   └── markdown.ts     # Markdown processing
 │   ├── config/       # Configuration parsing
 │   │   └── Config.ts # _config.yml parser and validator
 │   ├── plugins/      # Built-in plugins
-│   │   ├── seo-tag.ts  # SEO meta tags
-│   │   ├── sitemap.ts  # Sitemap generation
-│   │   └── feed.ts     # RSS/Atom feed
+│   │   ├── seo-tag.ts        # SEO meta tags
+│   │   ├── sitemap.ts        # Sitemap generation
+│   │   ├── feed.ts           # RSS/Atom feed
+│   │   ├── jemoji.ts         # Emoji support
+│   │   ├── mentions.ts       # @mention links
+│   │   ├── redirect-from.ts  # Redirect pages
+│   │   ├── avatar.ts         # GitHub avatar helper
+│   │   ├── github-metadata.ts # GitHub repository metadata
+│   │   ├── html-minifier.ts  # HTML minification
+│   │   ├── image-optimization.ts # Sharp-based image optimization
+│   │   ├── resource-hints.ts # Resource hints (preload/prefetch)
+│   │   └── syntax-highlighting.ts # Shiki-based syntax highlighting
+│   ├── server/       # Development server
+│   │   └── DevServer.ts
+│   ├── themes/       # Theme templates
 │   ├── utils/        # Utility functions
 │   └── index.ts      # Library entry point
+├── docs/             # Documentation
 ├── dist/             # Compiled JavaScript output
 └── test-fixtures/    # Test Jekyll sites
 ```

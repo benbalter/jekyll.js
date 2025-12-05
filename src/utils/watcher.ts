@@ -32,7 +32,8 @@ export interface WatcherOptions {
 
   /**
    * Use polling instead of native file system events.
-   * More resource-efficient and avoids EMFILE errors on systems with strict file descriptor limits.
+   * Avoids EMFILE errors on systems with strict file descriptor limits.
+   * Note: Polling uses more CPU but fewer file descriptors than native watchers.
    * Defaults to true to prevent "too many open files" errors.
    */
   usePolling?: boolean;

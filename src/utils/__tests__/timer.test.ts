@@ -221,16 +221,17 @@ describe('PerformanceTimer', () => {
 
     it('should return operations sorted by duration descending', async () => {
       // Create operations with different durations
+      // Use well-separated timeouts to avoid timing uncertainty in CI environments
       await timer.timeAsync('fast', async () => {
-        await new Promise((resolve) => setTimeout(resolve, 5));
+        await new Promise((resolve) => setTimeout(resolve, 10));
       });
 
       await timer.timeAsync('slow', async () => {
-        await new Promise((resolve) => setTimeout(resolve, 20));
+        await new Promise((resolve) => setTimeout(resolve, 100));
       });
 
       await timer.timeAsync('medium', async () => {
-        await new Promise((resolve) => setTimeout(resolve, 10));
+        await new Promise((resolve) => setTimeout(resolve, 50));
       });
 
       const sorted = timer.getMostCostlyOperations();
@@ -242,12 +243,13 @@ describe('PerformanceTimer', () => {
     });
 
     it('should be accessible from getTimings result', async () => {
+      // Use well-separated timeouts to avoid timing uncertainty in CI environments
       await timer.timeAsync('op1', async () => {
-        await new Promise((resolve) => setTimeout(resolve, 5));
+        await new Promise((resolve) => setTimeout(resolve, 20));
       });
 
       await timer.timeAsync('op2', async () => {
-        await new Promise((resolve) => setTimeout(resolve, 15));
+        await new Promise((resolve) => setTimeout(resolve, 80));
       });
 
       const timings = timer.getTimings();

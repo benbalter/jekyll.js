@@ -71,8 +71,15 @@ export class DevServer {
    * Start the development server
    */
   async start(): Promise<void> {
-    // Create HTTP server
-    this.httpServer = createServer(this.handleRequest.bind(this));
+    // Create HTTP server with wrapped async handler
+    // The wrapper ensures any unhandled promise rejections result in a 500 error
+    this.httpServer = createServer((req, res) => {
+      this.handleRequest(req, res).catch((error) => {
+        // This handles any unhandled rejections from the async handler
+        console.error(chalk.red('[Server Error]'), error instanceof Error ? error.message : error);
+        this.send500(res, error);
+      });
+    });
 
     // Start listening
     await new Promise<void>((resolve, reject) => {
@@ -239,12 +246,21 @@ export class DevServer {
         responseContent = this.injectLiveReloadScript(content.toString());
       }
 
-      res.writeHead(200, {
-        'Content-Type': mimeType,
-        'Content-Length': Buffer.byteLength(responseContent),
-      });
+      // Check if connection is still open before sending response
+      if (res.headersSent || res.writableEnded) {
+        return;
+      }
 
-      res.end(responseContent);
+      try {
+        res.writeHead(200, {
+          'Content-Type': mimeType,
+          'Content-Length': Buffer.byteLength(responseContent),
+        });
+
+        res.end(responseContent);
+      } catch {
+        // Ignore network errors when client has disconnected
+      }
     } catch (_error) {
       // File not found or other error
       this.send404(res, req.url || '/');
@@ -264,6 +280,11 @@ export class DevServer {
    * Send 403 Forbidden response
    */
   private send403(res: ServerResponse, url: string): void {
+    // Don't send if headers already sent or connection closed
+    if (res.headersSent || res.writableEnded) {
+      return;
+    }
+
     const escapedUrl = this.escapeHtml(url);
     const content = `<!DOCTYPE html>
 <html>
@@ -282,17 +303,26 @@ export class DevServer {
 </body>
 </html>`;
 
-    res.writeHead(403, {
-      'Content-Type': 'text/html',
-      'Content-Length': Buffer.byteLength(content),
-    });
-    res.end(content);
+    try {
+      res.writeHead(403, {
+        'Content-Type': 'text/html',
+        'Content-Length': Buffer.byteLength(content),
+      });
+      res.end(content);
+    } catch {
+      // Ignore network errors when client has disconnected
+    }
   }
 
   /**
    * Send 404 response
    */
   private send404(res: ServerResponse, url: string): void {
+    // Don't send if headers already sent or connection closed
+    if (res.headersSent || res.writableEnded) {
+      return;
+    }
+
     const escapedUrl = this.escapeHtml(url);
     const content = `<!DOCTYPE html>
 <html>
@@ -311,11 +341,54 @@ export class DevServer {
 </body>
 </html>`;
 
-    res.writeHead(404, {
-      'Content-Type': 'text/html',
-      'Content-Length': Buffer.byteLength(content),
-    });
-    res.end(content);
+    try {
+      res.writeHead(404, {
+        'Content-Type': 'text/html',
+        'Content-Length': Buffer.byteLength(content),
+      });
+      res.end(content);
+    } catch {
+      // Ignore network errors when client has disconnected
+    }
+  }
+
+  /**
+   * Send 500 Internal Server Error response
+   */
+  private send500(res: ServerResponse, error: unknown): void {
+    // Don't send if headers already sent or connection closed
+    if (res.headersSent || res.writableEnded) {
+      return;
+    }
+
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    const escapedMessage = this.escapeHtml(message);
+    const content = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>500 Internal Server Error</title>
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 2rem; max-width: 600px; margin: 0 auto; }
+    h1 { color: #dc3545; }
+    code { background: #f5f5f5; padding: 0.2rem 0.4rem; border-radius: 3px; }
+  </style>
+</head>
+<body>
+  <h1>500 Internal Server Error</h1>
+  <p>An unexpected error occurred: <code>${escapedMessage}</code></p>
+</body>
+</html>`;
+
+    try {
+      res.writeHead(500, {
+        'Content-Type': 'text/html',
+        'Content-Length': Buffer.byteLength(content),
+      });
+      res.end(content);
+    } catch {
+      // Ignore network errors when client has disconnected
+    }
   }
 
   /**

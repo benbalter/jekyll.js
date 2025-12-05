@@ -1,5 +1,5 @@
 import { buildCommand } from '../build';
-import { existsSync, rmSync, writeFileSync, mkdirSync, readFileSync } from 'fs';
+import { existsSync, rmSync, writeFileSync, mkdirSync, readFileSync, readdirSync } from 'fs';
 import { join } from 'path';
 
 describe('buildCommand', () => {
@@ -186,6 +186,108 @@ describe('buildCommand', () => {
       // Check that site was built in the alternate output directory
       expect(existsSync(alternateOutputDir)).toBe(true);
       expect(existsSync(join(alternateOutputDir, 'index.html'))).toBe(true);
+    });
+  });
+
+  describe('negative flags', () => {
+    it('should disable drafts with --no-drafts flag when config enables drafts', async () => {
+      // Create a config with show_drafts enabled
+      writeFileSync(join(testSiteDir, '_config.yml'), 'title: Test Site\nshow_drafts: true\n');
+
+      // Create a draft post
+      mkdirSync(join(testSiteDir, '_drafts'), { recursive: true });
+      writeFileSync(
+        join(testSiteDir, '_drafts', 'draft-post.md'),
+        '---\nlayout: default\ntitle: Draft Post\n---\nDraft content'
+      );
+
+      // Build with --no-drafts flag
+      await buildCommand({
+        source: testSiteDir,
+        destination: outputDir,
+        config: join(testSiteDir, '_config.yml'),
+        drafts: false, // This is what --no-drafts sets
+      });
+
+      // Verify site was built
+      expect(existsSync(outputDir)).toBe(true);
+
+      // Draft should NOT be present in output since we used --no-drafts
+      // The draft would be in a dated path like /YYYY/MM/DD/draft-post.html
+      // Check that no year directories (which would contain the draft) exist
+      const outputFiles = readdirSync(outputDir);
+      const hasYearDirectory = outputFiles.some((f: string) => /^\d{4}$/.test(f));
+      expect(hasYearDirectory).toBe(false);
+    });
+
+    it('should disable future posts with --no-future flag when config enables future', async () => {
+      // Create a config with future enabled
+      writeFileSync(join(testSiteDir, '_config.yml'), 'title: Test Site\nfuture: true\n');
+
+      // Create a future post
+      mkdirSync(join(testSiteDir, '_posts'), { recursive: true });
+      const futureDate = new Date();
+      futureDate.setFullYear(futureDate.getFullYear() + 10); // 10 years in the future
+      const dateStr = futureDate.toISOString().split('T')[0];
+
+      writeFileSync(
+        join(testSiteDir, '_posts', `${dateStr}-future-post.md`),
+        '---\nlayout: default\ntitle: Future Post\n---\nFuture content'
+      );
+
+      // Build with --no-future flag
+      await buildCommand({
+        source: testSiteDir,
+        destination: outputDir,
+        config: join(testSiteDir, '_config.yml'),
+        future: false, // This is what --no-future sets
+      });
+
+      // Verify site was built
+      expect(existsSync(outputDir)).toBe(true);
+
+      // Future post should NOT be present in output since we used --no-future
+      const futureYear = futureDate.getFullYear().toString();
+      const hasYearDir = existsSync(join(outputDir, futureYear));
+      expect(hasYearDir).toBe(false);
+    });
+
+    it('should build successfully with --no-watch flag', async () => {
+      // Create a config with watch enabled
+      writeFileSync(join(testSiteDir, '_config.yml'), 'title: Test Site\nwatch: true\n');
+
+      const startTime = Date.now();
+
+      // Build with --no-watch flag to override config
+      await buildCommand({
+        source: testSiteDir,
+        destination: outputDir,
+        config: join(testSiteDir, '_config.yml'),
+        watch: false, // This is what --no-watch sets
+      });
+
+      const duration = Date.now() - startTime;
+
+      // Build should complete quickly (without entering watch mode)
+      expect(duration).toBeLessThan(5000);
+      expect(existsSync(outputDir)).toBe(true);
+    });
+
+    it('should build successfully with --no-incremental flag', async () => {
+      // Create a config with incremental enabled
+      writeFileSync(join(testSiteDir, '_config.yml'), 'title: Test Site\nincremental: true\n');
+
+      // Build with --no-incremental flag
+      await buildCommand({
+        source: testSiteDir,
+        destination: outputDir,
+        config: join(testSiteDir, '_config.yml'),
+        incremental: false, // This is what --no-incremental sets
+      });
+
+      // Verify site was built
+      expect(existsSync(outputDir)).toBe(true);
+      expect(existsSync(join(outputDir, 'index.html'))).toBe(true);
     });
   });
 });

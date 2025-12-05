@@ -483,6 +483,31 @@ defaults:
       expect(pluginWarning).toBeUndefined();
     });
 
+    it('should accept all built-in plugins without warnings', () => {
+      // All built-in plugins including jemoji (not jekyll-jemoji)
+      const config: JekyllConfig = {
+        plugins: [
+          'jekyll-seo-tag',
+          'jekyll-sitemap',
+          'jekyll-feed',
+          'jemoji', // NOTE: the gem name is 'jemoji', not 'jekyll-jemoji'
+          'jekyll-redirect-from',
+          'jekyll-avatar',
+          'jekyll-github-metadata',
+          'jekyll-mentions',
+        ],
+      };
+
+      const validation = validateConfig(config);
+
+      expect(validation.valid).toBe(true);
+      // Should not have plugin warnings
+      const pluginWarning = validation.warnings.find(
+        (w) => w.includes('plugins') && w.includes('not supported')
+      );
+      expect(pluginWarning).toBeUndefined();
+    });
+
     it('should error on invalid encoding', () => {
       const config: JekyllConfig = {
         encoding: 'invalid-encoding' as BufferEncoding,

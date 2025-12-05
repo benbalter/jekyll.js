@@ -74,11 +74,12 @@ export async function serveCommand(options: ServeOptions): Promise<void> {
     const host = options.host || config.host || 'localhost';
 
     // Apply CLI flags to config
-    if (options.drafts) {
-      config.show_drafts = true;
+    // CLI options override config when explicitly set (true or false via --no- flags)
+    if (options.drafts !== undefined) {
+      config.show_drafts = options.drafts;
     }
-    if (options.future) {
-      config.future = true;
+    if (options.future !== undefined) {
+      config.future = options.future;
     }
     config.livereload = options.livereload;
 

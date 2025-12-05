@@ -118,24 +118,31 @@ jekyll.js/
 │   ├── config/        # Configuration
 │   │   └── Config.ts     # _config.yml parser
 │   ├── plugins/       # Built-in plugins
-│   │   ├── avatar.ts         # jekyll-avatar
-│   │   ├── feed.ts           # jekyll-feed
-│   │   ├── github-metadata.ts# jekyll-github-metadata
+│   │   ├── avatar.ts           # jekyll-avatar
+│   │   ├── converter.ts        # Converter plugin interface
+│   │   ├── feed.ts             # jekyll-feed
+│   │   ├── generator.ts        # Generator plugin interface
+│   │   ├── github-metadata.ts  # jekyll-github-metadata
+│   │   ├── hooks.ts            # Plugin hooks system
+│   │   ├── html-minifier.ts    # HTML minification
 │   │   ├── image-optimization.ts # Sharp-based optimization
-│   │   ├── jemoji.ts         # jekyll-jemoji
-│   │   ├── mentions.ts       # jekyll-mentions
-│   │   ├── redirect-from.ts  # jekyll-redirect-from
-│   │   ├── seo-tag.ts        # jekyll-seo-tag
-│   │   ├── sitemap.ts        # jekyll-sitemap
+│   │   ├── jemoji.ts           # jekyll-jemoji
+│   │   ├── mentions.ts         # jekyll-mentions
+│   │   ├── npm-plugin-loader.ts # npm plugin loading
+│   │   ├── redirect-from.ts    # jekyll-redirect-from
+│   │   ├── resource-hints.ts   # Resource hints (preload/prefetch)
+│   │   ├── seo-tag.ts          # jekyll-seo-tag
+│   │   ├── sitemap.ts          # jekyll-sitemap
 │   │   └── syntax-highlighting.ts # Shiki-based highlighting
 │   ├── server/        # Development server
 │   │   └── DevServer.ts
+│   ├── themes/        # Theme templates
 │   └── utils/         # Utilities
 │       ├── errors.ts
-│       ├── logger.ts   # Winston-based logging
+│       ├── logger.ts      # Winston-based logging
 │       ├── parallel-fs.ts # Parallel file operations
 │       ├── timer.ts
-│       └── watcher.ts  # File watching (chokidar)
+│       └── watcher.ts     # File watching (chokidar)
 ├── docs/              # Documentation
 ├── test-fixtures/     # Test Jekyll sites
 └── dist/              # Compiled output

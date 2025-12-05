@@ -4,6 +4,7 @@ import { mkdir, writeFile, rm } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { existsSync } from 'fs';
+import http from 'http';
 
 describe('DevServer', () => {
   let tempDir: string;
@@ -116,6 +117,71 @@ describe('DevServer', () => {
       });
 
       await expect(server.start()).resolves.not.toThrow();
+      await server.stop();
+    }, 10000);
+
+    it('should handle requests and return 404 for missing files without hanging', async () => {
+      server = new DevServer({
+        port: 4103,
+        host: 'localhost',
+        destination: destDir,
+        source: sourceDir,
+        livereload: false,
+        site,
+        builder,
+      });
+
+      await server.start();
+
+      // Make a request to a non-existent file
+      const response = await new Promise<{ statusCode: number }>((resolve, reject) => {
+        const req = http.get('http://localhost:4103/nonexistent.html', (res) => {
+          let body = '';
+          res.on('data', (chunk) => (body += chunk));
+          res.on('end', () => resolve({ statusCode: res.statusCode || 0 }));
+        });
+        req.on('error', reject);
+        req.setTimeout(5000, () => {
+          req.destroy();
+          reject(new Error('Request timeout - server may be hanging'));
+        });
+      });
+
+      expect(response.statusCode).toBe(404);
+      await server.stop();
+    }, 10000);
+
+    it('should serve existing files correctly', async () => {
+      server = new DevServer({
+        port: 4104,
+        host: 'localhost',
+        destination: destDir,
+        source: sourceDir,
+        livereload: false,
+        site,
+        builder,
+      });
+
+      await server.start();
+
+      // Make a request to existing file
+      const response = await new Promise<{ statusCode: number; body: string }>(
+        (resolve, reject) => {
+          const req = http.get('http://localhost:4104/index.html', (res) => {
+            let body = '';
+            res.on('data', (chunk) => (body += chunk));
+            res.on('end', () => resolve({ statusCode: res.statusCode || 0, body }));
+          });
+          req.on('error', reject);
+          req.setTimeout(5000, () => {
+            req.destroy();
+            reject(new Error('Request timeout - server may be hanging'));
+          });
+        }
+      );
+
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toContain('Test');
       await server.stop();
     }, 10000);
   });

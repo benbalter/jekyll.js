@@ -29,6 +29,20 @@ export interface WatcherOptions {
    * Enable verbose output
    */
   verbose?: boolean;
+
+  /**
+   * Use polling instead of native file system events.
+   * Avoids EMFILE errors on systems with strict file descriptor limits.
+   * Note: Polling uses more CPU but fewer file descriptors than native watchers.
+   * Defaults to true to prevent "too many open files" errors.
+   */
+  usePolling?: boolean;
+
+  /**
+   * Polling interval in milliseconds (only used when usePolling is true)
+   * Defaults to 100ms
+   */
+  pollInterval?: number;
 }
 
 /**
@@ -45,16 +59,30 @@ export class FileWatcher {
    * Start watching for file changes
    */
   start(): void {
+    // Default to polling to avoid EMFILE "too many open files" errors
+    // on systems with strict file descriptor limits (especially macOS)
+    const usePolling = this.options.usePolling ?? true;
+    const pollInterval = this.options.pollInterval ?? 100;
+
     this.watcher = watch(this.options.source, {
       ignored: [this.options.destination, '**/node_modules/**', '**/.git/**', '**/.DS_Store'],
       persistent: true,
       ignoreInitial: true,
+      usePolling,
+      interval: pollInterval,
     });
 
     this.watcher
       .on('add', (path) => this.handleFileChange('added', path))
       .on('change', (path) => this.handleFileChange('changed', path))
-      .on('unlink', (path) => this.handleFileChange('deleted', path));
+      .on('unlink', (path) => this.handleFileChange('deleted', path))
+      .on('error', (error: unknown) => {
+        if (error instanceof Error) {
+          this.handleWatchError(error);
+        } else {
+          console.error(chalk.red('[Watcher Error]'), String(error));
+        }
+      });
 
     console.log(chalk.yellow('\nWatching for changes...'));
     console.log(chalk.gray('Press Ctrl+C to stop'));
@@ -108,6 +136,40 @@ export class FileWatcher {
       }
     } finally {
       this.isRebuilding = false;
+    }
+  }
+
+  /**
+   * Handle watcher errors gracefully
+   * Prevents the process from crashing when file system errors occur
+   */
+  private handleWatchError(error: Error): void {
+    // Type guard for NodeJS.ErrnoException
+    function isErrnoException(e: unknown): e is NodeJS.ErrnoException {
+      return (
+        typeof e === 'object' &&
+        e !== null &&
+        'code' in e &&
+        typeof (e as { code?: unknown }).code === 'string'
+      );
+    }
+
+    const isEmfileError = isErrnoException(error) && error.code === 'EMFILE';
+    if (isEmfileError) {
+      console.error(
+        chalk.red('[Watcher Error]'),
+        'Too many open files. The file watcher may not detect all changes.'
+      );
+      console.error(
+        chalk.yellow('Tip:'),
+        'Try increasing the file descriptor limit with `ulimit -n 4096` or reduce the number of watched files.'
+      );
+    } else {
+      console.error(chalk.red('[Watcher Error]'), error.message);
+    }
+
+    if (this.options.verbose && error.stack) {
+      console.error(error.stack);
     }
   }
 }

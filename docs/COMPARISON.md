@@ -184,108 +184,23 @@ Side-by-side comparison of jekyll.js (TypeScript) and Jekyll.rb (Ruby) features.
 
 ---
 
-### Liquid Filters
+### Liquid Filters & Tags
 
-#### Implemented in jekyll.js ✅ (60+ filters)
+**60+ filters implemented** covering all standard Jekyll filter categories:
 
-**Date Filters:**
-- `date` - Format date with strftime format
-- `date_to_xmlschema` - ISO 8601 format
-- `date_to_rfc822` - RFC 822 format
-- `date_to_string` - Short date
-- `date_to_long_string` - Long date
+| Category | Status | Count |
+|----------|--------|-------|
+| Date Filters | ✅ | 5 |
+| URL Filters | ✅ | 2 |
+| Array Filters | ✅ | 23 |
+| String Filters | ✅ | 30 |
+| Math Filters | ✅ | 11 |
+| Type Filters | ✅ | 1 |
+| Modern Filters | 🆕 | 5 |
 
-**URL Filters:**
-- `relative_url` - Prepend baseurl
-- `absolute_url` - Prepend full URL
+**Liquid Tags:** `include`, `include_cached`, `include_relative`, `highlight`, `link`, `post_url`, `raw`, `comment`
 
-**Array Filters:**
-- `where` - Filter by property
-- `where_exp` - Filter by expression
-- `group_by` - Group by property
-- `group_by_exp` - Group by expression
-- `array_to_sentence_string` - Array to sentence
-- `sort` - Sort array
-- `sort_natural` - Natural sort (case-insensitive)
-- `uniq` - Remove duplicates
-- `sample` - Random element(s)
-- `push`, `pop`, `shift`, `unshift` - Array manipulation
-- `find` - Find element by property
-- `find_exp` - Find element by expression
-- `first`, `last` - First/last element
-- `reverse` - Reverse array
-- `compact` - Remove nil values
-- `concat` - Concatenate arrays
-- `map` - Map property from objects
-- `join` - Join array to string
-- `size` - Array/string length
-
-**String Filters:**
-- `xml_escape` - XML escaping
-- `cgi_escape` - URL encoding
-- `uri_escape` - URI encoding
-- `slugify` - URL-friendly slug
-- `smartify` - Smart quotes
-- `number_of_words` - Word count
-- `markdownify` - Markdown to HTML
-- `jsonify` - JSON output
-- `inspect` - Debug output
-- `normalize_whitespace` - Whitespace normalization
-- `newline_to_br` - Newlines to HTML breaks
-- `strip_html` - Remove HTML tags
-- `strip_newlines` - Remove newlines
-- `truncate` - Truncate string by length
-- `truncatewords` - Truncate by word count
-- `upcase` - Uppercase
-- `downcase` - Lowercase
-- `capitalize` - Capitalize first letter
-- `strip`, `lstrip`, `rstrip` - Trim whitespace
-- `prepend`, `append` - Add prefix/suffix
-- `remove`, `remove_first` - Remove substring
-- `replace`, `replace_first` - Replace substring
-- `split` - Split string to array
-- `escape_once` - HTML escape without double-escaping
-- `default` - Default value for nil/empty
-
-**Math Filters:**
-- `abs` - Absolute value
-- `plus`, `minus`, `times`, `divided_by` - Arithmetic
-- `modulo` - Modulo operation
-- `round`, `ceil`, `floor` - Rounding
-- `at_least`, `at_most` - Min/max bounds
-
-**Type Filters:**
-- `to_integer` - Convert to integer
-
-**Modern Filters (Backwards-compatible):**
-- `reading_time` - Estimated reading time
-- `toc` - Generate table of contents
-- `heading_anchors` - Add anchor links to headings
-- `external_links` - Add target="_blank" to external links
-- `auto_excerpt` - Generate excerpts automatically
-
-#### Remaining to implement 🟡
-
-**Type Filters:**
-- `to_float` - Convert to float
-
----
-
-### Liquid Tags
-
-#### Implemented ✅
-
-- `{% include %}` - Include partials with parameters
-- `{% include_cached %}` - Include with caching
-- `{% include_relative %}` - Include relative to current file
-- `{% highlight %}` - Syntax highlighting (with Shiki support)
-- `{% link %}` - Link to pages
-- `{% post_url %}` - Link to posts
-- `{% raw %}` - Disable Liquid processing (built into liquidjs)
-
-#### Built-in from liquidjs 
-
-- `{% comment %}` - Multi-line comments (built into liquidjs)
+> 📖 See [PARITY.md](./PARITY.md#liquid-filters-complete-list-) for the complete filter list with descriptions.
 
 ---
 

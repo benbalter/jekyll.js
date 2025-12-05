@@ -159,86 +159,19 @@ Quick reference for feature implementation status in jekyll.js compared to Jekyl
 
 ## Liquid Filters
 
-### ✅ Implemented (60+ filters)
+**60+ filters implemented** including all standard Jekyll filters:
 
-**Date Filters:**
-- `date` - Format date with strftime format
-- `date_to_xmlschema` - ISO 8601 format
-- `date_to_rfc822` - RFC 822 format
-- `date_to_string` - Short date
-- `date_to_long_string` - Long date
+| Category | Filters |
+|----------|---------|
+| Date | `date`, `date_to_xmlschema`, `date_to_rfc822`, `date_to_string`, `date_to_long_string` |
+| URL | `relative_url`, `absolute_url` |
+| Array | `where`, `where_exp`, `group_by`, `group_by_exp`, `sort`, `sort_natural`, `uniq`, `sample`, `push`, `pop`, `shift`, `unshift`, `find`, `find_exp`, `first`, `last`, `reverse`, `compact`, `concat`, `map`, `join`, `size`, `array_to_sentence_string` |
+| String | `xml_escape`, `cgi_escape`, `uri_escape`, `slugify`, `smartify`, `markdownify`, `jsonify`, `inspect`, `normalize_whitespace`, `newline_to_br`, `strip_html`, `strip_newlines`, `truncate`, `truncatewords`, `upcase`, `downcase`, `capitalize`, `strip`, `lstrip`, `rstrip`, `prepend`, `append`, `remove`, `remove_first`, `replace`, `replace_first`, `split`, `escape_once`, `default`, `number_of_words` |
+| Math | `abs`, `plus`, `minus`, `times`, `divided_by`, `modulo`, `round`, `ceil`, `floor`, `at_least`, `at_most` |
+| Type | `to_integer` |
+| Modern | `reading_time`, `toc`, `heading_anchors`, `external_links`, `auto_excerpt` |
 
-**URL Filters:**
-- `relative_url` - Prepend baseurl
-- `absolute_url` - Prepend full URL
-
-**Array Filters:**
-- `where` - Filter by property
-- `where_exp` - Filter by expression
-- `group_by` - Group by property
-- `group_by_exp` - Group by expression
-- `array_to_sentence_string` - Array to sentence
-- `sort` - Sort array
-- `sort_natural` - Natural sort (case-insensitive)
-- `uniq` - Remove duplicates
-- `sample` - Random element(s)
-- `push`, `pop`, `shift`, `unshift` - Array manipulation
-- `find` - Find element by property
-- `find_exp` - Find element by expression
-- `first`, `last` - First/last element
-- `reverse` - Reverse array
-- `compact` - Remove nil values
-- `concat` - Concatenate arrays
-- `map` - Map property from objects
-- `join` - Join array to string
-- `size` - Array/string length
-
-**String Filters:**
-- `xml_escape` - XML escaping
-- `cgi_escape` - URL encoding
-- `uri_escape` - URI encoding
-- `slugify` - URL-friendly slug
-- `smartify` - Smart quotes
-- `number_of_words` - Word count
-- `markdownify` - Markdown to HTML
-- `jsonify` - JSON output
-- `inspect` - Debug output
-- `normalize_whitespace` - Whitespace normalization
-- `newline_to_br` - Newlines to HTML breaks
-- `strip_html` - Remove HTML tags
-- `strip_newlines` - Remove newlines
-- `truncate` - Truncate by length
-- `truncatewords` - Truncate by words
-- `upcase`, `downcase`, `capitalize` - Case conversion
-- `strip`, `lstrip`, `rstrip` - Trim whitespace
-- `prepend`, `append` - Add prefix/suffix
-- `remove`, `remove_first` - Remove substring
-- `replace`, `replace_first` - Replace substring
-- `split` - Split string to array
-- `escape_once` - HTML escape without double-escaping
-- `default` - Default value for nil/empty
-
-**Math Filters:**
-- `abs` - Absolute value
-- `plus`, `minus`, `times`, `divided_by` - Arithmetic
-- `modulo` - Modulo operation
-- `round`, `ceil`, `floor` - Rounding
-- `at_least`, `at_most` - Min/max bounds
-
-**Type Filters:**
-- `to_integer` - Convert to integer
-
-**Modern Filters (Backwards-compatible enhancements):**
-- `reading_time` - Estimated reading time
-- `toc` - Generate table of contents
-- `heading_anchors` - Add anchor links to headings
-- `external_links` - Add target="_blank" to external links
-- `auto_excerpt` - Generate excerpts automatically
-
-### 🔴 Planned
-
-**Type Filters:**
-- `to_float` - Convert to float
+> 📖 See [PARITY.md](./PARITY.md#liquid-filters-complete-list-) for complete filter documentation with descriptions.
 
 ---
 

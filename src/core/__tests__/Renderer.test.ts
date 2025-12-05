@@ -814,6 +814,14 @@ describe('Renderer', () => {
         expect(result).toBe('1/5/2025');
       });
 
+      it('should support date filter with time no-padding modifiers', async () => {
+        const renderer = new Renderer(site);
+        // Test %-H (hour), %-M (minute), %-S (second) without leading zeros
+        const template = '{{ date | date: "%-H:%-M:%-S" }}';
+        const result = await renderer.render(template, { date: '2025-01-05T09:05:03' });
+        expect(result).toBe('9:5:3');
+      });
+
       it('should support default filter', async () => {
         const renderer = new Renderer(site);
         const template = '{{ value | default: "N/A" }}';

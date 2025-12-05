@@ -456,6 +456,6 @@ Achieve production-ready status:
 
 ---
 
-**Last Updated**: 2025-12-04  
+**Last Updated**: 2025-12-05  
 **Comparison Version**: Jekyll.rb 4.3.x vs jekyll.js 0.1.0  
 **Maintained by**: @benbalter

@@ -777,6 +777,6 @@ When reporting issues, include:
 
 ---
 
-**Last Updated**: 2025-12-04  
+**Last Updated**: 2025-12-05  
 **Jekyll.js Version**: 0.1.0  
 **Maintained by**: @benbalter

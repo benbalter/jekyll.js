@@ -468,7 +468,7 @@ Existing Jekyll sites can migrate with minimal or no changes, while gaining acce
 
 ---
 
-**Last Updated**: 2025-12-04  
+**Last Updated**: 2025-12-05  
 **Jekyll.js Version**: 0.1.0  
 **Target Jekyll.rb Version**: 4.3.x  
 **Maintained by**: @benbalter

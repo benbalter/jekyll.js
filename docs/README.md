@@ -236,7 +236,7 @@ As of **v0.1.0**:
 - **🟡 Partial**: 2 features
 - **🔴 Planned**: 4 features
 - **⚫ Not Planned**: 0 features (Ruby-specific only)
-- **🧪 Tests**: 1065 tests passing
+- **🧪 Tests**: 1163 tests passing
 
 **Completed**: All Phase 1 and Phase 2 features
 
@@ -290,7 +290,7 @@ Look for **"good first issue"** labels on GitHub!
 
 ## 🔄 Document Updates
 
-Documentation is actively maintained. Last major update: **2025-12-04**
+Documentation is actively maintained. Last major update: **2025-12-05**
 
 If you find outdated information:
 1. Open an issue
@@ -377,4 +377,4 @@ All documentation is licensed under MIT License, same as the project.
 
 **Maintained by**: @benbalter  
 **Contributors**: Welcome!  
-**Last Updated**: 2025-12-04
+**Last Updated**: 2025-12-05

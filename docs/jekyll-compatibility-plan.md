@@ -4,7 +4,7 @@ This document outlines the plan for achieving feature parity between jekyll.js (
 
 **Version**: 1.0  
 **Target Jekyll Version**: 4.3.x  
-**Last Updated**: 2025-12-04
+**Last Updated**: 2025-12-05
 
 > 📖 **See also**: [PARITY.md](./PARITY.md) for a user-friendly guide to parity and backwards-compatible improvements.
 
@@ -229,7 +229,7 @@ Allow users to create custom plugins in TypeScript.
 - [ ] Memory usage comparable to Jekyll.rb for large sites
 
 ### Quality Metrics
-- ✅ 1065 tests passing
+- ✅ 1163 tests passing
 - ✅ All features have integration tests
 - ✅ Comprehensive documentation
 - [ ] Zero critical bugs in issue tracker

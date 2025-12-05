@@ -7,6 +7,7 @@ import { ThemeManager } from './ThemeManager';
 import { logger } from '../utils/logger';
 import { FileSystemError } from '../utils/errors';
 import { walkDirectoryAsync } from '../utils/parallel-fs';
+import { shouldExcludePath } from '../utils/path-security';
 import yaml from 'js-yaml';
 
 /**
@@ -610,19 +611,17 @@ export class Site {
 
   /**
    * Check if a file path should be excluded based on config
+   * Jekyll (Ruby) default behavior:
+   * - Files starting with '.', '#', or '~' are excluded by default
+   * - The 'include' config can override this to explicitly include hidden files
+   * - The 'exclude' config excludes additional files
    */
   private shouldExclude(path: string): boolean {
     const relativePath = path.substring(this.source.length + 1);
     const excludePatterns = this.config.exclude || [];
+    const includePatterns = this.config.include || [];
 
-    for (const pattern of excludePatterns) {
-      // Simple pattern matching - exact match or starts with
-      if (relativePath === pattern || relativePath.startsWith(pattern + '/')) {
-        return true;
-      }
-    }
-
-    return false;
+    return shouldExcludePath(relativePath, excludePatterns, includePatterns);
   }
 
   /**

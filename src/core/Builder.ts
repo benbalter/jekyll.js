@@ -6,7 +6,7 @@ import { SassProcessor } from './SassProcessor';
 import { logger } from '../utils/logger';
 import { BuildError, FileSystemError, JekyllError } from '../utils/errors';
 import { PerformanceTimer, BuildTimings } from '../utils/timer';
-import { isPathWithinBase, sanitizePermalink } from '../utils/path-security';
+import { isPathWithinBase, sanitizePermalink, shouldExcludePath } from '../utils/path-security';
 import {
   mkdirSync,
   writeFileSync,
@@ -1064,18 +1064,17 @@ export class Builder {
 
   /**
    * Check if a path should be excluded
+   * Jekyll (Ruby) default behavior:
+   * - Files starting with '.', '#', or '~' are excluded by default
+   * - The 'include' config can override this to explicitly include hidden files
+   * - The 'exclude' config excludes additional files
    */
   private shouldExclude(path: string): boolean {
     const relativePath = relative(this.site.source, path);
     const excludePatterns = this.site.config.exclude || [];
+    const includePatterns = this.site.config.include || [];
 
-    for (const pattern of excludePatterns) {
-      if (relativePath === pattern || relativePath.startsWith(pattern + '/')) {
-        return true;
-      }
-    }
-
-    return false;
+    return shouldExcludePath(relativePath, excludePatterns, includePatterns);
   }
 
   /**

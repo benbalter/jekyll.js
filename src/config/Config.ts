@@ -765,11 +765,12 @@ export function validateConfig(config: JekyllConfig): ConfigValidation {
  */
 function isSupportedPlugin(pluginName: string): boolean {
   // List of built-in plugins
+  // NOTE: These names must match the actual plugin `name` properties defined in src/plugins/*.ts
   const builtInPlugins = [
     'jekyll-seo-tag',
     'jekyll-sitemap',
     'jekyll-feed',
-    'jekyll-jemoji',
+    'jemoji', // gem name is 'jemoji', not 'jekyll-jemoji'
     'jekyll-redirect-from',
     'jekyll-avatar',
     'jekyll-github-metadata',

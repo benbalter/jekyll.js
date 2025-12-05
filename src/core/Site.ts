@@ -470,8 +470,12 @@ export class Site {
   /**
    * Read all data files from _data directory (site and theme)
    * Site data takes precedence over theme data
+   * Plugin-added data is preserved and not overwritten by file data
    */
   private readData(): void {
+    // Preserve any existing data added by plugins (e.g., github metadata)
+    const existingData = { ...this.data };
+
     // First read theme data if available
     // Note: skipExclude=true for theme data since exclude patterns only apply to site files
     const themeDataDir = this.themeManager.getThemeDataDirectory();
@@ -489,8 +493,11 @@ export class Site {
       siteData = this.readDataDirectory(siteDataDir, siteDataDir, false);
     }
 
-    // Merge theme data with site data (site takes precedence)
-    this.data = this.mergeData(themeData, siteData);
+    // Merge in order: theme data → site data → existing plugin data
+    // This ensures plugin-added data (like github metadata) is preserved
+    // and file data can be overridden by plugins if needed
+    const fileData = this.mergeData(themeData, siteData);
+    this.data = this.mergeData(fileData, existingData);
   }
 
   /**

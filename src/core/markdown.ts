@@ -222,7 +222,213 @@ export async function processMarkdown(
 ): Promise<string> {
   const processor = await getProcessor(options);
   const result = await processor.process(content);
-  return String(result);
+  let html = String(result);
+
+  // Post-process to handle Kramdown-style attribute lists
+  // This supports syntax like {: .class #id attr="value" }
+  html = processKramdownAttributes(html);
+
+  return html;
+}
+
+/**
+ * Process Kramdown-style attribute lists in HTML output.
+ *
+ * Kramdown's Inline Attribute Lists (IAL) syntax allows adding classes, IDs,
+ * and other attributes to elements. The syntax is:
+ * - {: .class } - adds a class
+ * - {: #id } - adds an ID
+ * - {: attr="value" } - adds a custom attribute
+ * - Multiple can be combined: {: .class1 .class2 #myid data-foo="bar" }
+ *
+ * The IAL can appear:
+ * 1. On a separate line after a block element (paragraph, heading, list, etc.)
+ * 2. Inline immediately after an element
+ *
+ * @param html The HTML content to process
+ * @returns HTML with Kramdown attributes applied
+ *
+ * @example
+ * // Input markdown (after remark processing):
+ * // <p>Hello world</p>\n<p>{: .highlight }</p>
+ * // Output:
+ * // <p class="highlight">Hello world</p>
+ */
+function processKramdownAttributes(html: string): string {
+  // First, handle block-level attributes (on separate lines wrapped in <p> tags)
+  // Pattern: <p>{: .attributes }</p> after another block element
+  // This handles the common case where Kramdown attributes are on their own line
+  html = html.replace(
+    /(<(?:p|h[1-6]|li|blockquote|div|pre|ul|ol|dl|dt|dd|table|tr|td|th|figure|figcaption|section|article|aside|header|footer|nav|main)[^>]*>)([\s\S]*?)(<\/(?:p|h[1-6]|li|blockquote|div|pre|ul|ol|dl|dt|dd|table|tr|td|th|figure|figcaption|section|article|aside|header|footer|nav|main)>)\s*\n?<p>\{:\s*([^}]{1,500})\s*\}<\/p>/gi,
+    (match, openTag, content, closeTag, attrs) => {
+      const attributes = parseKramdownAttributes(attrs);
+      if (!attributes) return match;
+      return applyAttributesToTag(openTag, attributes) + content + closeTag;
+    }
+  );
+
+  // Handle inline Kramdown attributes that appear immediately after a closing tag
+  // Pattern: </tag>{: .attributes }
+  // This is less common but valid in Kramdown
+  html = html.replace(
+    /(<(?:span|a|em|strong|code|mark|del|ins|sub|sup|abbr|cite|q|kbd|samp|var|time|small|s|u|b|i)[^>]*>)([\s\S]*?)(<\/(?:span|a|em|strong|code|mark|del|ins|sub|sup|abbr|cite|q|kbd|samp|var|time|small|s|u|b|i)>)\{:\s*([^}]{1,500})\s*\}/gi,
+    (match, openTag, content, closeTag, attrs) => {
+      const attributes = parseKramdownAttributes(attrs);
+      if (!attributes) return match;
+      return applyAttributesToTag(openTag, attributes) + content + closeTag;
+    }
+  );
+
+  // Remove any remaining standalone Kramdown attribute blocks that weren't matched
+  // These might be orphaned due to edge cases in the markdown structure
+  html = html.replace(/<p>\{:\s*[^}]{1,500}\s*\}<\/p>\s*\n?/gi, '');
+
+  return html;
+}
+
+/**
+ * Parse Kramdown attribute string into an object.
+ * @param attrString The attribute string (e.g., ".class1 .class2 #myid data-attr='value'")
+ * @returns Object with classes, id, and other attributes, or null if invalid
+ */
+function parseKramdownAttributes(
+  attrString: string
+): { classes: string[]; id?: string; attrs: Record<string, string> } | null {
+  if (!attrString || attrString.length > 500) return null;
+
+  const result: { classes: string[]; id?: string; attrs: Record<string, string> } = {
+    classes: [],
+    attrs: {},
+  };
+
+  // Tokenize the attribute string
+  // Match classes (.classname), IDs (#idname), and key="value" or key='value' pairs
+  // Safe patterns with limited length
+  const tokens = attrString.match(
+    /\.[a-zA-Z_][a-zA-Z0-9_-]{0,100}|#[a-zA-Z_][a-zA-Z0-9_-]{0,100}|[a-zA-Z_][a-zA-Z0-9_-]{0,50}=["'][^"']{0,200}["']/g
+  );
+
+  if (!tokens || tokens.length === 0) return null;
+
+  for (const token of tokens) {
+    if (token.startsWith('.')) {
+      // Class: .classname
+      result.classes.push(token.substring(1));
+    } else if (token.startsWith('#')) {
+      // ID: #idname
+      result.id = token.substring(1);
+    } else if (token.includes('=')) {
+      // Attribute: key="value" or key='value'
+      const [key, ...valueParts] = token.split('=');
+      if (key) {
+        let value = valueParts.join('=');
+        // Remove quotes
+        if ((value.startsWith('"') && value.endsWith('"')) ||
+            (value.startsWith("'") && value.endsWith("'"))) {
+          value = value.slice(1, -1);
+        }
+        // Sanitize attribute name to prevent XSS
+        const sanitizedKey = key.replace(/[^a-zA-Z0-9_-]/g, '');
+        if (sanitizedKey) {
+          result.attrs[sanitizedKey] = value;
+        }
+      }
+    }
+  }
+
+  // Return null if no valid attributes were parsed
+  if (result.classes.length === 0 && !result.id && Object.keys(result.attrs).length === 0) {
+    return null;
+  }
+
+  return result;
+}
+
+/**
+ * Apply parsed attributes to an HTML opening tag.
+ * @param tag The opening tag (e.g., "<p>" or "<p class='existing'>")
+ * @param attributes The parsed Kramdown attributes
+ * @returns The modified opening tag with attributes applied
+ */
+function applyAttributesToTag(
+  tag: string,
+  attributes: { classes: string[]; id?: string; attrs: Record<string, string> }
+): string {
+  // Extract the tag name
+  const tagMatch = tag.match(/^<([a-zA-Z][a-zA-Z0-9]*)/);
+  if (!tagMatch) return tag;
+
+  const tagName = tagMatch[1];
+
+  // Parse existing attributes from the tag
+  const existingClassMatch = tag.match(/class=["']([^"']*)["']/i);
+  const existingIdMatch = tag.match(/id=["']([^"']*)["']/i);
+
+  // Merge classes
+  let classes: string[] = [];
+  if (existingClassMatch && existingClassMatch[1]) {
+    classes = existingClassMatch[1].split(/\s+/).filter(Boolean);
+  }
+  classes = [...new Set([...classes, ...attributes.classes])]; // Deduplicate
+
+  // Determine final ID (Kramdown attributes override existing)
+  const finalId = attributes.id || (existingIdMatch ? existingIdMatch[1] : undefined);
+
+  // Build the new tag
+  let newTag = `<${tagName}`;
+
+  // Add ID if present
+  if (finalId) {
+    // Escape the ID to prevent XSS
+    const escapedId = escapeHtmlAttribute(finalId);
+    newTag += ` id="${escapedId}"`;
+  }
+
+  // Add classes if present
+  if (classes.length > 0) {
+    // Escape each class to prevent XSS
+    const escapedClasses = classes.map(escapeHtmlAttribute).join(' ');
+    newTag += ` class="${escapedClasses}"`;
+  }
+
+  // Add custom attributes
+  for (const [key, value] of Object.entries(attributes.attrs)) {
+    // Skip class and id as they're handled above
+    if (key.toLowerCase() === 'class' || key.toLowerCase() === 'id') continue;
+    // Escape the value to prevent XSS
+    const escapedValue = escapeHtmlAttribute(value);
+    newTag += ` ${key}="${escapedValue}"`;
+  }
+
+  // Preserve any other attributes from the original tag that we didn't process
+  // Remove the existing class and id attributes as we've already handled them
+  let remainingAttrs = tag
+    .replace(/^<[a-zA-Z][a-zA-Z0-9]*/, '')
+    .replace(/class=["'][^"']*["']/gi, '')
+    .replace(/id=["'][^"']*["']/gi, '')
+    .replace(/>$/, '')
+    .trim();
+
+  if (remainingAttrs) {
+    newTag += ' ' + remainingAttrs;
+  }
+
+  newTag += '>';
+  return newTag;
+}
+
+/**
+ * Escape a string for use in an HTML attribute value.
+ * @param str The string to escape
+ * @returns The escaped string safe for use in attribute values
+ */
+function escapeHtmlAttribute(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 }
 
 /**

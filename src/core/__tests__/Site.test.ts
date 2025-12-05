@@ -291,6 +291,60 @@ collections:
 
       expect(site.data.info).toEqual({ name: 'Custom' });
     });
+
+    it('should preserve plugin-added data after read()', async () => {
+      // Create _data directory with a file
+      const dataDir = join(testSiteDir, '_data');
+      mkdirSync(dataDir);
+      writeFileSync(join(dataDir, 'settings.yml'), 'theme: dark');
+
+      const site = new Site(testSiteDir);
+
+      // Simulate plugin adding data before site.read() (like GitHubMetadataPlugin does)
+      site.data.github = {
+        repository_name: 'test-repo',
+        owner: { login: 'testuser' },
+      };
+      site.data.custom_plugin = {
+        some_value: 42,
+      };
+
+      await site.read();
+
+      // Plugin-added data should be preserved
+      expect(site.data.github).toBeDefined();
+      expect(site.data.github.repository_name).toBe('test-repo');
+      expect(site.data.github.owner.login).toBe('testuser');
+      expect(site.data.custom_plugin).toBeDefined();
+      expect(site.data.custom_plugin.some_value).toBe(42);
+
+      // File-based data should also be loaded
+      expect(site.data.settings).toEqual({ theme: 'dark' });
+    });
+
+    it('should allow file data to be overridden by plugin data', async () => {
+      // Create _data directory with github.yml (simulating a file that conflicts with plugin)
+      const dataDir = join(testSiteDir, '_data');
+      mkdirSync(dataDir);
+      writeFileSync(
+        join(dataDir, 'github.yml'),
+        'repository_name: from-file\nowner:\n  login: file-user'
+      );
+
+      const site = new Site(testSiteDir);
+
+      // Plugin adds data with same key before site.read()
+      site.data.github = {
+        repository_name: 'from-plugin',
+        owner: { login: 'plugin-user' },
+      };
+
+      await site.read();
+
+      // Plugin data should take precedence over file data
+      expect(site.data.github.repository_name).toBe('from-plugin');
+      expect(site.data.github.owner.login).toBe('plugin-user');
+    });
   });
 
   describe('getLayout method', () => {

@@ -307,25 +307,86 @@ export async function processMarkdown(
  */
 
 // Constants for tag lists to improve readability and maintainability
-const BLOCK_TAGS = 'p|h[1-6]|li|blockquote|div|pre|ul|ol|dl|dt|dd|table|tr|td|th|figure|figcaption|section|article|aside|header|footer|nav|main';
-const INLINE_TAGS = 'span|a|em|strong|code|mark|del|ins|sub|sup|abbr|cite|q|kbd|samp|var|time|small|s|u|b|i';
+const BLOCK_TAGS =
+  'p|h[1-6]|li|blockquote|div|pre|ul|ol|dl|dt|dd|table|tr|td|th|figure|figcaption|section|article|aside|header|footer|nav|main';
+const INLINE_TAGS =
+  'span|a|em|strong|code|mark|del|ins|sub|sup|abbr|cite|q|kbd|samp|var|time|small|s|u|b|i';
 
 // Dangerous event handler attributes that should be blocked to prevent XSS
 const DANGEROUS_ATTRS = new Set([
-  'onabort', 'onafterprint', 'onbeforeprint', 'onbeforeunload', 'onblur',
-  'oncanplay', 'oncanplaythrough', 'onchange', 'onclick', 'oncontextmenu',
-  'oncopy', 'oncuechange', 'oncut', 'ondblclick', 'ondrag', 'ondragend',
-  'ondragenter', 'ondragleave', 'ondragover', 'ondragstart', 'ondrop',
-  'ondurationchange', 'onemptied', 'onended', 'onerror', 'onfocus',
-  'onhashchange', 'oninput', 'oninvalid', 'onkeydown', 'onkeypress',
-  'onkeyup', 'onload', 'onloadeddata', 'onloadedmetadata', 'onloadstart',
-  'onmessage', 'onmousedown', 'onmousemove', 'onmouseout', 'onmouseover',
-  'onmouseup', 'onmousewheel', 'onoffline', 'ononline', 'onpagehide',
-  'onpageshow', 'onpaste', 'onpause', 'onplay', 'onplaying', 'onpopstate',
-  'onprogress', 'onratechange', 'onreset', 'onresize', 'onscroll',
-  'onsearch', 'onseeked', 'onseeking', 'onselect', 'onstalled', 'onstorage',
-  'onsubmit', 'onsuspend', 'ontimeupdate', 'ontoggle', 'onunload',
-  'onvolumechange', 'onwaiting', 'onwheel', 'formaction', 'xlink:href'
+  'onabort',
+  'onafterprint',
+  'onbeforeprint',
+  'onbeforeunload',
+  'onblur',
+  'oncanplay',
+  'oncanplaythrough',
+  'onchange',
+  'onclick',
+  'oncontextmenu',
+  'oncopy',
+  'oncuechange',
+  'oncut',
+  'ondblclick',
+  'ondrag',
+  'ondragend',
+  'ondragenter',
+  'ondragleave',
+  'ondragover',
+  'ondragstart',
+  'ondrop',
+  'ondurationchange',
+  'onemptied',
+  'onended',
+  'onerror',
+  'onfocus',
+  'onhashchange',
+  'oninput',
+  'oninvalid',
+  'onkeydown',
+  'onkeypress',
+  'onkeyup',
+  'onload',
+  'onloadeddata',
+  'onloadedmetadata',
+  'onloadstart',
+  'onmessage',
+  'onmousedown',
+  'onmousemove',
+  'onmouseout',
+  'onmouseover',
+  'onmouseup',
+  'onmousewheel',
+  'onoffline',
+  'ononline',
+  'onpagehide',
+  'onpageshow',
+  'onpaste',
+  'onpause',
+  'onplay',
+  'onplaying',
+  'onpopstate',
+  'onprogress',
+  'onratechange',
+  'onreset',
+  'onresize',
+  'onscroll',
+  'onsearch',
+  'onseeked',
+  'onseeking',
+  'onselect',
+  'onstalled',
+  'onstorage',
+  'onsubmit',
+  'onsuspend',
+  'ontimeupdate',
+  'ontoggle',
+  'onunload',
+  'onvolumechange',
+  'onwaiting',
+  'onwheel',
+  'formaction',
+  'xlink:href',
 ]);
 
 function processKramdownAttributes(html: string): string {
@@ -397,8 +458,10 @@ function parseKramdownAttributes(
       if (key) {
         let value = valueParts.join('=');
         // Remove quotes
-        if ((value.startsWith('"') && value.endsWith('"')) ||
-            (value.startsWith("'") && value.endsWith("'"))) {
+        if (
+          (value.startsWith('"') && value.endsWith('"')) ||
+          (value.startsWith("'") && value.endsWith("'"))
+        ) {
           value = value.slice(1, -1);
         }
         // Sanitize attribute name to prevent XSS

@@ -6,7 +6,7 @@ import { SassProcessor } from './SassProcessor';
 import { logger } from '../utils/logger';
 import { BuildError, FileSystemError, JekyllError } from '../utils/errors';
 import { PerformanceTimer, BuildTimings } from '../utils/timer';
-import { isPathWithinBase, sanitizePermalink } from '../utils/path-security';
+import { isPathWithinBase, sanitizePermalink, shouldExcludePath } from '../utils/path-security';
 import {
   mkdirSync,
   writeFileSync,
@@ -1074,37 +1074,7 @@ export class Builder {
     const excludePatterns = this.site.config.exclude || [];
     const includePatterns = this.site.config.include || [];
 
-    // Get the filename or directory name
-    const parts = relativePath.split('/');
-    const firstPart = parts[0] || '';
-
-    // Check if path starts with a hidden file marker (dot, hash, or tilde)
-    // These are excluded by default in Jekyll unless explicitly included
-    const isHiddenByDefault = firstPart.startsWith('.') || firstPart.startsWith('#') || firstPart.startsWith('~');
-
-    if (isHiddenByDefault) {
-      // Check if explicitly included
-      const isExplicitlyIncluded = includePatterns.some((pattern) => {
-        const normalizedPattern = pattern.startsWith('/') ? pattern.slice(1) : pattern;
-        return relativePath === normalizedPattern || relativePath.startsWith(normalizedPattern + '/');
-      });
-
-      if (!isExplicitlyIncluded) {
-        return true; // Exclude hidden files by default
-      }
-    }
-
-    for (const pattern of excludePatterns) {
-      // Normalize pattern - remove leading slash if present
-      // Jekyll (Ruby) treats patterns with and without leading slashes the same
-      const normalizedPattern = pattern.startsWith('/') ? pattern.slice(1) : pattern;
-
-      if (relativePath === normalizedPattern || relativePath.startsWith(normalizedPattern + '/')) {
-        return true;
-      }
-    }
-
-    return false;
+    return shouldExcludePath(relativePath, excludePatterns, includePatterns);
   }
 
   /**

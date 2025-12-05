@@ -276,3 +276,87 @@ export function sanitizePermalink(permalink: string): string {
 
   return sanitized;
 }
+
+/**
+ * Normalize path separators to forward slashes for consistent cross-platform comparison.
+ * This is needed because Windows uses backslashes while Unix uses forward slashes.
+ *
+ * @param path - The path to normalize
+ * @returns Path with forward slashes
+ *
+ * @example
+ * normalizePathSeparators('path\\to\\file') // 'path/to/file'
+ * normalizePathSeparators('path/to/file') // 'path/to/file'
+ */
+export function normalizePathSeparators(path: string): string {
+  // Replace backslashes with forward slashes
+  return path.replace(/\\/g, '/');
+}
+
+/**
+ * Check if a path should be excluded based on Jekyll's default rules.
+ * Jekyll excludes files/directories starting with '.', '#', or '~' by default
+ * unless they are explicitly included.
+ *
+ * @param relativePath - The path relative to the site source
+ * @param excludePatterns - Array of exclude patterns from config
+ * @param includePatterns - Array of include patterns from config
+ * @returns true if the path should be excluded
+ *
+ * @example
+ * // Hidden files excluded by default
+ * shouldExcludePath('.github/file.md', [], []) // true
+ *
+ * // Can be explicitly included
+ * shouldExcludePath('.github/file.md', [], ['.github']) // false
+ *
+ * // Exclude patterns work
+ * shouldExcludePath('docs/file.md', ['/docs'], []) // true
+ */
+export function shouldExcludePath(
+  relativePath: string,
+  excludePatterns: string[],
+  includePatterns: string[]
+): boolean {
+  // Normalize path separators for cross-platform compatibility
+  const normalizedPath = normalizePathSeparators(relativePath);
+
+  // Get the first part of the path (filename or directory name)
+  const parts = normalizedPath.split('/');
+  const firstPart = parts[0] || '';
+
+  // Check if path starts with a hidden file marker (dot, hash, or tilde)
+  // These are excluded by default in Jekyll unless explicitly included
+  const isHiddenByDefault =
+    firstPart.startsWith('.') || firstPart.startsWith('#') || firstPart.startsWith('~');
+
+  if (isHiddenByDefault) {
+    // Check if explicitly included
+    const isExplicitlyIncluded = includePatterns.some((pattern) => {
+      const normalizedPattern = normalizePathSeparators(
+        pattern.startsWith('/') ? pattern.slice(1) : pattern
+      );
+      return normalizedPath === normalizedPattern || normalizedPath.startsWith(normalizedPattern + '/');
+    });
+
+    if (!isExplicitlyIncluded) {
+      return true; // Exclude hidden files by default
+    }
+  }
+
+  // Check against exclude patterns
+  for (const pattern of excludePatterns) {
+    // Normalize pattern - remove leading slash if present
+    // Jekyll (Ruby) treats patterns with and without leading slashes the same
+    const normalizedPattern = normalizePathSeparators(
+      pattern.startsWith('/') ? pattern.slice(1) : pattern
+    );
+
+    // Simple pattern matching - exact match or starts with
+    if (normalizedPath === normalizedPattern || normalizedPath.startsWith(normalizedPattern + '/')) {
+      return true;
+    }
+  }
+
+  return false;
+}

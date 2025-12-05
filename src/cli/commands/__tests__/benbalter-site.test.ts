@@ -361,9 +361,8 @@ describe('Integration Test: benbalter/benbalter.github.com', () => {
       const jekyllArgs = useBundle
         ? ['exec', 'jekyll', 'build', '--source', siteDir, '--destination', destDirRuby]
         : ['build', '--source', siteDir, '--destination', destDirRuby];
-      const jekyllCwd = useBundle ? siteDir : siteDir;
 
-      const rubyResult = await benchmarkBuild(jekyllCommand, jekyllArgs, jekyllCwd);
+      const rubyResult = await benchmarkBuild(jekyllCommand, jekyllArgs, siteDir);
       rubyDuration = rubyResult.duration;
       printStat('Ruby Jekyll:', `${(rubyDuration / 1000).toFixed(2)}s`);
     } catch (error) {

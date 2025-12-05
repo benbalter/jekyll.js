@@ -17,6 +17,19 @@ import { Site } from '../core/Site';
 import { Document } from '../core/Document';
 
 /**
+ * Valid changefreq values per sitemap specification
+ */
+const VALID_CHANGEFREQ_VALUES = [
+  'always',
+  'hourly',
+  'daily',
+  'weekly',
+  'monthly',
+  'yearly',
+  'never',
+] as const;
+
+/**
  * Sitemap Plugin implementation
  * Implements both Plugin and GeneratorPlugin interfaces
  */
@@ -92,7 +105,8 @@ export class SitemapPlugin implements Plugin, GeneratorPlugin {
     const items: SitemapItemLoose[] = documents.map((doc) => {
       const url = doc.url || '';
       const lastmod = doc.data.last_modified_at || doc.date;
-      const changefreq = doc.data.sitemap?.changefreq || getDefaultChangefreq(doc);
+      const rawChangefreq = doc.data.sitemap?.changefreq || getDefaultChangefreq(doc);
+      const changefreq = validateChangefreq(rawChangefreq);
       const priority =
         doc.data.sitemap?.priority !== undefined
           ? doc.data.sitemap.priority
@@ -100,7 +114,7 @@ export class SitemapPlugin implements Plugin, GeneratorPlugin {
 
       const item: SitemapItemLoose = {
         url,
-        changefreq: changefreq as EnumChangefreq,
+        changefreq,
         priority,
       };
 
@@ -126,18 +140,24 @@ export class SitemapPlugin implements Plugin, GeneratorPlugin {
     }
 
     // Use the sitemap library with streaming
-    const stream = new SitemapStream({
-      hostname,
-      lastmodDateOnly: true,
-      xmlns: {
-        news: false,
-        video: false,
-        xhtml: false,
-        image: false,
-      },
-    });
-    const data = await streamToPromise(Readable.from(items).pipe(stream));
-    return data.toString();
+    try {
+      const stream = new SitemapStream({
+        hostname,
+        lastmodDateOnly: true,
+        xmlns: {
+          news: false,
+          video: false,
+          xhtml: false,
+          image: false,
+        },
+      });
+      const data = await streamToPromise(Readable.from(items).pipe(stream));
+      return data.toString();
+    } catch (err) {
+      throw new Error(
+        `Sitemap generation failed: ${err instanceof Error ? err.message : String(err)}`
+      );
+    }
   }
 }
 
@@ -192,4 +212,17 @@ function getDefaultPriority(doc: Document): number {
 
   // Other pages get medium-high priority
   return 0.8;
+}
+
+/**
+ * Validate and normalize changefreq value
+ * Returns a valid EnumChangefreq value, defaulting to 'weekly' for invalid inputs
+ */
+function validateChangefreq(value: string): EnumChangefreq {
+  const normalized = value.toLowerCase();
+  if (VALID_CHANGEFREQ_VALUES.includes(normalized as (typeof VALID_CHANGEFREQ_VALUES)[number])) {
+    return normalized as EnumChangefreq;
+  }
+  // Default to 'weekly' for invalid values
+  return EnumChangefreq.WEEKLY;
 }

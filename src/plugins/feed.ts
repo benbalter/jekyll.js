@@ -152,14 +152,20 @@ export class FeedPlugin implements Plugin, GeneratorPlugin {
     // Get post excerpt or description
     const excerpt = post.data.excerpt || post.data.description || '';
 
+    // Handle last_modified_at for updated date
+    // In Atom feeds, 'date' represents when the entry was last updated
+    // and 'published' represents when it was first published
+    const lastModified = post.data.last_modified_at;
+    const updatedDate = lastModified ? new Date(lastModified) : new Date(postDate);
+
     feed.addItem({
       title: postTitle,
       id: postUrl,
       link: postUrl,
       description: excerpt || undefined,
       content: excerpt || undefined,
-      date: new Date(postDate),
-      published: new Date(postDate),
+      date: updatedDate, // 'date' in feed library = 'updated' in Atom
+      published: new Date(postDate), // 'published' = when first published
       author: authorName
         ? [
             {
@@ -171,9 +177,6 @@ export class FeedPlugin implements Plugin, GeneratorPlugin {
         : undefined,
       category: post.categories.map((cat) => ({ name: cat })),
     });
-
-    // Note: The feed library doesn't have a direct 'updated' field per item in atom1()
-    // but it handles the main feed's updated time based on items
   }
 }
 

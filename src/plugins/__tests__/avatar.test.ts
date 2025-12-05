@@ -149,5 +149,47 @@ describe('AvatarPlugin', () => {
 
       expect(result).toContain('avatars.githubusercontent.com/octocat');
     });
+
+    it('should resolve dotted path variable like site.github.owner.name', async () => {
+      const template = '{% avatar site.github.owner.name %}';
+      const result = await renderer.render(template, {
+        site: {
+          github: {
+            owner: {
+              name: 'benbalter',
+            },
+          },
+        },
+      });
+
+      expect(result).toContain('avatars.githubusercontent.com/benbalter');
+      expect(result).toContain('alt="benbalter"');
+    });
+
+    it('should use literal username when variable path does not exist', async () => {
+      const template = '{% avatar benbalter %}';
+      const result = await renderer.render(template, {});
+
+      // When benbalter is not a variable, it should be used as literal username
+      expect(result).toContain('avatars.githubusercontent.com/benbalter');
+      expect(result).toContain('alt="benbalter"');
+    });
+
+    it('should resolve nested variable with size parameter', async () => {
+      const template = '{% avatar site.github.owner.name size=250 %}';
+      const result = await renderer.render(template, {
+        site: {
+          github: {
+            owner: {
+              name: 'octocat',
+            },
+          },
+        },
+      });
+
+      expect(result).toContain('avatars.githubusercontent.com/octocat');
+      expect(result).toContain('width="250"');
+      expect(result).toContain('height="250"');
+    });
   });
 });

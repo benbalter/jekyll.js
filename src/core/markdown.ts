@@ -245,6 +245,57 @@ export async function processMarkdown(
  * 1. On a separate line after a block element (paragraph, heading, list, etc.)
  * 2. Inline immediately after an element
  *
+ * ## Implementation Approach
+ *
+ * This implementation uses HTML post-processing rather than integrating into
+ * the remark AST pipeline. This approach was chosen because:
+ *
+ * 1. **Syntax incompatibility**: The `remark-attr` plugin exists but uses
+ *    different syntax (`{.class}`) than Kramdown (`{: .class }` with colon).
+ *
+ * 2. **Reliability**: Post-processing operates on final HTML, avoiding AST
+ *    complexity and edge cases with nested elements.
+ *
+ * 3. **Jekyll compatibility**: Matches Jekyll/Kramdown output exactly for
+ *    common use cases.
+ *
+ * ## Known Limitations
+ *
+ * **1. Indented HTML in Liquid loops is treated as code blocks**
+ *
+ * When HTML is indented inside Liquid `{% for %}` loops or conditionals,
+ * the markdown processor (remark) may treat the indented content as a
+ * fenced code block due to CommonMark/GFM rules.
+ *
+ * Example that may not render correctly:
+ * ```liquid
+ * {% for item in items %}
+ *     <div class="item">{{ item.name }}</div>
+ * {% endfor %}
+ * ```
+ *
+ * Workaround: Remove indentation or use `{% raw %}{% endraw %}` blocks:
+ * ```liquid
+ * {% for item in items %}
+ * <div class="item">{{ item.name }}</div>
+ * {% endfor %}
+ * ```
+ *
+ * **2. Attributes on elements spanning multiple paragraphs**
+ *
+ * IAL attributes only apply to the immediately preceding element. Kramdown
+ * has similar limitations with complex multi-block structures.
+ *
+ * **3. Inline IAL position**
+ *
+ * Inline attributes must immediately follow the closing tag with no
+ * whitespace: `*text*{: .class }` works, `*text* {: .class }` does not.
+ *
+ * ## Security
+ *
+ * Event handler attributes (onclick, onload, etc.) are blocked to prevent
+ * XSS attacks. See DANGEROUS_ATTRS constant below.
+ *
  * @param html The HTML content to process
  * @returns HTML with Kramdown attributes applied
  *

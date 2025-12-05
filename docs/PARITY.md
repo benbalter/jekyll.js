@@ -382,12 +382,77 @@ Ruby gem themes are replaced with npm packages:
 - Themes work identically once installed
 - Override mechanism is the same
 
-### Minor Output Differences
+### Markdown Processing (Remark vs. Kramdown)
 
-Some minor differences may occur:
-- Whitespace handling in some edge cases
-- Markdown rendering (Remark vs. Kramdown)
-- Date formatting locale differences
+Jekyll.js uses [Remark](https://github.com/remarkjs/remark) for markdown processing instead of Ruby Jekyll's [Kramdown](https://kramdown.gettalong.org/). While most markdown renders identically, there are some differences:
+
+#### Kramdown Attribute Lists (`{: .class }`)
+
+Jekyll.js supports Kramdown-style Inline Attribute Lists (IAL) through HTML post-processing:
+
+```markdown
+This paragraph will have a class.
+{: .highlight }
+
+# Heading with ID
+{: #custom-id }
+```
+
+**Supported:**
+- ✅ Block-level attributes on separate lines
+- ✅ Classes (`.classname`)
+- ✅ IDs (`#idname`)  
+- ✅ Custom attributes (`data-foo="bar"`)
+- ✅ Multiple attributes combined
+
+**Limitations:**
+- ⚠️ Inline attributes must immediately follow the element (no space)
+- ⚠️ Attributes on multi-paragraph elements may not work
+
+#### Indented HTML in Liquid Loops ⚠️
+
+**Known Limitation**: When HTML is indented inside Liquid `{% for %}` loops or conditionals, the markdown processor may treat the indented content as a code block.
+
+This is due to CommonMark/GFM rules where 4+ spaces of indentation creates a code block. Kramdown handles this differently.
+
+**Example that may not render correctly:**
+```liquid
+{% for item in items %}
+    <div class="item">{{ item.name }}</div>
+{% endfor %}
+```
+
+The indented `<div>` may be rendered as a code block instead of HTML.
+
+**Workarounds:**
+
+1. **Remove indentation** (recommended):
+   ```liquid
+   {% for item in items %}
+   <div class="item">{{ item.name }}</div>
+   {% endfor %}
+   ```
+
+2. **Use HTML file extension** (`.html` instead of `.md`) for pages with complex Liquid/HTML mixing.
+
+3. **Use include files** for complex HTML structures:
+   ```liquid
+   {% for item in items %}
+   {% include item.html item=item %}
+   {% endfor %}
+   ```
+
+#### Other Minor Differences
+
+| Feature | Kramdown | Remark/GFM | Notes |
+|---------|----------|------------|-------|
+| Smart quotes | ✅ | ✅ | Both support |
+| Tables | ✅ | ✅ | GFM tables |
+| Footnotes | ✅ | ✅ | GFM footnotes |
+| Task lists | ✅ | ✅ | GFM task lists |
+| Strikethrough | ✅ | ✅ | GFM strikethrough |
+| Autolinks | ✅ | ✅ | GFM autolinks |
+| Definition lists | ✅ | ⚠️ | Not in GFM |
 
 These differences are rare and typically don't affect site appearance.
 

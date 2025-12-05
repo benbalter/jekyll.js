@@ -108,7 +108,9 @@ export class Document {
         this.data = parsed.data;
       }
 
-      this.content = parsed.content;
+      // Trim leading whitespace from content to match Jekyll's behavior
+      // Jekyll strips leading newlines/whitespace between front matter and content
+      this.content = parsed.content.trimStart();
     } catch (error) {
       if (error instanceof Error) {
         // Check if it's a YAML parsing error (from js-yaml via gray-matter)
@@ -229,7 +231,9 @@ export class Document {
    */
   toJSON(): Record<string, any> {
     return {
-      path: this.path,
+      // In Jekyll, page.path is the relative path (e.g., "about.md")
+      path: this.relativePath,
+      // Keep relativePath for backward compatibility
       relativePath: this.relativePath,
       type: this.type,
       collection: this.collection,
@@ -243,6 +247,8 @@ export class Document {
       categories: this.categories,
       tags: this.tags,
       url: this.url,
+      // Include content for templates that need to access page.content
+      content: this.content,
       data: this.data,
     };
   }

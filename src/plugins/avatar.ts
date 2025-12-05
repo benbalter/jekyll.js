@@ -34,6 +34,8 @@ export class AvatarPlugin implements Plugin {
 
         // Parse username and optional size parameter
         // Format: username [size=N]
+        // Handle both plain variables (site.github.owner_name) and
+        // Liquid-style variables ({{site.github.owner_name}})
         const match = args.match(/^(\S+)(?:\s+size\s*=\s*(\d+))?$/i);
 
         if (!match) {
@@ -46,6 +48,12 @@ export class AvatarPlugin implements Plugin {
       render: function (ctx: { get: (path: string[]) => unknown }) {
         // Resolve username - it might be a variable reference
         let username = this.username;
+
+        // Strip {{ }} wrappers if present (Jekyll-style syntax)
+        // This handles {% avatar {{site.github.owner_name}} %} syntax
+        if (username.startsWith('{{') && username.endsWith('}}')) {
+          username = username.slice(2, -2).trim();
+        }
 
         // Check if username is a variable reference (doesn't start with quote)
         if (!username.startsWith('"') && !username.startsWith("'")) {

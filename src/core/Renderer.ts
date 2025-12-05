@@ -444,7 +444,8 @@ export class Renderer {
 
     this.liquid.registerFilter('newline_to_br', (input: string) => {
       if (!input) return '';
-      return String(input).replace(/\n/g, '<br>\n');
+      // Match Jekyll's output format with space and slash for XHTML compatibility
+      return String(input).replace(/\n/g, '<br />\n');
     });
 
     this.liquid.registerFilter('strip_html', (input: string) => {

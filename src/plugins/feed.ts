@@ -190,21 +190,23 @@ function generateFeedMetaTag(site: Site): string {
   const attributes: string[] = [
     'type="application/atom+xml"',
     'rel="alternate"',
-    `href="${escapeXml(feedUrl)}"`,
+    `href="${xmlEscape(feedUrl)}"`,
   ];
 
   // Add title attribute if available
   if (title) {
-    attributes.push(`title="${escapeXml(title)}"`);
+    attributes.push(`title="${xmlEscape(title)}"`);
   }
 
   return `<link ${attributes.join(' ')} />`;
 }
 
 /**
- * Escape XML special characters
+ * Escape XML special characters for raw HTML generation
+ * Note: This is only used for the feed_meta Liquid tag output,
+ * the feed library handles its own XML escaping internally.
  */
-function escapeXml(str: string): string {
+function xmlEscape(str: string): string {
   return String(str)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')

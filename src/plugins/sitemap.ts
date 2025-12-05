@@ -45,18 +45,17 @@ export class SitemapPlugin implements Plugin, GeneratorPlugin {
   }
 
   /**
-   * Generate the sitemap XML content using the sitemap library (synchronous wrapper)
-   * This method is kept for backward compatibility with tests and direct usage.
-   * Internally delegates to the async version using a synchronous pattern.
+   * Collect and convert documents to sitemap items
+   * Shared helper used by both sync and async generation methods
    */
-  generateSitemap(site: Site): string {
-    // For backward compatibility, we build the sitemap synchronously
-    // by directly constructing the items and calling the async method
-    // In tests, this may need to use the async version directly
+  private collectSitemapItems(site: Site): {
+    items: SitemapItemLoose[];
+    hostname: string;
+  } {
     const config = site.config;
     const baseUrl = config.url || '';
     const baseurl = config.baseurl || '';
-    const siteUrl = `${baseUrl}${baseurl}`;
+    const hostname = `${baseUrl}${baseurl}`;
 
     // Collect all documents that should be in the sitemap
     const documents: Document[] = [];
@@ -92,7 +91,7 @@ export class SitemapPlugin implements Plugin, GeneratorPlugin {
     });
 
     // Convert documents to sitemap items
-    const sitemapItems: SitemapItemLoose[] = documents.map((doc) => {
+    const items: SitemapItemLoose[] = documents.map((doc) => {
       const url = doc.url || '';
       const lastmod = doc.data.last_modified_at || doc.date;
       const changefreq = doc.data.sitemap?.changefreq || getDefaultChangefreq(doc);
@@ -114,21 +113,23 @@ export class SitemapPlugin implements Plugin, GeneratorPlugin {
       return item;
     });
 
-    // If no items, return an empty sitemap
-    if (sitemapItems.length === 0) {
-      return '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n</urlset>';
-    }
-
-    // Build sitemap XML using the sitemap library
-    // Using a synchronous approach by generating the XML string directly
-    return this.buildSitemapXml(sitemapItems, siteUrl);
+    return { items, hostname };
   }
 
   /**
-   * Build sitemap XML from items (synchronous helper)
-   * Uses the sitemap library to generate proper XML
+   * Generate the sitemap XML content (synchronous version)
+   * Uses a simplified XML generation that matches the library output format.
+   * This method is kept for backward compatibility with tests and direct usage.
    */
-  private buildSitemapXml(items: SitemapItemLoose[], hostname: string): string {
+  generateSitemap(site: Site): string {
+    const { items, hostname } = this.collectSitemapItems(site);
+
+    // If no items, return an empty sitemap
+    if (items.length === 0) {
+      return '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n</urlset>';
+    }
+
+    // Build sitemap XML in a format consistent with the sitemap library output
     const lines: string[] = [
       '<?xml version="1.0" encoding="UTF-8"?>',
       '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
@@ -137,7 +138,7 @@ export class SitemapPlugin implements Plugin, GeneratorPlugin {
     for (const item of items) {
       const fullUrl = item.url?.startsWith('http') ? item.url : `${hostname}${item.url}`;
       lines.push('  <url>');
-      lines.push(`    <loc>${escapeXml(fullUrl)}</loc>`);
+      lines.push(`    <loc>${xmlEscape(fullUrl)}</loc>`);
       if (item.lastmod) {
         lines.push(`    <lastmod>${item.lastmod}</lastmod>`);
       }
@@ -156,77 +157,19 @@ export class SitemapPlugin implements Plugin, GeneratorPlugin {
 
   /**
    * Async version of sitemap generation using the sitemap library's streaming API
+   * This is the preferred method that fully utilizes the third-party library.
    */
   async generateSitemapAsync(site: Site): Promise<string> {
-    const config = site.config;
-    const baseUrl = config.url || '';
-    const baseurl = config.baseurl || '';
-    const siteUrl = `${baseUrl}${baseurl}`;
-
-    // Collect all documents that should be in the sitemap
-    const documents: Document[] = [];
-
-    // Add pages
-    for (const page of site.pages) {
-      if (shouldIncludeInSitemap(page)) {
-        documents.push(page);
-      }
-    }
-
-    // Add posts
-    for (const post of site.posts) {
-      if (shouldIncludeInSitemap(post)) {
-        documents.push(post);
-      }
-    }
-
-    // Add collection documents
-    for (const [, docs] of site.collections) {
-      for (const doc of docs) {
-        if (shouldIncludeInSitemap(doc)) {
-          documents.push(doc);
-        }
-      }
-    }
-
-    // Sort documents by URL for consistency
-    documents.sort((a, b) => {
-      const urlA = a.url || '';
-      const urlB = b.url || '';
-      return urlA.localeCompare(urlB);
-    });
-
-    // Convert documents to sitemap items
-    const sitemapItems: SitemapItemLoose[] = documents.map((doc) => {
-      const url = doc.url || '';
-      const lastmod = doc.data.last_modified_at || doc.date;
-      const changefreq = doc.data.sitemap?.changefreq || getDefaultChangefreq(doc);
-      const priority =
-        doc.data.sitemap?.priority !== undefined
-          ? doc.data.sitemap.priority
-          : getDefaultPriority(doc);
-
-      const item: SitemapItemLoose = {
-        url,
-        changefreq: changefreq as EnumChangefreq,
-        priority,
-      };
-
-      if (lastmod) {
-        item.lastmod = new Date(lastmod).toISOString().split('T')[0];
-      }
-
-      return item;
-    });
+    const { items, hostname } = this.collectSitemapItems(site);
 
     // If no items, return an empty sitemap
-    if (sitemapItems.length === 0) {
+    if (items.length === 0) {
       return '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n</urlset>';
     }
 
     // Use the sitemap library with streaming
     const stream = new SitemapStream({
-      hostname: siteUrl,
+      hostname,
       lastmodDateOnly: true,
       xmlns: {
         news: false,
@@ -235,7 +178,7 @@ export class SitemapPlugin implements Plugin, GeneratorPlugin {
         image: false,
       },
     });
-    const data = await streamToPromise(Readable.from(sitemapItems).pipe(stream));
+    const data = await streamToPromise(Readable.from(items).pipe(stream));
     return data.toString();
   }
 }
@@ -295,8 +238,9 @@ function getDefaultPriority(doc: Document): number {
 
 /**
  * Escape XML special characters
+ * This is needed for the synchronous method since it can't use the library's streaming API
  */
-function escapeXml(str: string): string {
+function xmlEscape(str: string): string {
   return String(str)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')

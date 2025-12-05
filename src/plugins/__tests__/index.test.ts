@@ -3,6 +3,17 @@ import { Site } from '../../core/Site';
 import { Renderer } from '../../core/Renderer';
 import { mkdirSync, rmSync, writeFileSync } from 'fs';
 import { join } from 'path';
+import { logger } from '../../utils/logger';
+
+// Mock the logger
+jest.mock('../../utils/logger', () => ({
+  logger: {
+    debug: jest.fn(),
+    warn: jest.fn(),
+    info: jest.fn(),
+    error: jest.fn(),
+  },
+}));
 
 describe('Plugin Registration', () => {
   const testSiteDir = join(__dirname, '../../../../../tmp/test-plugin-registration');
@@ -11,6 +22,8 @@ describe('Plugin Registration', () => {
     // Clean up and create fresh test site directory
     rmSync(testSiteDir, { recursive: true, force: true });
     mkdirSync(testSiteDir, { recursive: true });
+    // Clear mock calls
+    jest.clearAllMocks();
   });
 
   afterEach(() => {
@@ -138,6 +151,49 @@ describe('Plugin Registration', () => {
         page: { title: 'Test', url: '/' },
       });
       expect(result).toContain('<title>');
+    });
+
+    it('should warn about missing plugins that are configured but not found', async () => {
+      // Create site with non-existent plugins configured
+      const config = {
+        title: 'Test Site',
+        plugins: ['jekyll-seo-tag', 'non-existent-plugin', 'another-missing-plugin'],
+      };
+
+      const site = new Site(testSiteDir, config);
+      const renderer = new Renderer(site);
+
+      // Register plugins
+      registerPlugins(renderer, site);
+
+      // Verify warnings were logged for missing plugins
+      expect(logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining("Plugin 'non-existent-plugin' is configured but was not found")
+      );
+      expect(logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining("Plugin 'another-missing-plugin' is configured but was not found")
+      );
+    });
+
+    it('should not warn about built-in plugins that are found', async () => {
+      // Create site with valid built-in plugins configured
+      const config = {
+        title: 'Test Site',
+        plugins: ['jekyll-seo-tag', 'jekyll-sitemap'],
+      };
+
+      const site = new Site(testSiteDir, config);
+      const renderer = new Renderer(site);
+
+      // Register plugins
+      registerPlugins(renderer, site);
+
+      // Verify no warning was logged about missing plugins
+      const warnCalls = (logger.warn as jest.Mock).mock.calls;
+      const missingPluginWarnings = warnCalls.filter(
+        (call) => call[0] && call[0].includes('is configured but was not found')
+      );
+      expect(missingPluginWarnings).toHaveLength(0);
     });
 
     it('should load and register npm plugins from node_modules', async () => {

@@ -309,9 +309,9 @@ The following modern packages are included:
 
 ```json
 {
-  "shiki": "^1.22.0",             // Syntax highlighting
-  "sharp": "^0.33.5",             // Image optimization
-  "zod": "^3.24.1",               // Schema validation
+  "shiki": "^3.19.0",             // Syntax highlighting
+  "sharp": "^0.34.5",             // Image optimization
+  "zod": "^3.25.76",              // Schema validation
   "html-minifier-terser": "^7.2.0" // HTML minification
 }
 ```

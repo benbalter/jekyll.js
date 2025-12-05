@@ -50,7 +50,9 @@ export class AvatarPlugin implements Plugin {
         // Check if username is a variable reference (doesn't start with quote)
         if (!username.startsWith('"') && !username.startsWith("'")) {
           // Try to resolve from context
-          const resolved = ctx.get([username]);
+          // Handle dotted paths like site.github.owner.name by splitting into path segments
+          const pathSegments = username.split('.');
+          const resolved = ctx.get(pathSegments);
           if (resolved !== undefined && resolved !== null) {
             username = String(resolved);
           }

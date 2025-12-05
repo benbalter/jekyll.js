@@ -6,6 +6,7 @@ import { buildCommand } from './commands/build';
 import { serveCommand } from './commands/serve';
 import { newCommand } from './commands/new';
 import { validateCommand } from './commands/validate';
+import { benchmarkCommand } from './commands/benchmark';
 
 const program = new Command();
 
@@ -65,6 +66,18 @@ program
   .option('--verbose', 'Print verbose output')
   .option('--strict', 'Treat warnings as errors')
   .action(validateCommand);
+
+// Benchmark command
+program
+  .command('benchmark')
+  .description('Benchmark site build performance')
+  .option('-s, --source <path>', 'Source directory', '.')
+  .option('-d, --destination <path>', 'Destination directory', './_site')
+  .option('--config <file>', 'Custom configuration file', '_config.yml')
+  .option('-n, --runs <number>', 'Number of benchmark runs', '3')
+  .option('--memory', 'Track memory usage during builds')
+  .option('--verbose', 'Print verbose output')
+  .action(benchmarkCommand);
 
 // Error handling
 program.exitOverride();

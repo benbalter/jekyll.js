@@ -44,6 +44,14 @@ export { RedirectFromPlugin, RedirectInfo } from './redirect-from';
 export { AvatarPlugin, generateAvatarTag, getAvatarUrl } from './avatar';
 export { GitHubMetadataPlugin, GitHubMetadata, GitHubRepository } from './github-metadata';
 export { MentionsPlugin, mentionify } from './mentions';
+export {
+  OgImagePlugin,
+  OgImageConfig,
+  CanvasConfig,
+  HeaderConfig,
+  ContentConfig,
+  BorderConfig,
+} from './og-image';
 
 // Export npm plugin loader functionality
 export {
@@ -90,6 +98,7 @@ import { RedirectFromPlugin } from './redirect-from';
 import { AvatarPlugin } from './avatar';
 import { GitHubMetadataPlugin } from './github-metadata';
 import { MentionsPlugin } from './mentions';
+import { OgImagePlugin } from './og-image';
 import { loadNpmPlugins } from './npm-plugin-loader';
 import { logger } from '../utils/logger';
 import {
@@ -207,6 +216,7 @@ export function getBuiltInPlugins(): Plugin[] {
     new AvatarPlugin(),
     new GitHubMetadataPlugin(),
     new MentionsPlugin(),
+    new OgImagePlugin(),
   ];
 }
 

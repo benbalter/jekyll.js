@@ -417,7 +417,8 @@ describe('Renderer', () => {
         const renderer = new Renderer(site);
         const template = '{{ text | newline_to_br }}';
         const result = await renderer.render(template, { text: 'line1\nline2\nline3' });
-        expect(result).toBe('line1<br>\nline2<br>\nline3');
+        // Output uses XHTML-style <br /> for Jekyll compatibility
+        expect(result).toBe('line1<br />\nline2<br />\nline3');
       });
 
       it('should support strip_html filter', async () => {

@@ -3,33 +3,49 @@
  *
  * Implements jekyll-sitemap functionality
  * Generates a sitemap.xml file for search engines
+ * Uses the 'sitemap' npm package for XML generation
  *
  * @see https://github.com/jekyll/jekyll-sitemap
+ * @see https://github.com/ekalinin/sitemap.js
  */
 
+import { SitemapStream, streamToPromise, EnumChangefreq, SitemapItemLoose } from 'sitemap';
+import { Readable } from 'stream';
 import { Plugin, GeneratorPlugin, GeneratorResult, GeneratorPriority } from './types';
 import { Renderer } from '../core/Renderer';
 import { Site } from '../core/Site';
 import { Document } from '../core/Document';
 
 /**
+ * Valid changefreq values per sitemap specification
+ */
+const VALID_CHANGEFREQ_VALUES = [
+  'always',
+  'hourly',
+  'daily',
+  'weekly',
+  'monthly',
+  'yearly',
+  'never',
+] as const;
+
+/**
  * Sitemap Plugin implementation
- * Implements both Plugin (for backward compatibility) and GeneratorPlugin interfaces
+ * Implements both Plugin and GeneratorPlugin interfaces
  */
 export class SitemapPlugin implements Plugin, GeneratorPlugin {
   name = 'jekyll-sitemap';
   priority = GeneratorPriority.LOWEST; // Run last so all URLs are generated
 
-  register(_renderer: Renderer, site: Site): void {
-    // Store a reference for backward compatibility with legacy builder code
-    (site as any)._sitemapPlugin = this;
+  register(_renderer: Renderer, _site: Site): void {
+    // No-op: sitemap generation is handled via the GeneratorPlugin interface
   }
 
   /**
    * Generator interface - generates sitemap.xml file
    */
-  generate(site: Site, _renderer: Renderer): GeneratorResult {
-    const content = this.generateSitemap(site);
+  async generate(site: Site, _renderer: Renderer): Promise<GeneratorResult> {
+    const content = await this.generateSitemap(site);
     return {
       files: [
         {
@@ -41,18 +57,16 @@ export class SitemapPlugin implements Plugin, GeneratorPlugin {
   }
 
   /**
-   * Generate the sitemap XML content
+   * Collect and convert documents to sitemap items
    */
-  generateSitemap(site: Site): string {
+  private collectSitemapItems(site: Site): {
+    items: SitemapItemLoose[];
+    hostname: string;
+  } {
     const config = site.config;
     const baseUrl = config.url || '';
     const baseurl = config.baseurl || '';
-    const siteUrl = `${baseUrl}${baseurl}`;
-
-    const lines: string[] = [
-      '<?xml version="1.0" encoding="UTF-8"?>',
-      '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
-    ];
+    const hostname = `${baseUrl}${baseurl}`;
 
     // Collect all documents that should be in the sitemap
     const documents: Document[] = [];
@@ -87,38 +101,63 @@ export class SitemapPlugin implements Plugin, GeneratorPlugin {
       return urlA.localeCompare(urlB);
     });
 
-    // Generate URL entries
-    for (const doc of documents) {
+    // Convert documents to sitemap items
+    const items: SitemapItemLoose[] = documents.map((doc) => {
       const url = doc.url || '';
-      const fullUrl = `${siteUrl}${url}`;
-
-      // Get lastmod date
       const lastmod = doc.data.last_modified_at || doc.date;
-      const lastmodStr = lastmod ? new Date(lastmod).toISOString().split('T')[0] : '';
-
-      // Get change frequency and priority from front matter or defaults
-      const changefreq = doc.data.sitemap?.changefreq || getDefaultChangefreq(doc);
+      const rawChangefreq = doc.data.sitemap?.changefreq || getDefaultChangefreq(doc);
+      const changefreq = validateChangefreq(rawChangefreq);
       const priority =
         doc.data.sitemap?.priority !== undefined
           ? doc.data.sitemap.priority
           : getDefaultPriority(doc);
 
-      lines.push('  <url>');
-      lines.push(`    <loc>${escapeXml(fullUrl)}</loc>`);
-      if (lastmodStr) {
-        lines.push(`    <lastmod>${lastmodStr}</lastmod>`);
+      const item: SitemapItemLoose = {
+        url,
+        changefreq,
+        priority,
+      };
+
+      if (lastmod) {
+        item.lastmod = new Date(lastmod).toISOString().split('T')[0];
       }
-      if (changefreq) {
-        lines.push(`    <changefreq>${changefreq}</changefreq>`);
-      }
-      if (priority !== undefined) {
-        lines.push(`    <priority>${priority.toFixed(1)}</priority>`);
-      }
-      lines.push('  </url>');
+
+      return item;
+    });
+
+    return { items, hostname };
+  }
+
+  /**
+   * Generate the sitemap XML content using the sitemap library's streaming API
+   */
+  async generateSitemap(site: Site): Promise<string> {
+    const { items, hostname } = this.collectSitemapItems(site);
+
+    // If no items, return an empty sitemap
+    if (items.length === 0) {
+      return '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n</urlset>';
     }
 
-    lines.push('</urlset>');
-    return lines.join('\n');
+    // Use the sitemap library with streaming
+    try {
+      const stream = new SitemapStream({
+        hostname,
+        lastmodDateOnly: true,
+        xmlns: {
+          news: false,
+          video: false,
+          xhtml: false,
+          image: false,
+        },
+      });
+      const data = await streamToPromise(Readable.from(items).pipe(stream));
+      return data.toString();
+    } catch (err) {
+      throw new Error(
+        `Sitemap generation failed: ${err instanceof Error ? err.message : String(err)}`
+      );
+    }
   }
 }
 
@@ -176,13 +215,14 @@ function getDefaultPriority(doc: Document): number {
 }
 
 /**
- * Escape XML special characters
+ * Validate and normalize changefreq value
+ * Returns a valid EnumChangefreq value, defaulting to 'weekly' for invalid inputs
  */
-function escapeXml(str: string): string {
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
+function validateChangefreq(value: string): EnumChangefreq {
+  const normalized = value.toLowerCase();
+  if (VALID_CHANGEFREQ_VALUES.includes(normalized as (typeof VALID_CHANGEFREQ_VALUES)[number])) {
+    return normalized as EnumChangefreq;
+  }
+  // Default to 'weekly' for invalid values
+  return EnumChangefreq.WEEKLY;
 }

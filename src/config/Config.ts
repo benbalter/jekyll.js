@@ -782,6 +782,7 @@ function isSupportedPlugin(pluginName: string): boolean {
     'jekyll-avatar',
     'jekyll-github-metadata',
     'jekyll-mentions',
+    'jekyll-og-image',
   ];
 
   // If it's a built-in plugin, it's supported

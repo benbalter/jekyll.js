@@ -2,7 +2,7 @@ import { OgImagePlugin } from '../og-image';
 import { Site } from '../../core/Site';
 import { Renderer } from '../../core/Renderer';
 import { Document, DocumentType } from '../../core/Document';
-import { mkdirSync, writeFileSync, rmSync, existsSync, readFileSync } from 'fs';
+import { mkdirSync, writeFileSync, rmSync, existsSync, readFileSync, statSync } from 'fs';
 import { join } from 'path';
 
 describe('OgImagePlugin', () => {
@@ -136,17 +136,13 @@ describe('OgImagePlugin', () => {
     await plugin.generate(site, renderer);
 
     const imagePath = join(testSiteDir, 'assets/images/og/posts/no-regen.png');
-    const firstMtime = existsSync(imagePath)
-      ? require('fs').statSync(imagePath).mtime.getTime()
-      : 0;
+    const firstMtime = existsSync(imagePath) ? statSync(imagePath).mtime.getTime() : 0;
 
     // Wait a bit and regenerate (should skip)
     await new Promise((resolve) => setTimeout(resolve, 100));
     await plugin.generate(site, renderer);
 
-    const secondMtime = existsSync(imagePath)
-      ? require('fs').statSync(imagePath).mtime.getTime()
-      : 0;
+    const secondMtime = existsSync(imagePath) ? statSync(imagePath).mtime.getTime() : 0;
 
     // File should not have been modified
     expect(firstMtime).toBe(secondMtime);

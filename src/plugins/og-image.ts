@@ -75,30 +75,54 @@ export interface OgImageConfig {
   image?: string;
 }
 
-// Default configuration values
-const DEFAULT_CONFIG: Required<OgImageConfig> = {
-  output_dir: 'assets/images/og',
-  force: false,
-  verbose: false,
-  skip_drafts: true,
+/**
+ * Resolved OG Image configuration with defaults applied
+ * All nested objects are guaranteed to exist, but domain/image/background_image may be undefined
+ */
+interface ResolvedOgImageConfig {
+  output_dir: string;
+  force: boolean;
+  verbose: boolean;
+  skip_drafts: boolean;
   canvas: {
-    background_color: '#FFFFFF',
-    background_image: undefined,
-  },
+    background_color: string;
+    background_image?: string;
+  };
   header: {
-    font_family: 'sans-serif',
-    color: '#2f313d',
-  },
+    font_family: string;
+    color: string;
+  };
   content: {
-    font_family: 'sans-serif',
-    color: '#535358',
-  },
+    font_family: string;
+    color: string;
+  };
   border_bottom: {
-    width: 0,
-    fill: '#000000',
-  },
-  domain: undefined as unknown as string,
-  image: undefined as unknown as string,
+    width: number;
+    fill: string | string[];
+  };
+  domain?: string;
+  image?: string;
+}
+
+// Default configuration values
+const DEFAULT_CANVAS = {
+  background_color: '#FFFFFF',
+  background_image: undefined as string | undefined,
+};
+
+const DEFAULT_HEADER = {
+  font_family: 'sans-serif',
+  color: '#2f313d',
+};
+
+const DEFAULT_CONTENT = {
+  font_family: 'sans-serif',
+  color: '#535358',
+};
+
+const DEFAULT_BORDER = {
+  width: 0,
+  fill: '#000000' as string | string[],
 };
 
 // Image dimensions (following Ruby plugin convention)
@@ -139,7 +163,7 @@ export class OgImagePlugin implements Plugin, GeneratorPlugin {
       }
 
       // Merge post-level og_image config with global config
-      const postConfig = this.mergeConfig(globalConfig, post.data.og_image || {});
+      const postConfig = this.mergePostConfig(globalConfig, post.data.og_image);
       const slug = this.getSlug(post);
       const imagePath = join(basePath, `${slug}.png`);
       const absoluteImagePath = join(site.source, imagePath);
@@ -175,41 +199,72 @@ export class OgImagePlugin implements Plugin, GeneratorPlugin {
   /**
    * Get configuration from site config
    */
-  private getConfig(site: Site): Required<OgImageConfig> {
+  private getConfig(site: Site): ResolvedOgImageConfig {
     const siteConfig = site.config.og_image || {};
-    return this.mergeConfig(DEFAULT_CONFIG, siteConfig);
+    return this.mergeConfig(siteConfig);
   }
 
   /**
-   * Deep merge configuration objects
+   * Merge configuration with defaults
    */
-  private mergeConfig(
-    base: Required<OgImageConfig>,
-    override: Partial<OgImageConfig>
-  ): Required<OgImageConfig> {
+  private mergeConfig(override: Partial<OgImageConfig>): ResolvedOgImageConfig {
     return {
-      output_dir: override.output_dir ?? base.output_dir,
-      force: override.force ?? base.force,
-      verbose: override.verbose ?? base.verbose,
-      skip_drafts: override.skip_drafts ?? base.skip_drafts,
+      output_dir: override.output_dir ?? 'assets/images/og',
+      force: override.force ?? false,
+      verbose: override.verbose ?? false,
+      skip_drafts: override.skip_drafts ?? true,
       canvas: {
-        background_color: override.canvas?.background_color ?? base.canvas?.background_color,
-        background_image: override.canvas?.background_image ?? base.canvas?.background_image,
+        background_color: override.canvas?.background_color ?? DEFAULT_CANVAS.background_color,
+        background_image: override.canvas?.background_image ?? DEFAULT_CANVAS.background_image,
       },
       header: {
-        font_family: override.header?.font_family ?? base.header?.font_family,
-        color: override.header?.color ?? base.header?.color,
+        font_family: override.header?.font_family ?? DEFAULT_HEADER.font_family,
+        color: override.header?.color ?? DEFAULT_HEADER.color,
       },
       content: {
-        font_family: override.content?.font_family ?? base.content?.font_family,
-        color: override.content?.color ?? base.content?.color,
+        font_family: override.content?.font_family ?? DEFAULT_CONTENT.font_family,
+        color: override.content?.color ?? DEFAULT_CONTENT.color,
       },
       border_bottom: {
-        width: override.border_bottom?.width ?? base.border_bottom?.width,
-        fill: override.border_bottom?.fill ?? base.border_bottom?.fill,
+        width: override.border_bottom?.width ?? DEFAULT_BORDER.width,
+        fill: override.border_bottom?.fill ?? DEFAULT_BORDER.fill,
       },
-      domain: override.domain ?? base.domain,
-      image: override.image ?? base.image,
+      domain: override.domain,
+      image: override.image,
+    };
+  }
+
+  /**
+   * Merge post-level config with site-level config
+   */
+  private mergePostConfig(
+    base: ResolvedOgImageConfig,
+    postOverride: Partial<OgImageConfig> | undefined
+  ): ResolvedOgImageConfig {
+    if (!postOverride) return base;
+    return {
+      output_dir: postOverride.output_dir ?? base.output_dir,
+      force: postOverride.force ?? base.force,
+      verbose: postOverride.verbose ?? base.verbose,
+      skip_drafts: postOverride.skip_drafts ?? base.skip_drafts,
+      canvas: {
+        background_color: postOverride.canvas?.background_color ?? base.canvas.background_color,
+        background_image: postOverride.canvas?.background_image ?? base.canvas.background_image,
+      },
+      header: {
+        font_family: postOverride.header?.font_family ?? base.header.font_family,
+        color: postOverride.header?.color ?? base.header.color,
+      },
+      content: {
+        font_family: postOverride.content?.font_family ?? base.content.font_family,
+        color: postOverride.content?.color ?? base.content.color,
+      },
+      border_bottom: {
+        width: postOverride.border_bottom?.width ?? base.border_bottom.width,
+        fill: postOverride.border_bottom?.fill ?? base.border_bottom.fill,
+      },
+      domain: postOverride.domain ?? base.domain,
+      image: postOverride.image ?? base.image,
     };
   }
 
@@ -220,7 +275,7 @@ export class OgImagePlugin implements Plugin, GeneratorPlugin {
     site: Site,
     post: Document,
     outputPath: string,
-    config: Required<OgImageConfig>
+    config: ResolvedOgImageConfig
   ): Promise<void> {
     // Ensure output directory exists
     const outputDir = dirname(outputPath);
@@ -262,7 +317,7 @@ export class OgImagePlugin implements Plugin, GeneratorPlugin {
   /**
    * Create the base canvas with background color or image
    */
-  private async createCanvas(site: Site, config: Required<OgImageConfig>): Promise<sharp.Sharp> {
+  private async createCanvas(site: Site, config: ResolvedOgImageConfig): Promise<sharp.Sharp> {
     const bgColor = config.canvas.background_color || '#FFFFFF';
 
     if (config.canvas.background_image) {
@@ -303,7 +358,7 @@ export class OgImagePlugin implements Plugin, GeneratorPlugin {
    */
   private async addBorder(
     canvas: sharp.Sharp,
-    config: Required<OgImageConfig>
+    config: ResolvedOgImageConfig
   ): Promise<sharp.Sharp> {
     const borderWidth = config.border_bottom.width || 0;
     if (borderWidth <= 0) return canvas;
@@ -348,7 +403,7 @@ export class OgImagePlugin implements Plugin, GeneratorPlugin {
   private async addLogoImage(
     site: Site,
     canvas: sharp.Sharp,
-    config: Required<OgImageConfig>
+    config: ResolvedOgImageConfig
   ): Promise<sharp.Sharp> {
     if (!config.image) return canvas;
 
@@ -401,7 +456,7 @@ export class OgImagePlugin implements Plugin, GeneratorPlugin {
   private async addTitle(
     canvas: sharp.Sharp,
     title: string,
-    config: Required<OgImageConfig>
+    config: ResolvedOgImageConfig
   ): Promise<sharp.Sharp> {
     const padding = 80;
     const maxWidth = config.image ? 870 : 1040;
@@ -446,7 +501,7 @@ export class OgImagePlugin implements Plugin, GeneratorPlugin {
   private async addDescription(
     canvas: sharp.Sharp,
     description: string,
-    config: Required<OgImageConfig>
+    config: ResolvedOgImageConfig
   ): Promise<sharp.Sharp> {
     const padding = 80;
     const maxWidth = config.domain ? 850 : 1040;
@@ -458,8 +513,10 @@ export class OgImagePlugin implements Plugin, GeneratorPlugin {
     const lines = this.wrapText(description, maxWidth, fontSize);
     // Limit to 3 lines
     const displayLines = lines.slice(0, 3);
-    if (lines.length > 3) {
-      displayLines[2] = displayLines[2]?.slice(0, -3) + '...';
+    if (lines.length > 3 && displayLines[2]) {
+      // Safely truncate the third line and add ellipsis
+      const lastLine = displayLines[2];
+      displayLines[2] = lastLine.length > 3 ? lastLine.slice(0, -3) + '...' : '...';
     }
 
     const lineHeight = Math.round(fontSize * 1.4);
@@ -500,7 +557,7 @@ export class OgImagePlugin implements Plugin, GeneratorPlugin {
    */
   private async addDomain(
     canvas: sharp.Sharp,
-    config: Required<OgImageConfig>
+    config: ResolvedOgImageConfig
   ): Promise<sharp.Sharp> {
     if (!config.domain) return canvas;
 
@@ -536,7 +593,7 @@ export class OgImagePlugin implements Plugin, GeneratorPlugin {
   /**
    * Get bottom margin accounting for border
    */
-  private getMarginBottom(config: Required<OgImageConfig>): number {
+  private getMarginBottom(config: ResolvedOgImageConfig): number {
     return 80 + (config.border_bottom.width || 0);
   }
 
@@ -599,11 +656,11 @@ export class OgImagePlugin implements Plugin, GeneratorPlugin {
    */
   private hexToRgb(hex: string): { r: number; g: number; b: number } {
     const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    if (result) {
+    if (result && result[1] && result[2] && result[3]) {
       return {
-        r: parseInt(result[1]!, 16),
-        g: parseInt(result[2]!, 16),
-        b: parseInt(result[3]!, 16),
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16),
       };
     }
     return { r: 255, g: 255, b: 255 };

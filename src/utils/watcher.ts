@@ -60,7 +60,7 @@ export class FileWatcher {
   start(): void {
     // Default to polling to avoid EMFILE "too many open files" errors
     // on systems with strict file descriptor limits (especially macOS)
-    const usePolling = this.options.usePolling !== false;
+    const usePolling = this.options.usePolling ?? true;
     const pollInterval = this.options.pollInterval ?? 100;
 
     this.watcher = watch(this.options.source, {

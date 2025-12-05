@@ -971,14 +971,20 @@ export class Renderer {
       '%Y': 'yyyy', // 4-digit year
       '%y': 'yy', // 2-digit year
       '%m': 'MM', // Month (01-12)
+      '%-m': 'M', // Month without leading zero (1-12)
       '%B': 'MMMM', // Full month name
       '%b': 'MMM', // Abbreviated month name
       '%d': 'dd', // Day of month (01-31)
+      '%-d': 'd', // Day of month without leading zero (1-31)
       '%e': 'd', // Day of month (1-31)
       '%H': 'HH', // Hour (00-23)
+      '%-H': 'H', // Hour without leading zero (0-23)
       '%I': 'hh', // Hour (01-12)
+      '%-I': 'h', // Hour without leading zero (1-12)
       '%M': 'mm', // Minute (00-59)
+      '%-M': 'm', // Minute without leading zero (0-59)
       '%S': 'ss', // Second (00-59)
+      '%-S': 's', // Second without leading zero (0-59)
       '%p': 'a', // AM/PM
       '%A': 'EEEE', // Full weekday name
       '%a': 'EEE', // Abbreviated weekday name
@@ -990,10 +996,11 @@ export class Renderer {
     };
 
     let result = strftime;
-    for (const [pattern, replacement] of Object.entries(conversions)) {
+    // Sort patterns by length (descending) to ensure longer patterns like '%-d' are matched before '%d'
+    const sortedPatterns = Object.entries(conversions).sort((a, b) => b[0].length - a[0].length);
+    for (const [pattern, replacement] of sortedPatterns) {
       // Escape special regex characters in the pattern
-      // In this case, patterns like '%Y' only have '%' which needs escaping
-      const escapedPattern = pattern.replace(/[.*+?^${}()|[\]\\%]/g, '\\$&');
+      const escapedPattern = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       result = result.replace(new RegExp(escapedPattern, 'g'), replacement);
     }
     return result;

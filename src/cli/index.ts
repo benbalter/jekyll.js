@@ -74,7 +74,18 @@ program
   .option('-s, --source <path>', 'Source directory', '.')
   .option('-d, --destination <path>', 'Destination directory', './_site')
   .option('--config <file>', 'Custom configuration file', '_config.yml')
-  .option('-n, --runs <number>', 'Number of benchmark runs', '3')
+  .option(
+    '-n, --runs <number>',
+    'Number of benchmark runs',
+    (value: string) => {
+      const parsed = parseInt(value, 10);
+      if (isNaN(parsed) || parsed < 1) {
+        throw new Error('Number of runs must be a positive integer');
+      }
+      return parsed;
+    },
+    3
+  )
   .option('--memory', 'Track memory usage during builds')
   .option('--verbose', 'Print verbose output')
   .action(benchmarkCommand);

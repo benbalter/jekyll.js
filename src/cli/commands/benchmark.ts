@@ -106,7 +106,7 @@ async function runBenchmarkBuild(
 export async function benchmarkCommand(options: BenchmarkOptions): Promise<void> {
   const isVerbose = options.verbose || false;
   const trackMemory = options.memory || false;
-  const numRuns = options.runs || 3;
+  const numRuns = Math.max(1, options.runs || 3); // Ensure at least 1 run
 
   logger.setVerbose(isVerbose);
 
@@ -130,12 +130,14 @@ export async function benchmarkCommand(options: BenchmarkOptions): Promise<void>
     }
 
     // Destination path: CLI option takes precedence, then config, then default based on source
-    const destPath =
-      options.destination !== undefined
-        ? resolve(options.destination)
-        : config.destination
-          ? resolve(config.destination)
-          : join(sourcePath, '_site');
+    let destPath: string;
+    if (options.destination !== undefined) {
+      destPath = resolve(options.destination);
+    } else if (config.destination) {
+      destPath = resolve(config.destination);
+    } else {
+      destPath = join(sourcePath, '_site');
+    }
 
     // Update config with final paths
     config.source = sourcePath;

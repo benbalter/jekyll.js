@@ -14,7 +14,7 @@
 
 import { existsSync, readFileSync } from 'fs';
 import { join, dirname } from 'path';
-import { Plugin } from './index';
+import { Plugin } from './types';
 import { logger } from '../utils/logger';
 
 /**

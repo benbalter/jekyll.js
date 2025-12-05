@@ -7,7 +7,7 @@
  * @see https://github.com/jekyll/jekyll-sitemap
  */
 
-import { Plugin, GeneratorPlugin, GeneratorResult, GeneratorPriority } from './index';
+import { Plugin, GeneratorPlugin, GeneratorResult, GeneratorPriority } from './types';
 import { Renderer } from '../core/Renderer';
 import { Site } from '../core/Site';
 import { Document } from '../core/Document';

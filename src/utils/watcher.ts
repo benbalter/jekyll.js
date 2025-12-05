@@ -143,9 +143,17 @@ export class FileWatcher {
    * Prevents the process from crashing when file system errors occur
    */
   private handleWatchError(error: Error): void {
-    // Check if it's an EMFILE error (too many open files)
-    const isEmfileError = 'code' in error && (error as NodeJS.ErrnoException).code === 'EMFILE';
+    // Type guard for NodeJS.ErrnoException
+    function isErrnoException(e: unknown): e is NodeJS.ErrnoException {
+      return (
+        typeof e === 'object' &&
+        e !== null &&
+        'code' in e &&
+        typeof (e as { code?: unknown }).code === 'string'
+      );
+    }
 
+    const isEmfileError = isErrnoException(error) && error.code === 'EMFILE';
     if (isEmfileError) {
       console.error(
         chalk.red('[Watcher Error]'),

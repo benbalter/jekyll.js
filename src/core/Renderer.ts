@@ -1170,7 +1170,9 @@ export class Renderer {
 
         // Check if identifier includes a subdirectory
         const hasSubdir = normalizedIdentifier.includes('/');
-        const identifierParts = hasSubdir ? normalizedIdentifier.split('/') : [normalizedIdentifier];
+        const identifierParts = hasSubdir
+          ? normalizedIdentifier.split('/')
+          : [normalizedIdentifier];
         const slug = identifierParts[identifierParts.length - 1];
         const subdir = hasSubdir ? identifierParts.slice(0, -1).join('/') : null;
 
@@ -1186,8 +1188,7 @@ export class Renderer {
           // Get the filename without extension
           const pathParts = normalizedPostPath.split('/');
           const filename = pathParts[pathParts.length - 1];
-          const postSubdir =
-            pathParts.length > 1 ? pathParts.slice(0, -1).join('/') : null;
+          const postSubdir = pathParts.length > 1 ? pathParts.slice(0, -1).join('/') : null;
 
           // Remove extension to get the identifier
           const filenameWithoutExt = filename?.replace(/\.[^.]+$/, '') || '';

@@ -798,6 +798,30 @@ describe('Renderer', () => {
         expect(result).toBe('2024-01-15');
       });
 
+      it('should support date filter with strftime no-padding modifier', async () => {
+        const renderer = new Renderer(site);
+        // Test the %-d modifier (day without leading zero) - fixes backwards compatibility
+        const template = '{{ date | date: "%B %-d, %Y" }}';
+        const result = await renderer.render(template, { date: '2025-01-29' });
+        expect(result).toBe('January 29, 2025');
+      });
+
+      it('should support date filter with various no-padding modifiers', async () => {
+        const renderer = new Renderer(site);
+        // Test %-m (month without leading zero) and %-d (day without leading zero)
+        const template = '{{ date | date: "%-m/%-d/%Y" }}';
+        const result = await renderer.render(template, { date: '2025-01-05' });
+        expect(result).toBe('1/5/2025');
+      });
+
+      it('should support date filter with time no-padding modifiers', async () => {
+        const renderer = new Renderer(site);
+        // Test %-H (hour), %-M (minute), %-S (second) without leading zeros
+        const template = '{{ date | date: "%-H:%-M:%-S" }}';
+        const result = await renderer.render(template, { date: '2025-01-05T09:05:03' });
+        expect(result).toBe('9:5:3');
+      });
+
       it('should support default filter', async () => {
         const renderer = new Renderer(site);
         const template = '{{ value | default: "N/A" }}';

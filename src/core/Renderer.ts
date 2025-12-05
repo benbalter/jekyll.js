@@ -1047,27 +1047,179 @@ export class Renderer {
       },
     });
 
-    // link tag for linking to posts
+    // link tag - generates URL for any page, post, collection document, or static file
+    // Usage: {% link _posts/2024-01-15-my-post.md %} or {% link about.md %}
+    // The path is relative to the site source directory and includes file extension
     this.liquid.registerTag('link', {
       parse(token: any) {
-        // Sanitize path to prevent XSS
+        // Sanitize path to prevent XSS - allow path separators and dots
         this.path = String(token.args.trim()).replace(/[<>"']/g, '');
       },
-      render: function (_ctx: any) {
-        // Simplified - would need to resolve post paths
-        return this.path;
+      render: function (ctx: any) {
+        const path = this.path;
+
+        // Get site data from context
+        const site =
+          ctx.environments?.site || ctx.site || ctx.scopes?.[0]?.site || ctx.globals?.site;
+        if (!site) {
+          throw new Error(`link tag: site data not found in context for path '${path}'`);
+        }
+
+        // Normalize path separators for comparison
+        const normalizedPath = path.replace(/\\/g, '/');
+
+        // Search in pages
+        if (site.pages) {
+          for (const page of site.pages) {
+            const pagePath =
+              page.relativePath?.replace(/\\/g, '/') || page.path?.replace(/\\/g, '/');
+            if (pagePath === normalizedPath) {
+              if (page.url) {
+                return page.url;
+              }
+            }
+          }
+        }
+
+        // Search in posts
+        if (site.posts) {
+          for (const post of site.posts) {
+            const postPath =
+              post.relativePath?.replace(/\\/g, '/') || post.path?.replace(/\\/g, '/');
+            // Posts are typically in _posts/ directory
+            if (postPath === normalizedPath || `_posts/${postPath}` === normalizedPath) {
+              if (post.url) {
+                return post.url;
+              }
+            }
+          }
+        }
+
+        // Search in collections
+        if (site.collections) {
+          const collections =
+            site.collections instanceof Map
+              ? Object.fromEntries(site.collections)
+              : site.collections;
+          for (const [collectionName, docs] of Object.entries(collections)) {
+            if (Array.isArray(docs)) {
+              for (const doc of docs) {
+                const docPath =
+                  doc.relativePath?.replace(/\\/g, '/') || doc.path?.replace(/\\/g, '/');
+                if (
+                  docPath === normalizedPath ||
+                  `_${collectionName}/${docPath}` === normalizedPath
+                ) {
+                  if (doc.url) {
+                    return doc.url;
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        // Search in static files
+        if (site.static_files) {
+          for (const staticFile of site.static_files) {
+            // Static files may have different path structures:
+            // - Original StaticFile object: has relativePath property
+            // - Serialized JSON (from toJSON): has 'path' property which is the URL (e.g., "/assets/style.css")
+            let filePath = staticFile.relativePath?.replace(/\\/g, '/');
+
+            // If relativePath not available, reconstruct from URL
+            // In serialized JSON, staticFile.path is the URL, not a file path
+            if (!filePath && staticFile.path) {
+              // Remove leading slash from URL to get relative path for comparison
+              filePath = staticFile.path.replace(/^\//g, '');
+            }
+
+            if (filePath === normalizedPath) {
+              // Return URL - prefer staticFile.url getter, or the serialized path (which is already a URL)
+              const url = staticFile.url || staticFile.path || `/${normalizedPath}`;
+              return url.startsWith('/') ? url : `/${url}`;
+            }
+          }
+        }
+
+        // File not found - throw error as Jekyll does
+        throw new Error(
+          `link tag: Could not find document '${path}' in pages, posts, collections, or static files. ` +
+            `Make sure the file exists and the path is relative to the site source.`
+        );
       },
     });
 
-    // post_url tag
+    // post_url tag - generates URL for a post
+    // Usage: {% post_url 2024-01-15-my-post %} or {% post_url subfolder/2024-01-15-my-post %}
+    // The identifier is YYYY-MM-DD-title format, without extension
     this.liquid.registerTag('post_url', {
       parse(token: any) {
-        // Sanitize postName to prevent XSS
+        // Sanitize postName to prevent XSS - allow path separators, digits, and hyphens
         this.postName = String(token.args.trim()).replace(/[<>"']/g, '');
       },
-      render: function (_ctx: any) {
-        // Simplified - would need to resolve post URLs from site
-        return `/${this.postName}`;
+      render: function (ctx: any) {
+        const postIdentifier = this.postName;
+
+        // Get site data from context
+        const site =
+          ctx.environments?.site || ctx.site || ctx.scopes?.[0]?.site || ctx.globals?.site;
+        if (!site) {
+          throw new Error(`post_url tag: site data not found in context for '${postIdentifier}'`);
+        }
+
+        if (!site.posts || !Array.isArray(site.posts)) {
+          throw new Error(`post_url tag: no posts found in site for '${postIdentifier}'`);
+        }
+
+        // Normalize path separators
+        const normalizedIdentifier = postIdentifier.replace(/\\/g, '/');
+
+        // Check if identifier includes a subdirectory
+        const hasSubdir = normalizedIdentifier.includes('/');
+        const identifierParts = hasSubdir
+          ? normalizedIdentifier.split('/')
+          : [normalizedIdentifier];
+        const slug = identifierParts[identifierParts.length - 1];
+        const subdir = hasSubdir ? identifierParts.slice(0, -1).join('/') : null;
+
+        // Search for matching post
+        for (const post of site.posts) {
+          // Get the basename without extension from the post's path
+          const postPath =
+            post.relativePath?.replace(/\\/g, '/') || post.path?.replace(/\\/g, '/') || '';
+
+          // Remove _posts/ prefix if present
+          const normalizedPostPath = postPath.replace(/^_posts\//, '');
+
+          // Get the filename without extension
+          const pathParts = normalizedPostPath.split('/');
+          const filename = pathParts[pathParts.length - 1];
+          const postSubdir = pathParts.length > 1 ? pathParts.slice(0, -1).join('/') : null;
+
+          // Remove extension to get the identifier
+          const filenameWithoutExt = filename?.replace(/\.[^.]+$/, '') || '';
+
+          // Match: check if filename (without extension) matches the slug
+          // and if subdirectory matches (if provided)
+          if (filenameWithoutExt === slug) {
+            // If subdir is specified, it must match
+            if (subdir !== null && postSubdir !== subdir) {
+              continue;
+            }
+
+            if (post.url) {
+              return post.url;
+            }
+          }
+        }
+
+        // Post not found - throw error as Jekyll does
+        throw new Error(
+          `post_url tag: Could not find post '${postIdentifier}'. ` +
+            `Use the format YYYY-MM-DD-title (e.g., 2024-01-15-my-post) without file extension. ` +
+            `For posts in subdirectories, use subfolder/YYYY-MM-DD-title.`
+        );
       },
     });
 

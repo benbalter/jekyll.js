@@ -16,6 +16,7 @@
 
 import { createHighlighter, Highlighter, BundledLanguage, BundledTheme } from 'shiki';
 import { logger } from '../utils/logger';
+import { escapeHtml } from '../utils/html';
 
 /**
  * Configuration options for syntax highlighting
@@ -196,21 +197,6 @@ export function getCommonLanguages(): string[] {
     'shell',
     'sql',
   ];
-}
-
-/**
- * Escape HTML special characters
- */
-function escapeHtml(str: string): string {
-  const htmlEscapes: Record<string, string> = {
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#39;',
-  };
-
-  return str.replace(/[&<>"']/g, (char) => htmlEscapes[char] || char);
 }
 
 /**

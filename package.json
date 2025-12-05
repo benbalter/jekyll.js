@@ -58,6 +58,7 @@
     "date-fns": "^4.1.0",
     "feed": "^5.1.0",
     "gray-matter": "^4.0.3",
+    "html-escaper": "^3.0.3",
     "html-minifier-terser": "^7.2.0",
     "js-yaml": "^4.1.0",
     "liquidjs": "^10.10.0",
@@ -83,6 +84,7 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@types/html-escaper": "^3.0.4",
     "@types/html-minifier-terser": "^7.0.2",
     "@types/jest": "^30.0.0",
     "@types/js-yaml": "^4.0.9",

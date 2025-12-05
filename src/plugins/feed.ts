@@ -14,6 +14,7 @@ import { Plugin, GeneratorPlugin, GeneratorResult, GeneratorPriority } from './t
 import { Renderer } from '../core/Renderer';
 import { Site } from '../core/Site';
 import { Document } from '../core/Document';
+import { escapeHtml } from '../utils/html';
 
 /**
  * Get feed URL configuration from site config
@@ -193,27 +194,13 @@ function generateFeedMetaTag(site: Site): string {
   const attributes: string[] = [
     'type="application/atom+xml"',
     'rel="alternate"',
-    `href="${xmlEscape(feedUrl)}"`,
+    `href="${escapeHtml(feedUrl)}"`,
   ];
 
   // Add title attribute if available
   if (title) {
-    attributes.push(`title="${xmlEscape(title)}"`);
+    attributes.push(`title="${escapeHtml(title)}"`);
   }
 
   return `<link ${attributes.join(' ')} />`;
-}
-
-/**
- * Escape XML special characters for raw HTML generation
- * Note: This is only used for the feed_meta Liquid tag output,
- * the feed library handles its own XML escaping internally.
- */
-function xmlEscape(str: string): string {
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
 }

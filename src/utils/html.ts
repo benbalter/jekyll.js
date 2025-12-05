@@ -1,20 +1,30 @@
 /**
  * HTML utility functions for Jekyll.js
  * Common HTML escaping and manipulation utilities
+ *
+ * Uses the 'html-escaper' library for safe and consistent HTML escaping
  */
+
+import { escape as htmlEscape, unescape as htmlUnescape } from 'html-escaper';
 
 /**
  * Escape HTML special characters to prevent XSS attacks
+ * Uses the 'html-escaper' library for safe escaping of &, <, >, ", and '
  * @param str String to escape
  * @returns Escaped string safe for HTML output
  */
 export function escapeHtml(str: string): string {
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+  return htmlEscape(String(str));
+}
+
+/**
+ * Unescape HTML entities back to their original characters
+ * Reverses the escaping done by escapeHtml
+ * @param str String with HTML entities to unescape
+ * @returns Unescaped string
+ */
+export function unescapeHtml(str: string): string {
+  return htmlUnescape(String(str));
 }
 
 /**

@@ -825,7 +825,7 @@ export class Builder {
   private async renderCollections(collections?: Map<string, Document[]>): Promise<void> {
     const collectionsToRender = collections || this.site.collections;
 
-    const collectionPromises: Promise<void[]>[] = [];
+    const collectionPromises: Promise<void>[] = [];
 
     for (const [collectionName, documents] of collectionsToRender) {
       const collectionConfig = this.site.config.collections?.[collectionName];
@@ -839,7 +839,7 @@ export class Builder {
       logger.info(`Rendering ${documents.length} documents from collection '${collectionName}'...`);
 
       // Use optimized batch rendering for better performance
-      collectionPromises.push(this.renderDocumentsBatch(documents).then(() => []));
+      collectionPromises.push(this.renderDocumentsBatch(documents));
     }
 
     await Promise.all(collectionPromises);

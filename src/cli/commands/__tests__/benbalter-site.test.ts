@@ -164,9 +164,7 @@ describe('Integration Test: benbalter/benbalter.github.com', () => {
         if (code === 0) {
           resolve({ duration, stdout, stderr });
         } else {
-          reject(
-            new Error(`Build failed with code ${code}\nStdout: ${stdout}\nStderr: ${stderr}`)
-          );
+          reject(new Error(`Build failed with code ${code}\nStdout: ${stdout}\nStderr: ${stderr}`));
         }
       });
 

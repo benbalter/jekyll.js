@@ -336,7 +336,9 @@ export function shouldExcludePath(
       const normalizedPattern = normalizePathSeparators(
         pattern.startsWith('/') ? pattern.slice(1) : pattern
       );
-      return normalizedPath === normalizedPattern || normalizedPath.startsWith(normalizedPattern + '/');
+      return (
+        normalizedPath === normalizedPattern || normalizedPath.startsWith(normalizedPattern + '/')
+      );
     });
 
     if (!isExplicitlyIncluded) {
@@ -353,7 +355,10 @@ export function shouldExcludePath(
     );
 
     // Simple pattern matching - exact match or starts with
-    if (normalizedPath === normalizedPattern || normalizedPath.startsWith(normalizedPattern + '/')) {
+    if (
+      normalizedPath === normalizedPattern ||
+      normalizedPath.startsWith(normalizedPattern + '/')
+    ) {
       return true;
     }
   }

@@ -485,11 +485,20 @@ describe('Integration Test: benbalter/benbalter.github.com', () => {
    */
   function isPluginSupported(plugin: string): boolean {
     // List of plugins supported by jekyll-ts
+    // These are implemented in src/plugins/ using remark and other libraries:
+    // - jemoji: Uses node-emoji and remark-gemoji for emoji conversion
+    // - jekyll-avatar: Generates GitHub avatar tags
+    // - jekyll-github-metadata: Provides repository metadata in templates
+    // - jekyll-mentions: Uses remark-github for @mention linking
     const supportedPlugins = [
       'jekyll-feed',
       'jekyll-sitemap',
       'jekyll-seo-tag',
       'jekyll-redirect-from',
+      'jemoji',
+      'jekyll-avatar',
+      'jekyll-github-metadata',
+      'jekyll-mentions',
     ];
 
     return supportedPlugins.includes(plugin);

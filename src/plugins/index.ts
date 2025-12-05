@@ -249,6 +249,9 @@ export function registerPlugins(renderer: Renderer, site: Site): void {
   const builtInPlugins = getBuiltInPlugins();
   const builtInNames = getBuiltInPluginNames();
 
+  // Track which plugins were successfully registered
+  const registeredPlugins = new Set<string>();
+
   // Trigger site:after_init hook
   Hooks.trigger('site', 'after_init', { site, renderer });
 
@@ -258,6 +261,7 @@ export function registerPlugins(renderer: Renderer, site: Site): void {
       try {
         plugin.register(renderer, site);
         PluginRegistry.register(plugin);
+        registeredPlugins.add(plugin.name);
         logger.debug(`Registered built-in plugin: ${plugin.name}`);
       } catch (error) {
         logger.warn(
@@ -277,10 +281,21 @@ export function registerPlugins(renderer: Renderer, site: Site): void {
       }
       // Register in the plugin registry (handles all types)
       PluginRegistry.register(plugin as AnyPlugin);
+      registeredPlugins.add(plugin.name);
       logger.debug(`Registered npm plugin: ${plugin.name}`);
     } catch (error) {
       logger.warn(
         `Failed to register npm plugin '${plugin.name}': ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
+
+  // Warn about any configured plugins that were not found
+  for (const pluginName of configuredPlugins) {
+    if (!registeredPlugins.has(pluginName)) {
+      logger.warn(
+        `Plugin '${pluginName}' is configured but was not found. ` +
+          `Make sure it is either a built-in plugin or installed as an npm package.`
       );
     }
   }

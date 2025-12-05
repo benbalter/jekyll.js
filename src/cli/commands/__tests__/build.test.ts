@@ -1,5 +1,5 @@
 import { buildCommand } from '../build';
-import { existsSync, rmSync, writeFileSync, mkdirSync, readFileSync } from 'fs';
+import { existsSync, rmSync, writeFileSync, mkdirSync, readFileSync, readdirSync } from 'fs';
 import { join } from 'path';
 
 describe('buildCommand', () => {
@@ -214,11 +214,10 @@ describe('buildCommand', () => {
 
       // Draft should NOT be present in output since we used --no-drafts
       // The draft would be in a dated path like /YYYY/MM/DD/draft-post.html
-      const outputFiles = require('fs').readdirSync(outputDir);
-      const hasDraftInOutput = outputFiles.some(
-        (f: string) => f.includes('draft') || f === '2024' || f === '2025'
-      );
-      expect(hasDraftInOutput).toBe(false);
+      // Check that no year directories (which would contain the draft) exist
+      const outputFiles = readdirSync(outputDir);
+      const hasYearDirectory = outputFiles.some((f: string) => /^\d{4}$/.test(f));
+      expect(hasYearDirectory).toBe(false);
     });
 
     it('should disable future posts with --no-future flag when config enables future', async () => {

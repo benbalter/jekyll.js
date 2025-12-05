@@ -91,23 +91,25 @@ describe('Kramdown Attribute List Support', () => {
       expect(html).toContain('Second paragraph');
     });
 
-    it('should escape HTML in attribute values to prevent XSS', async () => {
+    it('should reject HTML in attribute values to prevent XSS', async () => {
       // Malicious attempt to inject HTML via attribute value
+      // The regex now rejects values containing < and > characters
       const markdown = 'Content\n\n{: data-value="<script>alert(1)</script>" }';
       const html = await processMarkdown(markdown);
 
-      // Script should be escaped
+      // Script should not appear in output (attribute value rejected, not matched)
       expect(html).not.toContain('<script>');
-      expect(html).toContain('&lt;script&gt;');
+      // The attribute block should be removed as the value doesn't match the allowed pattern
+      expect(html).toContain('Content');
     });
 
-    it('should sanitize attribute names', async () => {
-      // Attempt to use invalid attribute name
+    it('should block dangerous event handler attributes', async () => {
+      // Attempt to use onclick which is in the dangerous attrs blocklist
       const markdown = 'Content\n\n{: onclick="alert(1)" }';
       const html = await processMarkdown(markdown);
 
-      // Should still process valid parts
-      // onclick is a valid attribute name (alphanumeric), but the value should be escaped
+      // onclick should be blocked
+      expect(html).not.toContain('onclick');
       expect(html).toContain('Content');
     });
 

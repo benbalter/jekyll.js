@@ -254,33 +254,55 @@ export async function processMarkdown(
  * // Output:
  * // <p class="highlight">Hello world</p>
  */
+
+// Constants for tag lists to improve readability and maintainability
+const BLOCK_TAGS = 'p|h[1-6]|li|blockquote|div|pre|ul|ol|dl|dt|dd|table|tr|td|th|figure|figcaption|section|article|aside|header|footer|nav|main';
+const INLINE_TAGS = 'span|a|em|strong|code|mark|del|ins|sub|sup|abbr|cite|q|kbd|samp|var|time|small|s|u|b|i';
+
+// Dangerous event handler attributes that should be blocked to prevent XSS
+const DANGEROUS_ATTRS = new Set([
+  'onabort', 'onafterprint', 'onbeforeprint', 'onbeforeunload', 'onblur',
+  'oncanplay', 'oncanplaythrough', 'onchange', 'onclick', 'oncontextmenu',
+  'oncopy', 'oncuechange', 'oncut', 'ondblclick', 'ondrag', 'ondragend',
+  'ondragenter', 'ondragleave', 'ondragover', 'ondragstart', 'ondrop',
+  'ondurationchange', 'onemptied', 'onended', 'onerror', 'onfocus',
+  'onhashchange', 'oninput', 'oninvalid', 'onkeydown', 'onkeypress',
+  'onkeyup', 'onload', 'onloadeddata', 'onloadedmetadata', 'onloadstart',
+  'onmessage', 'onmousedown', 'onmousemove', 'onmouseout', 'onmouseover',
+  'onmouseup', 'onmousewheel', 'onoffline', 'ononline', 'onpagehide',
+  'onpageshow', 'onpaste', 'onpause', 'onplay', 'onplaying', 'onpopstate',
+  'onprogress', 'onratechange', 'onreset', 'onresize', 'onscroll',
+  'onsearch', 'onseeked', 'onseeking', 'onselect', 'onstalled', 'onstorage',
+  'onsubmit', 'onsuspend', 'ontimeupdate', 'ontoggle', 'onunload',
+  'onvolumechange', 'onwaiting', 'onwheel', 'formaction', 'xlink:href'
+]);
+
 function processKramdownAttributes(html: string): string {
-  // First, handle block-level attributes (on separate lines wrapped in <p> tags)
-  // Pattern: <p>{: .attributes }</p> after another block element
-  // This handles the common case where Kramdown attributes are on their own line
-  html = html.replace(
-    /(<(?:p|h[1-6]|li|blockquote|div|pre|ul|ol|dl|dt|dd|table|tr|td|th|figure|figcaption|section|article|aside|header|footer|nav|main)[^>]*>)([\s\S]*?)(<\/(?:p|h[1-6]|li|blockquote|div|pre|ul|ol|dl|dt|dd|table|tr|td|th|figure|figcaption|section|article|aside|header|footer|nav|main)>)\s*\n?<p>\{:\s*([^}]{1,500})\s*\}<\/p>/gi,
-    (match, openTag, content, closeTag, attrs) => {
-      const attributes = parseKramdownAttributes(attrs);
-      if (!attributes) return match;
-      return applyAttributesToTag(openTag, attributes) + content + closeTag;
-    }
+  // Build regex patterns from tag constants
+  const blockPattern = new RegExp(
+    `(<(?:${BLOCK_TAGS})[^>]*>)([\\s\\S]*?)(<\\/(?:${BLOCK_TAGS})>)\\s*\\n?<p>\\{:\\s*([^}]{1,500})\\s*\\}<\\/p>`,
+    'gi'
   );
+  const inlinePattern = new RegExp(
+    `(<(?:${INLINE_TAGS})[^>]*>)([\\s\\S]*?)(<\\/(?:${INLINE_TAGS})>)\\{:\\s*([^}]{1,500})\\s*\\}`,
+    'gi'
+  );
+
+  // Handle block-level attributes (on separate lines wrapped in <p> tags)
+  html = html.replace(blockPattern, (match, openTag, content, closeTag, attrs) => {
+    const attributes = parseKramdownAttributes(attrs);
+    if (!attributes) return match;
+    return applyAttributesToTag(openTag, attributes) + content + closeTag;
+  });
 
   // Handle inline Kramdown attributes that appear immediately after a closing tag
-  // Pattern: </tag>{: .attributes }
-  // This is less common but valid in Kramdown
-  html = html.replace(
-    /(<(?:span|a|em|strong|code|mark|del|ins|sub|sup|abbr|cite|q|kbd|samp|var|time|small|s|u|b|i)[^>]*>)([\s\S]*?)(<\/(?:span|a|em|strong|code|mark|del|ins|sub|sup|abbr|cite|q|kbd|samp|var|time|small|s|u|b|i)>)\{:\s*([^}]{1,500})\s*\}/gi,
-    (match, openTag, content, closeTag, attrs) => {
-      const attributes = parseKramdownAttributes(attrs);
-      if (!attributes) return match;
-      return applyAttributesToTag(openTag, attributes) + content + closeTag;
-    }
-  );
+  html = html.replace(inlinePattern, (match, openTag, content, closeTag, attrs) => {
+    const attributes = parseKramdownAttributes(attrs);
+    if (!attributes) return match;
+    return applyAttributesToTag(openTag, attributes) + content + closeTag;
+  });
 
   // Remove any remaining standalone Kramdown attribute blocks that weren't matched
-  // These might be orphaned due to edge cases in the markdown structure
   html = html.replace(/<p>\{:\s*[^}]{1,500}\s*\}<\/p>\s*\n?/gi, '');
 
   return html;
@@ -303,9 +325,10 @@ function parseKramdownAttributes(
 
   // Tokenize the attribute string
   // Match classes (.classname), IDs (#idname), and key="value" or key='value' pairs
-  // Safe patterns with limited length
+  // Safe patterns with limited length and restricted character sets
+  // Attribute values only allow alphanumeric, spaces, hyphens, underscores, and common punctuation
   const tokens = attrString.match(
-    /\.[a-zA-Z_][a-zA-Z0-9_-]{0,100}|#[a-zA-Z_][a-zA-Z0-9_-]{0,100}|[a-zA-Z_][a-zA-Z0-9_-]{0,50}=["'][^"']{0,200}["']/g
+    /\.[a-zA-Z_][a-zA-Z0-9_-]{0,100}|#[a-zA-Z_][a-zA-Z0-9_-]{0,100}|[a-zA-Z_][a-zA-Z0-9_-]{0,50}=["'][a-zA-Z0-9 _.,:;!?@#$%^&*()+=/-]{0,200}["']/g
   );
 
   if (!tokens || tokens.length === 0) return null;
@@ -328,8 +351,9 @@ function parseKramdownAttributes(
           value = value.slice(1, -1);
         }
         // Sanitize attribute name to prevent XSS
-        const sanitizedKey = key.replace(/[^a-zA-Z0-9_-]/g, '');
-        if (sanitizedKey) {
+        const sanitizedKey = key.replace(/[^a-zA-Z0-9_-]/g, '').toLowerCase();
+        // Block dangerous event handler attributes
+        if (sanitizedKey && !DANGEROUS_ATTRS.has(sanitizedKey)) {
           result.attrs[sanitizedKey] = value;
         }
       }

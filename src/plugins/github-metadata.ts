@@ -11,6 +11,7 @@ import { Plugin } from './types';
 import { Renderer } from '../core/Renderer';
 import { Site } from '../core/Site';
 import { escapeHtml } from '../utils/html';
+import { logger } from '../utils/logger';
 
 /** Maximum length for quoted string parsing to prevent DoS */
 const MAX_QUOTED_STRING_LENGTH = 1000;
@@ -219,6 +220,15 @@ export class GitHubMetadataPlugin implements Plugin {
   register(renderer: Renderer, site: Site): void {
     // Initialize github metadata on the site
     const metadata = this.getMetadata(site);
+
+    // Warn if repository information is missing
+    if (!metadata.repository_nwo) {
+      logger.warn(
+        `${this.name}: No GitHub repository found. ` +
+          `Set 'repository' in _config.yml (e.g., 'repository: owner/repo') or ` +
+          `set the GITHUB_REPOSITORY environment variable.`
+      );
+    }
 
     // Add github metadata to site.data so it's accessible in templates
     if (!site.data) {

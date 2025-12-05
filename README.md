@@ -292,6 +292,7 @@ jekyll.js/
 │   │   ├── Renderer.ts     # Liquid template rendering
 │   │   ├── SassProcessor.ts # SASS/SCSS compilation
 │   │   ├── Site.ts         # Site management
+│   │   ├── StaticFile.ts   # Static file handling
 │   │   ├── ThemeManager.ts # Theme loading
 │   │   └── markdown.ts     # Markdown processing
 │   ├── config/       # Configuration parsing

@@ -610,14 +610,44 @@ export class Site {
 
   /**
    * Check if a file path should be excluded based on config
+   * Jekyll (Ruby) default behavior:
+   * - Files starting with '.', '#', or '~' are excluded by default
+   * - The 'include' config can override this to explicitly include hidden files
+   * - The 'exclude' config excludes additional files
    */
   private shouldExclude(path: string): boolean {
     const relativePath = path.substring(this.source.length + 1);
     const excludePatterns = this.config.exclude || [];
+    const includePatterns = this.config.include || [];
 
+    // Get the filename or directory name
+    const parts = relativePath.split('/');
+    const firstPart = parts[0] || '';
+
+    // Check if path starts with a hidden file marker (dot, hash, or tilde)
+    // These are excluded by default in Jekyll unless explicitly included
+    const isHiddenByDefault = firstPart.startsWith('.') || firstPart.startsWith('#') || firstPart.startsWith('~');
+
+    if (isHiddenByDefault) {
+      // Check if explicitly included
+      const isExplicitlyIncluded = includePatterns.some((pattern) => {
+        const normalizedPattern = pattern.startsWith('/') ? pattern.slice(1) : pattern;
+        return relativePath === normalizedPattern || relativePath.startsWith(normalizedPattern + '/');
+      });
+
+      if (!isExplicitlyIncluded) {
+        return true; // Exclude hidden files by default
+      }
+    }
+
+    // Check against exclude patterns
     for (const pattern of excludePatterns) {
+      // Normalize pattern - remove leading slash if present
+      // Jekyll (Ruby) treats patterns with and without leading slashes the same
+      const normalizedPattern = pattern.startsWith('/') ? pattern.slice(1) : pattern;
+
       // Simple pattern matching - exact match or starts with
-      if (relativePath === pattern || relativePath.startsWith(pattern + '/')) {
+      if (relativePath === normalizedPattern || relativePath.startsWith(normalizedPattern + '/')) {
         return true;
       }
     }

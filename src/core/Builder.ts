@@ -1064,13 +1064,42 @@ export class Builder {
 
   /**
    * Check if a path should be excluded
+   * Jekyll (Ruby) default behavior:
+   * - Files starting with '.', '#', or '~' are excluded by default
+   * - The 'include' config can override this to explicitly include hidden files
+   * - The 'exclude' config excludes additional files
    */
   private shouldExclude(path: string): boolean {
     const relativePath = relative(this.site.source, path);
     const excludePatterns = this.site.config.exclude || [];
+    const includePatterns = this.site.config.include || [];
+
+    // Get the filename or directory name
+    const parts = relativePath.split('/');
+    const firstPart = parts[0] || '';
+
+    // Check if path starts with a hidden file marker (dot, hash, or tilde)
+    // These are excluded by default in Jekyll unless explicitly included
+    const isHiddenByDefault = firstPart.startsWith('.') || firstPart.startsWith('#') || firstPart.startsWith('~');
+
+    if (isHiddenByDefault) {
+      // Check if explicitly included
+      const isExplicitlyIncluded = includePatterns.some((pattern) => {
+        const normalizedPattern = pattern.startsWith('/') ? pattern.slice(1) : pattern;
+        return relativePath === normalizedPattern || relativePath.startsWith(normalizedPattern + '/');
+      });
+
+      if (!isExplicitlyIncluded) {
+        return true; // Exclude hidden files by default
+      }
+    }
 
     for (const pattern of excludePatterns) {
-      if (relativePath === pattern || relativePath.startsWith(pattern + '/')) {
+      // Normalize pattern - remove leading slash if present
+      // Jekyll (Ruby) treats patterns with and without leading slashes the same
+      const normalizedPattern = pattern.startsWith('/') ? pattern.slice(1) : pattern;
+
+      if (relativePath === normalizedPattern || relativePath.startsWith(normalizedPattern + '/')) {
         return true;
       }
     }

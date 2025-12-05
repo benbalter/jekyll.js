@@ -113,7 +113,7 @@ describe('ProgressIndicator', () => {
   });
 
   describe('rendering', () => {
-    it('should render progress when isTTY is true', () => {
+    it('should render progress when isTTY is true', async () => {
       // Enable TTY for this test
       Object.defineProperty(process.stdout, 'isTTY', {
         value: true,
@@ -126,10 +126,9 @@ describe('ProgressIndicator', () => {
       const progress = new ProgressIndicator({ total: 100 });
       progress.update(50);
 
-      // Give it time to pass throttle
-      setTimeout(() => {
-        progress.update(100);
-      }, 60);
+      // Wait for throttle to pass and then update
+      await new Promise((resolve) => setTimeout(resolve, 60));
+      progress.update(100);
 
       writeSpy.mockRestore();
     });

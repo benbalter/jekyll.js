@@ -7,21 +7,37 @@
  * @see https://github.com/jekyll/jekyll-sitemap
  */
 
-import { Plugin } from './index';
+import { Plugin, GeneratorPlugin, GeneratorResult, GeneratorPriority } from './index';
 import { Renderer } from '../core/Renderer';
 import { Site } from '../core/Site';
 import { Document } from '../core/Document';
 
 /**
  * Sitemap Plugin implementation
+ * Implements both Plugin (for backward compatibility) and GeneratorPlugin interfaces
  */
-export class SitemapPlugin implements Plugin {
+export class SitemapPlugin implements Plugin, GeneratorPlugin {
   name = 'jekyll-sitemap';
+  priority = GeneratorPriority.LOWEST; // Run last so all URLs are generated
 
   register(_renderer: Renderer, site: Site): void {
-    // Store a reference to generate sitemap during build
-    // This will be called by the Builder after all documents are processed
+    // Store a reference for backward compatibility with legacy builder code
     (site as any)._sitemapPlugin = this;
+  }
+
+  /**
+   * Generator interface - generates sitemap.xml file
+   */
+  generate(site: Site, _renderer: Renderer): GeneratorResult {
+    const content = this.generateSitemap(site);
+    return {
+      files: [
+        {
+          path: 'sitemap.xml',
+          content,
+        },
+      ],
+    };
   }
 
   /**

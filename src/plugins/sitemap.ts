@@ -18,22 +18,21 @@ import { Document } from '../core/Document';
 
 /**
  * Sitemap Plugin implementation
- * Implements both Plugin (for backward compatibility) and GeneratorPlugin interfaces
+ * Implements both Plugin and GeneratorPlugin interfaces
  */
 export class SitemapPlugin implements Plugin, GeneratorPlugin {
   name = 'jekyll-sitemap';
   priority = GeneratorPriority.LOWEST; // Run last so all URLs are generated
 
-  register(_renderer: Renderer, site: Site): void {
-    // Store a reference for backward compatibility with legacy builder code
-    (site as any)._sitemapPlugin = this;
+  register(_renderer: Renderer, _site: Site): void {
+    // No-op: sitemap generation is handled via the GeneratorPlugin interface
   }
 
   /**
-   * Generator interface - generates sitemap.xml file (async)
+   * Generator interface - generates sitemap.xml file
    */
   async generate(site: Site, _renderer: Renderer): Promise<GeneratorResult> {
-    const content = await this.generateSitemapAsync(site);
+    const content = await this.generateSitemap(site);
     return {
       files: [
         {
@@ -46,7 +45,6 @@ export class SitemapPlugin implements Plugin, GeneratorPlugin {
 
   /**
    * Collect and convert documents to sitemap items
-   * Shared helper used by both sync and async generation methods
    */
   private collectSitemapItems(site: Site): {
     items: SitemapItemLoose[];
@@ -117,49 +115,9 @@ export class SitemapPlugin implements Plugin, GeneratorPlugin {
   }
 
   /**
-   * Generate the sitemap XML content (synchronous version)
-   * Uses a simplified XML generation that matches the library output format.
-   * This method is kept for backward compatibility with tests and direct usage.
+   * Generate the sitemap XML content using the sitemap library's streaming API
    */
-  generateSitemap(site: Site): string {
-    const { items, hostname } = this.collectSitemapItems(site);
-
-    // If no items, return an empty sitemap
-    if (items.length === 0) {
-      return '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n</urlset>';
-    }
-
-    // Build sitemap XML in a format consistent with the sitemap library output
-    const lines: string[] = [
-      '<?xml version="1.0" encoding="UTF-8"?>',
-      '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
-    ];
-
-    for (const item of items) {
-      const fullUrl = item.url?.startsWith('http') ? item.url : `${hostname}${item.url}`;
-      lines.push('  <url>');
-      lines.push(`    <loc>${xmlEscape(fullUrl)}</loc>`);
-      if (item.lastmod) {
-        lines.push(`    <lastmod>${item.lastmod}</lastmod>`);
-      }
-      if (item.changefreq) {
-        lines.push(`    <changefreq>${item.changefreq}</changefreq>`);
-      }
-      if (item.priority !== undefined) {
-        lines.push(`    <priority>${item.priority.toFixed(1)}</priority>`);
-      }
-      lines.push('  </url>');
-    }
-
-    lines.push('</urlset>');
-    return lines.join('\n');
-  }
-
-  /**
-   * Async version of sitemap generation using the sitemap library's streaming API
-   * This is the preferred method that fully utilizes the third-party library.
-   */
-  async generateSitemapAsync(site: Site): Promise<string> {
+  async generateSitemap(site: Site): Promise<string> {
     const { items, hostname } = this.collectSitemapItems(site);
 
     // If no items, return an empty sitemap
@@ -234,17 +192,4 @@ function getDefaultPriority(doc: Document): number {
 
   // Other pages get medium-high priority
   return 0.8;
-}
-
-/**
- * Escape XML special characters
- * This is needed for the synchronous method since it can't use the library's streaming API
- */
-function xmlEscape(str: string): string {
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
 }

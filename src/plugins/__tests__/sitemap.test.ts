@@ -39,7 +39,7 @@ describe('SitemapPlugin', () => {
     expect(plugin.name).toBe('jekyll-sitemap');
   });
 
-  it('should generate a valid sitemap XML structure', () => {
+  it('should generate a valid sitemap XML structure', async () => {
     // Create a simple page
     const pageFile = join(testSiteDir, 'index.html');
     writeFileSync(pageFile, '---\ntitle: Home\n---\nContent');
@@ -48,14 +48,14 @@ describe('SitemapPlugin', () => {
     page.url = '/';
     site.pages.push(page);
 
-    const sitemap = plugin.generateSitemap(site);
+    const sitemap = await plugin.generateSitemap(site);
 
     expect(sitemap).toContain('<?xml version="1.0" encoding="UTF-8"?>');
     expect(sitemap).toContain('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">');
     expect(sitemap).toContain('</urlset>');
   });
 
-  it('should include pages in the sitemap', () => {
+  it('should include pages in the sitemap', async () => {
     const pageFile = join(testSiteDir, 'about.html');
     writeFileSync(pageFile, '---\ntitle: About\n---\nContent');
 
@@ -63,12 +63,12 @@ describe('SitemapPlugin', () => {
     page.url = '/about.html';
     site.pages.push(page);
 
-    const sitemap = plugin.generateSitemap(site);
+    const sitemap = await plugin.generateSitemap(site);
 
     expect(sitemap).toContain('<loc>https://example.com/about.html</loc>');
   });
 
-  it('should include posts in the sitemap', () => {
+  it('should include posts in the sitemap', async () => {
     const postFile = join(testSiteDir, '2024-01-01-test-post.md');
     writeFileSync(postFile, '---\ntitle: Test Post\n---\nContent');
 
@@ -76,12 +76,12 @@ describe('SitemapPlugin', () => {
     post.url = '/2024/01/01/test-post.html';
     site.posts.push(post);
 
-    const sitemap = plugin.generateSitemap(site);
+    const sitemap = await plugin.generateSitemap(site);
 
     expect(sitemap).toContain('<loc>https://example.com/2024/01/01/test-post.html</loc>');
   });
 
-  it('should include lastmod date for posts', () => {
+  it('should include lastmod date for posts', async () => {
     const postFile = join(testSiteDir, '2024-01-01-test-post.md');
     writeFileSync(postFile, '---\ntitle: Test Post\ndate: 2024-01-01\n---\nContent');
 
@@ -89,12 +89,12 @@ describe('SitemapPlugin', () => {
     post.url = '/2024/01/01/test-post.html';
     site.posts.push(post);
 
-    const sitemap = plugin.generateSitemap(site);
+    const sitemap = await plugin.generateSitemap(site);
 
     expect(sitemap).toContain('<lastmod>2024-01-01</lastmod>');
   });
 
-  it('should include changefreq and priority', () => {
+  it('should include changefreq and priority', async () => {
     const pageFile = join(testSiteDir, 'index.html');
     writeFileSync(pageFile, '---\ntitle: Home\n---\nContent');
 
@@ -102,13 +102,13 @@ describe('SitemapPlugin', () => {
     page.url = '/';
     site.pages.push(page);
 
-    const sitemap = plugin.generateSitemap(site);
+    const sitemap = await plugin.generateSitemap(site);
 
     expect(sitemap).toContain('<changefreq>');
     expect(sitemap).toContain('<priority>1.0</priority>'); // Homepage gets 1.0
   });
 
-  it('should respect custom sitemap settings in front matter', () => {
+  it('should respect custom sitemap settings in front matter', async () => {
     const pageFile = join(testSiteDir, 'custom.html');
     writeFileSync(
       pageFile,
@@ -119,13 +119,13 @@ describe('SitemapPlugin', () => {
     page.url = '/custom.html';
     site.pages.push(page);
 
-    const sitemap = plugin.generateSitemap(site);
+    const sitemap = await plugin.generateSitemap(site);
 
     expect(sitemap).toContain('<changefreq>daily</changefreq>');
     expect(sitemap).toContain('<priority>0.9</priority>');
   });
 
-  it('should exclude pages with sitemap: false', () => {
+  it('should exclude pages with sitemap: false', async () => {
     const pageFile = join(testSiteDir, 'excluded.html');
     writeFileSync(pageFile, '---\ntitle: Excluded\nsitemap: false\n---\nContent');
 
@@ -133,12 +133,12 @@ describe('SitemapPlugin', () => {
     page.url = '/excluded.html';
     site.pages.push(page);
 
-    const sitemap = plugin.generateSitemap(site);
+    const sitemap = await plugin.generateSitemap(site);
 
     expect(sitemap).not.toContain('/excluded.html');
   });
 
-  it('should escape XML special characters', () => {
+  it('should escape XML special characters', async () => {
     const pageFile = join(testSiteDir, 'test.html');
     writeFileSync(pageFile, '---\ntitle: Test\n---\nContent');
 
@@ -146,13 +146,13 @@ describe('SitemapPlugin', () => {
     page.url = '/test?param=value&other=test';
     site.pages.push(page);
 
-    const sitemap = plugin.generateSitemap(site);
+    const sitemap = await plugin.generateSitemap(site);
 
     expect(sitemap).toContain('&amp;');
     expect(sitemap).not.toContain('param=value&other');
   });
 
-  it('should sort URLs consistently', () => {
+  it('should sort URLs consistently', async () => {
     // Create multiple pages
     const pages = ['zebra.html', 'apple.html', 'middle.html'];
     for (const page of pages) {
@@ -163,7 +163,7 @@ describe('SitemapPlugin', () => {
       site.pages.push(doc);
     }
 
-    const sitemap = plugin.generateSitemap(site);
+    const sitemap = await plugin.generateSitemap(site);
 
     const appleIndex = sitemap.indexOf('/apple.html');
     const middleIndex = sitemap.indexOf('/middle.html');

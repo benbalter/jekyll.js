@@ -305,7 +305,11 @@ jekyll.js/
 │   │   ├── mentions.ts       # @mention links
 │   │   ├── redirect-from.ts  # Redirect pages
 │   │   ├── avatar.ts         # GitHub avatar helper
-│   │   └── github-metadata.ts # GitHub repository metadata
+│   │   ├── github-metadata.ts # GitHub repository metadata
+│   │   ├── html-minifier.ts  # HTML minification
+│   │   ├── image-optimization.ts # Sharp-based image optimization
+│   │   ├── resource-hints.ts # Resource hints (preload/prefetch)
+│   │   └── syntax-highlighting.ts # Shiki-based syntax highlighting
 │   ├── server/       # Development server
 │   │   └── DevServer.ts
 │   ├── themes/       # Theme templates

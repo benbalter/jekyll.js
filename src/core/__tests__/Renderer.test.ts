@@ -1329,10 +1329,10 @@ title: Directory Test
       );
     });
 
-    describe('link tag', () => {
-      // Helper function to create site context for link/post_url tag tests
-      const createSiteContext = (site: Site) => {
-        const siteData = site.toJSON();
+    describe('link and post_url tags', () => {
+      // Shared helper function for both link and post_url tag tests
+      const createSiteContext = (siteInstance: Site) => {
+        const siteData = siteInstance.toJSON();
         return {
           site: {
             ...siteData.config,
@@ -1344,7 +1344,8 @@ title: Directory Test
         };
       };
 
-      it('should resolve link to a page URL', async () => {
+      describe('link tag', () => {
+        it('should resolve link to a page URL', async () => {
         // Create a page
         const aboutPath = join(testDir, 'about.md');
         writeFileSync(
@@ -1467,20 +1468,6 @@ Project content`
     });
 
     describe('post_url tag', () => {
-      // Helper function to create site context for link/post_url tag tests
-      const createSiteContext = (site: Site) => {
-        const siteData = site.toJSON();
-        return {
-          site: {
-            ...siteData.config,
-            pages: siteData.pages,
-            posts: siteData.posts,
-            static_files: siteData.static_files,
-            collections: siteData.collections,
-          },
-        };
-      };
-
       beforeEach(() => {
         // Create posts directory
         mkdirSync(join(testDir, '_posts'), { recursive: true });
@@ -1598,6 +1585,7 @@ Second`
         const result2 = await renderer.render('{% post_url 2024-06-15-second-post %}', context);
         expect(result2).toBe('/2024/06/15/second-post.html');
       });
+    });
     });
   });
 

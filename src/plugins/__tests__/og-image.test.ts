@@ -336,7 +336,7 @@ describe('OgImagePlugin image generation', () => {
 
   it('should generate image with logo image', async () => {
     // Create a simple test logo image using sharp
-    
+
     const logoPath = join(testSiteDir, 'logo.png');
     await sharp({
       create: {
@@ -383,7 +383,7 @@ describe('OgImagePlugin image generation', () => {
 
   it('should generate image with background image', async () => {
     // Create a simple test background image using sharp
-    
+
     const bgPath = join(testSiteDir, 'background.png');
     await sharp({
       create: {

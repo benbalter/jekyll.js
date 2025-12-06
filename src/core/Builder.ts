@@ -249,14 +249,24 @@ export class Builder {
         const cacheStats = this.cacheManager.getStats();
         logger.info(`Using incremental build (${cacheStats.fileCount} files cached)`);
 
-        // Filter documents that need rebuilding
-        pagesToRender = this.filterChangedDocuments(this.site.pages);
-        postsToRender = this.filterChangedDocuments(this.site.posts);
+        // Filter documents that need rebuilding - use parallel async checks
+        const [filteredPages, filteredPosts] = await Promise.all([
+          this.filterChangedDocuments(this.site.pages),
+          this.filterChangedDocuments(this.site.posts),
+        ]);
+        pagesToRender = filteredPages;
+        postsToRender = filteredPosts;
 
-        // Filter collection documents
+        // Filter collection documents in parallel
         collectionsToRender = new Map();
-        for (const [name, docs] of this.site.collections) {
-          const changedDocs = this.filterChangedDocuments(docs);
+        const collectionPromises = Array.from(this.site.collections.entries()).map(
+          async ([name, docs]) => {
+            const changedDocs = await this.filterChangedDocuments(docs);
+            return { name, changedDocs };
+          }
+        );
+        const collectionResults = await Promise.all(collectionPromises);
+        for (const { name, changedDocs } of collectionResults) {
           if (changedDocs.length > 0) {
             collectionsToRender.set(name, changedDocs);
           }
@@ -270,7 +280,7 @@ export class Builder {
         if (totalToRender === 0) {
           logger.success('No changes detected, skipping build');
           // Save cache in case it was newly initialized or loaded from old version
-          this.cacheManager.save();
+          await this.cacheManager.saveAsync();
           return this.timer?.getTimings();
         }
 
@@ -358,7 +368,7 @@ export class Builder {
 
       // Save cache if incremental mode is enabled
       if (this.options.incremental) {
-        this.cacheManager.save();
+        await this.cacheManager.saveAsync();
       }
 
       // Trigger site:post_write hook (after all files are written)
@@ -809,8 +819,8 @@ export class Builder {
           }
         }
 
-        // Update cache
-        this.cacheManager.updateFile(doc.path, doc.relativePath, dependencies);
+        // Update cache asynchronously
+        await this.cacheManager.updateFileAsync(doc.path, doc.relativePath, dependencies);
       }
 
       // Trigger documents:post_write hook after document is written
@@ -1358,25 +1368,31 @@ export class Builder {
 
   /**
    * Filter documents to only include those that have changed
+   * Uses parallel async I/O for better performance
    * @param documents List of documents to filter
    * @returns Documents that need to be rebuilt
    */
-  private filterChangedDocuments(documents: Document[]): Document[] {
-    return documents.filter((doc) => {
-      // Check if document itself has changed
-      if (this.cacheManager.hasChanged(doc.path, doc.relativePath)) {
-        logger.debug(`Changed: ${doc.relativePath}`);
-        return true;
-      }
+  private async filterChangedDocuments(documents: Document[]): Promise<Document[]> {
+    // Check all documents in parallel
+    const results = await Promise.all(
+      documents.map(async (doc) => {
+        // Check if document itself has changed
+        if (await this.cacheManager.hasChangedAsync(doc.path, doc.relativePath)) {
+          logger.debug(`Changed: ${doc.relativePath}`);
+          return doc;
+        }
 
-      // Check if any dependencies have changed (includes layouts tracked in cache)
-      if (this.cacheManager.hasDependencyChanges(doc.relativePath, this.site.source)) {
-        logger.debug(`Dependency changed for: ${doc.relativePath}`);
-        return true;
-      }
+        // Check if any dependencies have changed (includes layouts tracked in cache)
+        if (await this.cacheManager.hasDependencyChangesAsync(doc.relativePath, this.site.source)) {
+          logger.debug(`Dependency changed for: ${doc.relativePath}`);
+          return doc;
+        }
 
-      return false;
-    });
+        return null;
+      })
+    );
+
+    return results.filter((doc): doc is Document => doc !== null);
   }
 
   /**

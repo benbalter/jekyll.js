@@ -16,6 +16,19 @@ import { dirname, join, resolve, normalize, relative } from 'path';
 import { readFileSync, existsSync, statSync } from 'fs';
 import { PluginRegistry, Hooks } from '../plugins';
 
+// Cached syntax highlighting module to avoid repeated dynamic imports
+let syntaxHighlightingModule: typeof import('../plugins/syntax-highlighting') | null = null;
+
+/**
+ * Get the syntax highlighting module, caching the import
+ */
+async function getSyntaxHighlightingModule(): Promise<typeof import('../plugins/syntax-highlighting')> {
+  if (!syntaxHighlightingModule) {
+    syntaxHighlightingModule = await import('../plugins/syntax-highlighting');
+  }
+  return syntaxHighlightingModule;
+}
+
 /**
  * Renderer configuration options
  */
@@ -1036,9 +1049,10 @@ export class Renderer {
 
         if (syntaxHighlightingConfig?.enabled) {
           try {
-            const { highlightCode } = await import('../plugins/syntax-highlighting');
+            // Use cached module import for better performance
+            const syntaxModule = await getSyntaxHighlightingModule();
             const theme = syntaxHighlightingConfig.theme || 'github-light';
-            const highlighted = await highlightCode(content, this.language, {
+            const highlighted = await syntaxModule.highlightCode(content, this.language, {
               theme: theme as any,
             });
             result = `<div class="highlight">${highlighted}</div>`;

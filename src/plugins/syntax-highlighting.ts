@@ -145,8 +145,8 @@ export async function highlightCode(
     logger.warn(
       `Failed to highlight code: ${error instanceof Error ? error.message : 'Unknown error'}`
     );
-    // Fallback to plain HTML
-    return `<pre><code class="${escapeHtml(language)}">${escapeHtml(code)}</code></pre>`;
+    // Fallback to plain HTML - use language class for consistency with markdown.ts pattern
+    return `<pre class="shiki"><code class="language-${escapeHtml(language)}">${escapeHtml(code)}</code></pre>`;
   }
 }
 

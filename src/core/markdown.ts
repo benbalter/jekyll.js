@@ -9,7 +9,7 @@
  * - Processor freezing: Processors are frozen after configuration for optimal performance
  */
 
-import { escape as escapeHtml } from 'html-escaper';
+import { escape as escapeHtml, unescape as unescapeHtml } from 'html-escaper';
 
 /**
  * Options for markdown processing
@@ -355,6 +355,15 @@ const KRAMDOWN_STANDALONE_PATTERN = new RegExp(
   'gi'
 );
 
+/**
+ * Pattern to match code blocks in HTML output.
+ * Matches: <pre><code class="language-xxx">...</code></pre>
+ * Also matches without the language class: <pre><code>...</code></pre>
+ * Exported for use in tests.
+ */
+export const CODE_BLOCK_PATTERN =
+  /<pre><code(?:\s+class="language-([^"]*)")?>([\s\S]*?)<\/code><\/pre>/gi;
+
 // Dangerous event handler attributes that should be blocked to prevent XSS
 const DANGEROUS_ATTRS = new Set([
   'onabort',
@@ -601,26 +610,20 @@ async function applySyntaxHighlighting(html: string, theme: string): Promise<str
   // Dynamically import the syntax highlighting module to avoid ESM issues
   const { highlightCode } = await import('../plugins/syntax-highlighting');
 
-  // Pattern to match code blocks: <pre><code class="language-xxx">...</code></pre>
-  // Also matches without the language class: <pre><code>...</code></pre>
-  const codeBlockPattern = /<pre><code(?:\s+class="language-([^"]*)")?>([\s\S]*?)<\/code><\/pre>/gi;
+  // Reset lastIndex since we're reusing the global pattern
+  CODE_BLOCK_PATTERN.lastIndex = 0;
 
   // Collect all matches and their replacements
   const matches: Array<{ match: string; index: number; replacement: Promise<string> }> = [];
   let match: RegExpExecArray | null;
 
-  while ((match = codeBlockPattern.exec(html)) !== null) {
+  while ((match = CODE_BLOCK_PATTERN.exec(html)) !== null) {
     const fullMatch = match[0];
     const language = match[1] || 'text';
     const code = match[2] || '';
 
-    // Decode HTML entities in the code content
-    const decodedCode = code
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/&amp;/g, '&')
-      .replace(/&quot;/g, '"')
-      .replace(/&#39;/g, "'");
+    // Decode HTML entities in the code content using html-escaper
+    const decodedCode = unescapeHtml(code);
 
     matches.push({
       match: fullMatch,
@@ -640,10 +643,8 @@ async function applySyntaxHighlighting(html: string, theme: string): Promise<str
   // Replace code blocks from end to start to maintain correct indices
   let result = html;
   for (let i = matches.length - 1; i >= 0; i--) {
-    const m = matches[i];
-    if (m) {
-      result = result.slice(0, m.index) + replacements[i] + result.slice(m.index + m.match.length);
-    }
+    const m = matches[i]!;
+    result = result.slice(0, m.index) + replacements[i] + result.slice(m.index + m.match.length);
   }
 
   return result;

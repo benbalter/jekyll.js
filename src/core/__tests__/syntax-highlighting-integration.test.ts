@@ -66,9 +66,10 @@ describe('Syntax Highlighting Integration', () => {
 
   describe('Code block pattern matching', () => {
     it('should match code blocks with language class', () => {
+      const { CODE_BLOCK_PATTERN } = require('../markdown');
       const html = '<pre><code class="language-javascript">const x = 1;</code></pre>';
-      const pattern = /<pre><code(?:\s+class="language-([^"]*)")?>([\s\S]*?)<\/code><\/pre>/gi;
-      const match = pattern.exec(html);
+      CODE_BLOCK_PATTERN.lastIndex = 0; // Reset for global pattern
+      const match = CODE_BLOCK_PATTERN.exec(html);
 
       expect(match).not.toBeNull();
       expect(match![1]).toBe('javascript');
@@ -76,9 +77,10 @@ describe('Syntax Highlighting Integration', () => {
     });
 
     it('should match code blocks without language class', () => {
+      const { CODE_BLOCK_PATTERN } = require('../markdown');
       const html = '<pre><code>plain text</code></pre>';
-      const pattern = /<pre><code(?:\s+class="language-([^"]*)")?>([\s\S]*?)<\/code><\/pre>/gi;
-      const match = pattern.exec(html);
+      CODE_BLOCK_PATTERN.lastIndex = 0; // Reset for global pattern
+      const match = CODE_BLOCK_PATTERN.exec(html);
 
       expect(match).not.toBeNull();
       expect(match![1]).toBeUndefined();
@@ -86,13 +88,14 @@ describe('Syntax Highlighting Integration', () => {
     });
 
     it('should match multiple code blocks', () => {
+      const { CODE_BLOCK_PATTERN } = require('../markdown');
       const html = `
         <pre><code class="language-javascript">const x = 1;</code></pre>
         <p>Some text</p>
         <pre><code class="language-python">print("hello")</code></pre>
       `;
-      const pattern = /<pre><code(?:\s+class="language-([^"]*)")?>([\s\S]*?)<\/code><\/pre>/gi;
-      const matches = [...html.matchAll(pattern)];
+      CODE_BLOCK_PATTERN.lastIndex = 0; // Reset for global pattern
+      const matches = [...html.matchAll(CODE_BLOCK_PATTERN)];
 
       expect(matches.length).toBe(2);
       expect(matches[0]![1]).toBe('javascript');

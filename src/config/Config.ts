@@ -386,7 +386,9 @@ function loadSingleConfigFile(configPath: string, verbose: boolean = false): Jek
     }
 
     // Normalize collections immediately after parsing
-    // This ensures the config always has collections in object format
+    // This is essential for correct merging when multiple config files are used
+    // If one config has collections as array and another as object, lodash.merge
+    // won't handle it correctly without normalization
     config.collections = normalizeCollections(
       config.collections as Record<string, any> | string[] | undefined
     );
@@ -674,6 +676,8 @@ export function mergeWithDefaults(
   }
 
   // Normalize collections - convert array format to object format if needed
+  // This is idempotent and serves as a safety net for direct calls to mergeWithDefaults
+  // without going through loadConfig (e.g., in tests or when creating config programmatically)
   merged.collections = normalizeCollections(merged.collections);
 
   return merged;

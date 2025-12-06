@@ -153,6 +153,41 @@ describe('FeedPlugin', () => {
     expect(feed).toContain('<summary');
   });
 
+  it('should process markdown in post excerpts as HTML', async () => {
+    const postFile = join(testSiteDir, '2024-01-01-test-post.md');
+    writeFileSync(
+      postFile,
+      '---\ntitle: Test Post\ndate: 2024-01-01\nexcerpt: This is **bold** and *italic* text\n---\nContent'
+    );
+
+    const post = new Document(postFile, testSiteDir, DocumentType.POST);
+    post.url = '/2024/01/01/test-post.html';
+    site.posts.push(post);
+
+    const feed = await plugin.generateFeed(site);
+
+    // Should preserve HTML in feed (markdown converted to HTML)
+    expect(feed).toContain('<strong>bold</strong>');
+    expect(feed).toContain('<em>italic</em>');
+  });
+
+  it('should process markdown in post description as HTML', async () => {
+    const postFile = join(testSiteDir, '2024-01-01-test-post.md');
+    writeFileSync(
+      postFile,
+      '---\ntitle: Test Post\ndate: 2024-01-01\ndescription: Check out [this link](https://example.com)\n---\nContent'
+    );
+
+    const post = new Document(postFile, testSiteDir, DocumentType.POST);
+    post.url = '/2024/01/01/test-post.html';
+    site.posts.push(post);
+
+    const feed = await plugin.generateFeed(site);
+
+    // Should preserve HTML in feed (markdown converted to HTML)
+    expect(feed).toContain('<a href="https://example.com">this link</a>');
+  });
+
   it('should limit number of posts in feed', async () => {
     // Create 15 posts
     for (let i = 1; i <= 15; i++) {

@@ -32,11 +32,15 @@ describe('processTextWithMarkdown', () => {
   });
 
   it('should truncate to maxLength when specified', async () => {
-    const result = await processTextWithMarkdown('This is a very long text that should be truncated', {
-      maxLength: 20,
-    });
+    const result = await processTextWithMarkdown(
+      'This is a very long text that should be truncated',
+      {
+        maxLength: 20,
+      }
+    );
     expect(result.length).toBeLessThanOrEqual(20);
-    expect(result).toBe('This is a very long ');
+    // Should truncate at word boundary (last space before char 20 is at position 18, which is > 16 (80% of 20))
+    expect(result).toBe('This is a very long');
   });
 
   it('should not truncate if text is shorter than maxLength', async () => {
@@ -49,7 +53,28 @@ describe('processTextWithMarkdown', () => {
       maxLength: 15,
     });
     expect(result.length).toBeLessThanOrEqual(15);
-    expect(result).toBe('This is bold an');
+    // Should truncate at word boundary (last space before char 15 is at position 12, which is > 12 (80% of 15))
+    expect(result).toBe('This is bold');
+  });
+
+  it('should truncate at word boundaries for better readability', async () => {
+    const result = await processTextWithMarkdown('The quick brown fox jumps over the lazy dog', {
+      maxLength: 20,
+    });
+    expect(result.length).toBeLessThanOrEqual(20);
+    // Should end at a word boundary, not mid-word
+    expect(result).toBe('The quick brown fox');
+    expect(result).not.toContain('ju'); // Should not cut "jumps" to "ju"
+  });
+
+  it('should handle edge case where word boundary would lose too much content', async () => {
+    // If last space is before 80% of maxLength, use hard cutoff
+    const result = await processTextWithMarkdown('Supercalifragilisticexpialidocious', {
+      maxLength: 20,
+    });
+    expect(result.length).toBeLessThanOrEqual(20);
+    // No spaces, so should use hard cutoff at exactly 20 chars
+    expect(result).toBe('Supercalifragilistic');
   });
 
   it('should trim whitespace from result', async () => {

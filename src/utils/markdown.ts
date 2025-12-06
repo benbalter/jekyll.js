@@ -27,17 +27,29 @@ export async function processTextWithMarkdown(
     // Strip HTML tags to get plain text
     let result = striptags(html).trim();
 
-    // Apply length limit if specified
+    // Apply length limit if specified, respecting word boundaries
     if (options.maxLength && result.length > options.maxLength) {
       result = result.substring(0, options.maxLength);
+      // Find last space before maxLength to avoid cutting words
+      const lastSpace = result.lastIndexOf(' ');
+      // Only truncate at word boundary if we don't lose too much content (more than 20%)
+      if (lastSpace >= options.maxLength * 0.8) {
+        result = result.substring(0, lastSpace);
+      }
     }
 
     return result;
   } catch (_error) {
     // If markdown processing fails, return the original text (with optional truncation)
-    const result = text.trim();
+    let result = text.trim();
     if (options.maxLength && result.length > options.maxLength) {
-      return result.substring(0, options.maxLength);
+      result = result.substring(0, options.maxLength);
+      // Find last space before maxLength to avoid cutting words
+      const lastSpace = result.lastIndexOf(' ');
+      // Only truncate at word boundary if we don't lose too much content (more than 20%)
+      if (lastSpace >= options.maxLength * 0.8) {
+        result = result.substring(0, lastSpace);
+      }
     }
     return result;
   }

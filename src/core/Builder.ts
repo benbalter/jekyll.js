@@ -549,9 +549,11 @@ export class Builder {
    */
   private generatePostUrl(post: Document): string {
     const date = post.date || new Date();
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
+    // Use UTC methods to extract date components since dates are stored as UTC midnight
+    // This ensures the URL date matches the filename date regardless of local timezone
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(date.getUTCDate()).padStart(2, '0');
 
     // Get slug from basename (remove date prefix for posts)
     let slug = post.basename;
@@ -585,9 +587,9 @@ export class Builder {
       .replace(/:categories/g, categories)
       .replace(/:year/g, String(year))
       .replace(/:month/g, month)
-      .replace(/:i_month/g, String(date.getMonth() + 1)) // Month without padding
+      .replace(/:i_month/g, String(date.getUTCMonth() + 1)) // Month without padding (UTC)
       .replace(/:day/g, day)
-      .replace(/:i_day/g, String(date.getDate())) // Day without padding
+      .replace(/:i_day/g, String(date.getUTCDate())) // Day without padding (UTC)
       .replace(/:title/g, slug)
       .replace(/:slug/g, slug);
 

@@ -16,6 +16,7 @@ import { Site } from '../core/Site';
 import { Document } from '../core/Document';
 import { escapeHtml } from '../utils/html';
 import { processMarkdown } from '../core/markdown';
+import striptags from 'striptags';
 
 /**
  * Get feed URL configuration from site config
@@ -84,7 +85,17 @@ export class FeedPlugin implements Plugin, GeneratorPlugin {
 
     // Feed metadata
     const title = config.title || 'Feed';
-    const description = config.description || '';
+    const rawDescription = config.description || '';
+    // Process site description with markdown and strip HTML for plain text subtitle
+    let description = '';
+    if (rawDescription) {
+      try {
+        const html = await processMarkdown(String(rawDescription));
+        description = striptags(html).trim();
+      } catch (_error) {
+        description = String(rawDescription);
+      }
+    }
     const author = config.author || {};
     const authorName = typeof author === 'string' ? author : author.name || '';
     const authorEmail = typeof author === 'object' ? author.email || '' : '';

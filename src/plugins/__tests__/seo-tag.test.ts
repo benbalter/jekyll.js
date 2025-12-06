@@ -166,6 +166,42 @@ describe('SeoTagPlugin', () => {
     );
   });
 
+  it('should handle logo without leading slash in JSON-LD', async () => {
+    // Setup site with logo
+    site.config.logo = 'assets/logo.png';
+
+    const template = '{% seo %}';
+    const result = await renderer.render(template, {
+      page: {
+        title: 'Test Post',
+        url: '/test/',
+        layout: 'post',
+        date: '2024-01-01T00:00:00Z',
+      },
+    });
+
+    expect(result).toContain(
+      '"logo":{"@type":"ImageObject","url":"https://example.com/assets/logo.png"}'
+    );
+  });
+
+  it('should handle images without leading slash with baseurl', async () => {
+    site.config.baseurl = '/blog';
+
+    const template = '{% seo %}';
+    const result = await renderer.render(template, {
+      page: {
+        title: 'Image Test',
+        url: '/test/',
+        image: 'assets/images/og/test.png',
+      },
+    });
+
+    expect(result).toContain(
+      '<meta property="og:image" content="https://example.com/blog/assets/images/og/test.png">'
+    );
+  });
+
   it('should escape HTML in metadata', async () => {
     const template = '{% seo %}';
     const result = await renderer.render(template, {

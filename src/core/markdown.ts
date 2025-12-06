@@ -40,6 +40,16 @@ export interface MarkdownOptions {
    * Default: true (enabled by default to match Jekyll/Kramdown behavior)
    */
   smartQuotes?: boolean;
+  /**
+   * Enable syntax highlighting for fenced code blocks using Shiki.
+   * Default: true (enabled by default for modern syntax highlighting)
+   */
+  syntaxHighlighting?:
+    | boolean
+    | {
+        /** Shiki theme to use (default: 'github-light') */
+        theme?: string;
+      };
 }
 
 // Cached module imports to avoid repeated dynamic imports
@@ -48,6 +58,9 @@ let cachedModules: {
   remarkParse: typeof import('remark-parse').default;
   remarkGfm: typeof import('remark-gfm').default;
   remarkHtml: typeof import('remark-html').default;
+  remarkRehype?: typeof import('remark-rehype').default;
+  rehypeShiki?: typeof import('@shikijs/rehype').default;
+  rehypeStringify?: typeof import('rehype-stringify').default;
   remarkGemoji?: typeof import('remark-gemoji').default;
   remarkGithub?: typeof import('remark-github').default;
   defaultBuildUrl?: typeof import('remark-github').defaultBuildUrl;
@@ -56,6 +69,7 @@ let cachedModules: {
 // Track in-progress optional module loads to prevent race conditions
 let loadingEmoji: Promise<void> | null = null;
 let loadingGithub: Promise<void> | null = null;
+let loadingSyntaxHighlighting: Promise<void> | null = null;
 
 // Cached frozen processors for different option combinations
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -72,7 +86,12 @@ function getOptionsCacheKey(options: MarkdownOptions): string {
       ? JSON.stringify(options.githubMentions)
       : '1'
     : '0';
-  return `${emoji}:${github}`;
+  const syntaxHighlighting = options.syntaxHighlighting === false ? '0' : '1';
+  const theme =
+    typeof options.syntaxHighlighting === 'object'
+      ? options.syntaxHighlighting.theme || 'github-light'
+      : 'github-light';
+  return `${emoji}:${github}:${syntaxHighlighting}:${theme}`;
 }
 
 /**
@@ -110,6 +129,7 @@ async function loadModules(options: MarkdownOptions): Promise<typeof cachedModul
 /**
  * Load optional modules (emoji, GitHub mentions) if needed and not already cached.
  * Uses tracking variables to prevent race conditions when called concurrently.
+ * Note: Syntax highlighting modules are loaded separately in getProcessor when needed.
  */
 async function loadOptionalModules(options: MarkdownOptions): Promise<void> {
   if (!cachedModules) return;
@@ -141,6 +161,58 @@ async function loadOptionalModules(options: MarkdownOptions): Promise<void> {
   if (loadPromises.length > 0) {
     await Promise.all(loadPromises);
   }
+}
+
+/**
+ * Load syntax highlighting modules if needed and not already cached.
+ * Uses tracking variable to prevent race conditions when called concurrently.
+ */
+async function loadSyntaxHighlightingModules(): Promise<void> {
+  if (!cachedModules) return;
+
+  // If modules are already loaded, no need to load again
+  if (cachedModules.remarkRehype && cachedModules.rehypeShiki && cachedModules.rehypeStringify) {
+    return;
+  }
+
+  // If loading is already in progress, wait for it
+  if (!loadingSyntaxHighlighting) {
+    loadingSyntaxHighlighting = Promise.all([
+      import('remark-rehype'),
+      import('@shikijs/rehype'),
+      import('rehype-stringify'),
+    ])
+      .then(([{ default: remarkRehype }, { default: rehypeShiki }, { default: rehypeStringify }]) => {
+        cachedModules!.remarkRehype = remarkRehype;
+        cachedModules!.rehypeShiki = rehypeShiki;
+        cachedModules!.rehypeStringify = rehypeStringify;
+      })
+      .catch((error) => {
+        // Reset the loading promise to allow retry on next call
+        loadingSyntaxHighlighting = null;
+
+        // Check if this is a module loading error (expected in Jest tests)
+        // Use error.name and code for more robust detection
+        const isModuleError =
+          error.code === 'MODULE_NOT_FOUND' ||
+          error.code === 'ERR_MODULE_NOT_FOUND' ||
+          error.name === 'SyntaxError';
+
+        if (isModuleError) {
+          // Expected in test environments - we'll fall back to non-highlighted output
+          // Suppress the warning in test environments to avoid noise
+          if (process.env.NODE_ENV !== 'test') {
+            // eslint-disable-next-line no-console
+            console.warn('Syntax highlighting modules not available, falling back to plain code blocks');
+          }
+        } else {
+          // Unexpected error - re-throw to surface the problem
+          throw error;
+        }
+      });
+  }
+
+  await loadingSyntaxHighlighting;
 }
 
 /**
@@ -198,8 +270,35 @@ async function getProcessor(options: MarkdownOptions): Promise<any> {
     });
   }
 
-  // Add HTML output - SECURITY: No sanitization - matches Jekyll behavior, allows raw HTML
-  processor = processor.use(modules.remarkHtml, { sanitize: false });
+  // Choose output pipeline based on syntax highlighting option
+  // Syntax highlighting is enabled by default (undefined or true)
+  // Explicitly disable with syntaxHighlighting: false
+  const enableSyntaxHighlighting = options.syntaxHighlighting !== false;
+
+  if (enableSyntaxHighlighting) {
+    // Load syntax highlighting modules lazily when needed
+    await loadSyntaxHighlightingModules();
+
+    if (modules.remarkRehype && modules.rehypeShiki && modules.rehypeStringify) {
+      // Use rehype pipeline with Shiki syntax highlighting
+      const theme =
+        typeof options.syntaxHighlighting === 'object' && options.syntaxHighlighting.theme
+          ? options.syntaxHighlighting.theme
+          : 'github-light';
+
+      processor = processor
+        .use(modules.remarkRehype, { allowDangerousHtml: true })
+        .use(modules.rehypeShiki, { theme })
+        .use(modules.rehypeStringify, { allowDangerousHtml: true });
+    } else {
+      // Fallback to direct HTML conversion if modules failed to load
+      processor = processor.use(modules.remarkHtml, { sanitize: false });
+    }
+  } else {
+    // Use direct HTML conversion without syntax highlighting
+    // SECURITY: No sanitization - matches Jekyll behavior, allows raw HTML
+    processor = processor.use(modules.remarkHtml, { sanitize: false });
+  }
 
   // Freeze the processor to optimize for repeated use
   // This tells unified that the processor configuration is complete

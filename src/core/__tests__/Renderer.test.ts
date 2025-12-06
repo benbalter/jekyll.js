@@ -2164,8 +2164,6 @@ Second`
     it('should handle Jekyll-style post list with filters (benbalter.github.com pattern)', async () => {
       // Create mock site with posts
       site = new Site(testDir);
-      await site.read();
-
       // Create mock posts for the test
       const mockPosts = [
         { url: '/post1', title: 'Post 1', description: 'Description 1' },

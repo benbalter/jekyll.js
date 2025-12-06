@@ -389,7 +389,7 @@ export class Renderer {
       return slugifyLib(String(input), options);
     });
 
-    // JSON filter
+    // JSON filter - matches Ruby Jekyll's behavior using plain JSON.stringify
     this.liquid.registerFilter('jsonify', (input: any) => {
       return JSON.stringify(input);
     });

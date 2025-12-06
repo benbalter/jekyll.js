@@ -486,7 +486,8 @@ function parseGitHubPagesUrl(url: string): { owner: string; name: string } | nul
   if (afterGithubIo.startsWith('/')) {
     const pathWithoutSlash = afterGithubIo.substring(1);
     const slashIndex = pathWithoutSlash.indexOf('/');
-    const repoName = slashIndex === -1 ? pathWithoutSlash : pathWithoutSlash.substring(0, slashIndex);
+    const repoName =
+      slashIndex === -1 ? pathWithoutSlash : pathWithoutSlash.substring(0, slashIndex);
 
     if (repoName) {
       return { owner, name: repoName };

@@ -14,11 +14,7 @@ import { Plugin, GeneratorPlugin, GeneratorResult, GeneratorPriority } from './t
 import { Renderer } from '../core/Renderer';
 import { Site } from '../core/Site';
 import { Document } from '../core/Document';
-import {
-  escapeHtml,
-  processTextWithMarkdown,
-  processTextWithMarkdownToHtml,
-} from '../utils';
+import { escapeHtml, processTextWithMarkdown, processTextWithMarkdownToHtml } from '../utils';
 
 /**
  * Get feed URL configuration from site config

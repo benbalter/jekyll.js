@@ -573,6 +573,18 @@ export class Builder {
   }
 
   /**
+   * Check if a file extension is a markdown extension
+   * Uses markdown_ext from config to support custom extensions
+   */
+  private isMarkdownExtension(ext: string): boolean {
+    const markdownExtConfig = this.site.config.markdown_ext || 'markdown,mkdown,mkdn,mkd,md';
+    const markdownExtensions = markdownExtConfig
+      .split(',')
+      .map((e) => '.' + e.trim().toLowerCase());
+    return markdownExtensions.includes(ext.toLowerCase());
+  }
+
+  /**
    * Generate URL for a page
    */
   private generatePageUrl(page: Document): string {
@@ -586,7 +598,8 @@ export class Builder {
 
     // For markdown and HTML files, convert extension to .html
     // For other files with front matter (e.g., .xml, .json, .txt), preserve original extension
-    const isMarkdownOrHtml = ['.md', '.markdown', '.html', '.htm'].includes(ext.toLowerCase());
+    const isMarkdownOrHtml =
+      this.isMarkdownExtension(ext) || ['.html', '.htm'].includes(ext.toLowerCase());
     const outputExt = isMarkdownOrHtml ? '.html' : ext;
 
     if (base === 'index') {

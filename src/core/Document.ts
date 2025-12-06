@@ -302,7 +302,7 @@ export class Document {
    * Get the date from front matter or filename (for posts)
    * Returns a Date object where the calendar date (year, month, day) is preserved
    * regardless of the local timezone.
-   * 
+   *
    * For dates from front matter with a time component, the original timestamp is preserved.
    * For date-only strings (like "2024-01-01"), the date is stored as UTC midnight to prevent
    * timezone-related shifts when extracting date components later.
@@ -317,7 +317,7 @@ export class Document {
         // Dates like "2024-01-01" are date-only and need UTC normalization
         const dateStr = String(dateValue);
         const hasTimeComponent = /[T\s]\d{2}:/.test(dateStr);
-        
+
         if (hasTimeComponent) {
           // Preserve the original timestamp for dates with explicit time
           return parsed;

@@ -419,24 +419,82 @@ export class GitHubMetadataPlugin implements Plugin {
       }
     }
 
-    // Try to infer from URL
+    // Try to infer from URL using string parsing to avoid ReDoS
     if (config.url) {
-      const match = config.url.match(/github\.io\/([^/]+)/);
-      if (match && match[1]) {
-        const owner = config.url.match(/\/\/([^.]+)\.github\.io/)?.[1] || '';
-        return { owner, name: match[1] };
-      }
-
-      // Check for user/org pages
-      const userMatch = config.url.match(/\/\/([^.]+)\.github\.io\/?$/);
-      if (userMatch && userMatch[1]) {
-        const owner = userMatch[1];
-        return { owner, name: `${owner}.github.io` };
+      const result = parseGitHubPagesUrl(config.url);
+      if (result) {
+        return result;
       }
     }
 
     return { owner: '', name: '' };
   }
+}
+
+/**
+ * Parse a GitHub Pages URL to extract owner and repo name
+ * Uses string parsing instead of regex to avoid ReDoS vulnerabilities
+ * @param url The URL to parse (e.g., "https://owner.github.io/repo" or "https://owner.github.io")
+ * @returns Object with owner and name, or null if not a GitHub Pages URL
+ */
+function parseGitHubPagesUrl(url: string): { owner: string; name: string } | null {
+  // Limit URL length to prevent DoS
+  if (!url || url.length > 2000) {
+    return null;
+  }
+
+  const lowerUrl = url.toLowerCase();
+
+  // Find "github.io" in the URL
+  const githubIoIndex = lowerUrl.indexOf('.github.io');
+  if (githubIoIndex === -1) {
+    return null;
+  }
+
+  // Extract owner: look for "//" before ".github.io"
+  const protocolEnd = lowerUrl.indexOf('//');
+  if (protocolEnd === -1 || protocolEnd >= githubIoIndex) {
+    return null;
+  }
+
+  // Owner is between "//" and ".github.io"
+  // Use lowerUrl consistently for all index operations to avoid any case-related issues
+  const ownerStart = protocolEnd + 2;
+
+  // githubIoIndex is the position of the '.' in '.github.io', so owner ends there
+  if (githubIoIndex <= ownerStart) {
+    return null;
+  }
+
+  // Extract owner from original URL to preserve case
+  const owner = url.substring(ownerStart, githubIoIndex);
+
+  // Validate owner (should not contain special characters except hyphen)
+  if (!owner || owner.includes('/') || owner.includes(':')) {
+    return null;
+  }
+
+  // Check what comes after ".github.io"
+  const afterGithubIo = url.substring(githubIoIndex + 10); // ".github.io".length = 10
+
+  // If URL ends with github.io or github.io/, it's a user/org page
+  if (afterGithubIo === '' || afterGithubIo === '/') {
+    return { owner, name: `${owner}.github.io` };
+  }
+
+  // If there's a path after github.io/, extract the repo name
+  if (afterGithubIo.startsWith('/')) {
+    const pathWithoutSlash = afterGithubIo.substring(1);
+    const slashIndex = pathWithoutSlash.indexOf('/');
+    const repoName =
+      slashIndex === -1 ? pathWithoutSlash : pathWithoutSlash.substring(0, slashIndex);
+
+    if (repoName) {
+      return { owner, name: repoName };
+    }
+  }
+
+  return null;
 }
 
 /**

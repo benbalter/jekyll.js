@@ -92,7 +92,9 @@ export class Document {
 
     // Parse the file
     try {
-      const fileContent = readFileSync(path, 'utf-8');
+      // Use encoding from config, defaulting to 'utf-8' (Jekyll default)
+      const encoding = config?.encoding || 'utf-8';
+      const fileContent = readFileSync(path, encoding);
       const parsed = matter(fileContent);
 
       // Apply front matter defaults if config is provided

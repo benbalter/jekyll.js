@@ -9,6 +9,7 @@ import { escapeHtml } from '../utils/html';
 import { normalizePathSeparators } from '../utils/path-security';
 import slugifyLib from 'slugify';
 import { format, parseISO, formatISO, formatRFC7231, isValid } from 'date-fns';
+import strftime from 'strftime';
 import striptags from 'striptags';
 import { dirname, join, resolve, normalize, relative } from 'path';
 import { readFileSync, existsSync, statSync } from 'fs';
@@ -932,14 +933,13 @@ export class Renderer {
       return array.map((item) => item?.[property]);
     });
 
-    // Date filter (using date-fns format)
+    // Date filter (using strftime library for Ruby-compatible date formatting)
     this.liquid.registerFilter('date', (input: any, formatStr: string = '%Y-%m-%d') => {
       if (!input) return '';
       try {
         const d = this.parseDate(input);
-        // Convert Ruby strftime format to date-fns format
-        const dateFormat = this.strftimeToDateFns(formatStr);
-        return format(d, dateFormat);
+        // Use strftime library directly for Ruby-compatible date formatting
+        return strftime(formatStr, d);
       } catch (error) {
         logger.warn(`date filter: ${error instanceof Error ? error.message : 'Invalid date'}`);
         return '';
@@ -962,51 +962,6 @@ export class Renderer {
       }
       return input;
     });
-  }
-
-  /**
-   * Convert Ruby strftime format to date-fns format
-   * @param strftime Ruby strftime format string
-   * @returns date-fns compatible format string
-   */
-  private strftimeToDateFns(strftime: string): string {
-    const conversions: Record<string, string> = {
-      '%Y': 'yyyy', // 4-digit year
-      '%y': 'yy', // 2-digit year
-      '%m': 'MM', // Month (01-12)
-      '%-m': 'M', // Month without leading zero (1-12)
-      '%B': 'MMMM', // Full month name
-      '%b': 'MMM', // Abbreviated month name
-      '%d': 'dd', // Day of month (01-31)
-      '%-d': 'd', // Day of month without leading zero (1-31)
-      '%e': 'd', // Day of month (1-31)
-      '%H': 'HH', // Hour (00-23)
-      '%-H': 'H', // Hour without leading zero (0-23)
-      '%I': 'hh', // Hour (01-12)
-      '%-I': 'h', // Hour without leading zero (1-12)
-      '%M': 'mm', // Minute (00-59)
-      '%-M': 'm', // Minute without leading zero (0-59)
-      '%S': 'ss', // Second (00-59)
-      '%-S': 's', // Second without leading zero (0-59)
-      '%p': 'a', // AM/PM
-      '%A': 'EEEE', // Full weekday name
-      '%a': 'EEE', // Abbreviated weekday name
-      '%j': 'DDD', // Day of year (001-366)
-      '%w': 'e', // Day of week (0-6)
-      '%Z': 'zzz', // Timezone name
-      '%z': 'xxx', // Timezone offset
-      '%%': '%', // Literal %
-    };
-
-    let result = strftime;
-    // Sort patterns by length (descending) to ensure longer patterns like '%-d' are matched before '%d'
-    const sortedPatterns = Object.entries(conversions).sort((a, b) => b[0].length - a[0].length);
-    for (const [pattern, replacement] of sortedPatterns) {
-      // Escape special regex characters in the pattern
-      const escapedPattern = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      result = result.replace(new RegExp(escapedPattern, 'g'), replacement);
-    }
-    return result;
   }
 
   /**
@@ -1433,9 +1388,13 @@ export class Renderer {
       content,
     });
 
-    // Helper to check if document is markdown
+    // Helper to check if document is markdown using config's markdown_ext
+    const markdownExtConfig = this.site.config.markdown_ext || 'markdown,mkdown,mkdn,mkd,md';
+    const markdownExtensions = markdownExtConfig
+      .split(',')
+      .map((e) => '.' + e.trim().toLowerCase());
     const isMarkdownDocument = (ext: string): boolean =>
-      ['.md', '.markdown'].includes(ext.toLowerCase());
+      markdownExtensions.includes(ext.toLowerCase());
 
     // Check if there's a custom converter plugin for this document type
     const converter = PluginRegistry.findConverter(document.extname.toLowerCase());

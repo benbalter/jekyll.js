@@ -90,23 +90,57 @@ function isInsideHtmlTag(str: string, position: number): boolean {
 
 /**
  * Check if a position is inside an anchor link
+ * Uses character-by-character parsing to avoid ReDoS vulnerabilities
  */
 function isInsideLink(str: string, position: number): boolean {
-  // Improved check: look for last valid <a ...> before position without closing </a>
   const beforePosition = str.substring(0, position).toLowerCase();
 
-  // Regex to match <a> or <a ...> tags
-  const anchorOpenRegex = /<a(?:\s+[^>]*)?>/gi;
+  // Find last anchor open and close positions using character-by-character parsing
   let lastAnchorOpen = -1;
-  let match: RegExpExecArray | null;
+  let lastAnchorClose = -1;
 
-  while ((match = anchorOpenRegex.exec(beforePosition)) !== null) {
-    lastAnchorOpen = match.index;
+  let i = 0;
+  while (i < beforePosition.length) {
+    // Look for '<a' (case-insensitive, already lowercased)
+    if (
+      beforePosition[i] === '<' &&
+      i + 1 < beforePosition.length &&
+      beforePosition[i + 1] === 'a' &&
+      i + 2 < beforePosition.length
+    ) {
+      // Check if it's '<a>' or '<a ' (anchor tag start, not <abbr> etc.)
+      const nextChar = beforePosition[i + 2];
+      if (nextChar === '>' || nextChar === ' ' || nextChar === '\t' || nextChar === '\n') {
+        // Find the closing '>' of this tag
+        let tagEnd = i + 2;
+        while (tagEnd < beforePosition.length && beforePosition[tagEnd] !== '>') {
+          tagEnd++;
+        }
+        if (tagEnd < beforePosition.length) {
+          lastAnchorOpen = i;
+          i = tagEnd + 1;
+          continue;
+        }
+      }
+    }
+
+    // Look for '</a>'
+    if (
+      beforePosition[i] === '<' &&
+      i + 3 < beforePosition.length &&
+      beforePosition[i + 1] === '/' &&
+      beforePosition[i + 2] === 'a' &&
+      beforePosition[i + 3] === '>'
+    ) {
+      lastAnchorClose = i;
+      i += 4;
+      continue;
+    }
+
+    i++;
   }
 
   if (lastAnchorOpen === -1) return false;
-
-  const lastAnchorClose = beforePosition.lastIndexOf('</a>');
 
   // If the last anchor open is after the last anchor close, we're inside a link
   return lastAnchorOpen > lastAnchorClose;

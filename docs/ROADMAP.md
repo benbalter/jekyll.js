@@ -132,12 +132,12 @@ This roadmap outlines the development timeline for jekyll.js to achieve full com
 
 ### Features
 
-- [ ] **Advanced Configuration Options**
-  - Timezone support
-  - File encoding options
-  - Custom markdown extensions
+- [x] **Advanced Configuration Options**
+  - Timezone support (validation and default)
+  - File encoding options (configurable source file encoding)
+  - Custom markdown extensions (markdown_ext config option)
   - Multiple config files (comma-separated)
-  - Environment variables in config
+  - Environment variables in config (${VAR} and ${VAR:-default} syntax)
 
 - [ ] **Performance Optimizations**
   - Parallel processing improvements

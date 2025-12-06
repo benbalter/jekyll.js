@@ -626,5 +626,49 @@ collections:
       expect(staticFileNames).toContain('dashes.txt');
       expect(staticFileNames).not.toContain('proper.txt');
     });
+
+    it('should recognize custom markdown extensions from markdown_ext config', async () => {
+      // Create a post with a custom extension
+      const postsDir = join(testSiteDir, '_posts');
+      mkdirSync(postsDir);
+      writeFileSync(join(postsDir, '2024-01-01-post.mdown'), '---\ntitle: Post\n---\nContent');
+
+      // Default markdown_ext includes 'mdown'
+      const site = new Site(testSiteDir, { markdown_ext: 'md,markdown,mdown' });
+      await site.read();
+
+      // Post should be recognized
+      expect(site.posts).toHaveLength(1);
+      expect(site.posts[0]?.data.title).toBe('Post');
+    });
+
+    it('should recognize custom markdown extensions from default markdown_ext', async () => {
+      // Create a post with mkd extension (part of default markdown_ext)
+      const postsDir = join(testSiteDir, '_posts');
+      mkdirSync(postsDir);
+      writeFileSync(join(postsDir, '2024-01-01-post.mkd'), '---\ntitle: MKD Post\n---\nContent');
+
+      // Default markdown_ext is 'markdown,mkdown,mkdn,mkd,md'
+      const site = new Site(testSiteDir);
+      await site.read();
+
+      // Post should be recognized
+      expect(site.posts).toHaveLength(1);
+      expect(site.posts[0]?.data.title).toBe('MKD Post');
+    });
+
+    it('should not recognize extensions not in markdown_ext config', async () => {
+      // Create a post with a custom extension not in the config
+      const postsDir = join(testSiteDir, '_posts');
+      mkdirSync(postsDir);
+      writeFileSync(join(postsDir, '2024-01-01-post.custom'), '---\ntitle: Custom\n---\nContent');
+
+      // Custom extension not in markdown_ext
+      const site = new Site(testSiteDir, { markdown_ext: 'md,markdown' });
+      await site.read();
+
+      // Post should NOT be recognized
+      expect(site.posts).toHaveLength(0);
+    });
   });
 });

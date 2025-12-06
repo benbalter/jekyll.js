@@ -272,4 +272,41 @@ This is a test page.`;
       expect(json.data).toEqual({ title: 'Test', layout: 'post' });
     });
   });
+
+  describe('encoding configuration', () => {
+    it('should use utf-8 encoding by default', () => {
+      const filePath = join(testDir, 'test.md');
+      // UTF-8 content with special characters
+      const content = `---
+title: Café Münchën
+---
+
+Über den Wolken`;
+
+      writeFileSync(filePath, content, 'utf-8');
+
+      // No config provided, should use utf-8 default
+      const doc = new Document(filePath, testDir, DocumentType.PAGE);
+      expect(doc.data.title).toBe('Café Münchën');
+      expect(doc.content.trim()).toBe('Über den Wolken');
+    });
+
+    it('should use encoding from config', () => {
+      const filePath = join(testDir, 'test.md');
+      // UTF-8 content
+      const content = `---
+title: Test
+---
+
+Hello World`;
+
+      writeFileSync(filePath, content, 'utf-8');
+
+      // Pass config with explicit encoding
+      const config = { encoding: 'utf-8' as BufferEncoding };
+      const doc = new Document(filePath, testDir, DocumentType.PAGE, undefined, config);
+      expect(doc.data.title).toBe('Test');
+      expect(doc.content.trim()).toBe('Hello World');
+    });
+  });
 });

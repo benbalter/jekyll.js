@@ -13,7 +13,6 @@ import { minimatch } from 'minimatch';
 import { ConfigError } from '../utils/errors';
 import { normalizePathSeparators } from '../utils/path-security';
 import { VALID_ENCODINGS } from './validation';
-import { normalizePathSeparators } from '../utils/path-security';
 
 /**
  * Jekyll configuration interface

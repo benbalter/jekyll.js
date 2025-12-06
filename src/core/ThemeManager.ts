@@ -21,7 +21,7 @@ import { join, resolve, dirname, basename } from 'path';
 import yaml from 'js-yaml';
 import { JekyllConfig } from '../config';
 import { logger } from '../utils/logger';
-import { normalizePathSeparators } from '../utils/path-security';
+import { normalizePathSeparators, isPathWithinBase } from '../utils/path-security';
 
 /**
  * Theme metadata from package.json
@@ -211,11 +211,96 @@ export class ThemeManager {
   }
 
   /**
+   * Validate theme name for security
+   * Prevents path traversal attacks via malicious theme names
+   * @param themeName Theme name to validate
+   * @returns Whether the theme name is safe
+   */
+  private isValidThemeName(themeName: string): boolean {
+    if (!themeName || typeof themeName !== 'string') {
+      return false;
+    }
+
+    // Check for path traversal sequences
+    if (themeName.includes('..')) {
+      logger.warn(`Security warning: Theme name contains path traversal sequence: ${themeName}`);
+      return false;
+    }
+
+    // Check for absolute paths (Unix or Windows style)
+    if (themeName.startsWith('/') || /^[a-zA-Z]:/.test(themeName)) {
+      logger.warn(`Security warning: Theme name appears to be an absolute path: ${themeName}`);
+      return false;
+    }
+
+    // Check for backslash (Windows path separator, potential traversal)
+    if (themeName.includes('\\')) {
+      logger.warn(`Security warning: Theme name contains backslash: ${themeName}`);
+      return false;
+    }
+
+    // Allow scoped npm packages like @org/theme-name
+    // But ensure the scope doesn't contain traversal
+    if (themeName.startsWith('@')) {
+      const parts = themeName.split('/');
+      if (parts.length !== 2) {
+        logger.warn(`Security warning: Invalid scoped theme name format: ${themeName}`);
+        return false;
+      }
+      // Check each part for path traversal
+      for (const part of parts) {
+        if (part.includes('..') || part.includes('\\')) {
+          logger.warn(`Security warning: Scoped theme name contains unsafe characters: ${themeName}`);
+          return false;
+        }
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * Validate a relative path for security
+   * Prevents path traversal attacks via malicious include/layout/data file paths
+   * @param relativePath Path to validate
+   * @returns Whether the path is safe
+   */
+  private isRelativePathSafe(relativePath: string): boolean {
+    if (!relativePath || typeof relativePath !== 'string') {
+      return false;
+    }
+
+    // Check for path traversal sequences
+    if (relativePath.includes('..')) {
+      return false;
+    }
+
+    // Check for absolute paths (Unix or Windows style)
+    if (relativePath.startsWith('/') || /^[a-zA-Z]:/.test(relativePath)) {
+      return false;
+    }
+
+    // Check for backslash (Windows path separator, potential traversal)
+    // Note: We normalize to forward slashes, but input might have backslashes
+    if (relativePath.includes('\\..\\') || relativePath.startsWith('..\\')) {
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
    * Resolve theme root directory
    * @param themeName Theme name
    * @returns Theme root directory or null if not found
    */
   private resolveThemeRoot(themeName: string): string | null {
+    // Validate theme name for security
+    if (!this.isValidThemeName(themeName)) {
+      logger.warn(`Theme name '${themeName}' failed security validation. Skipping theme.`);
+      return null;
+    }
+
     // Try bundled themes first (e.g., minima)
     const bundledThemePath = this.getBundledThemePath(themeName);
     if (bundledThemePath) {
@@ -226,21 +311,24 @@ export class ThemeManager {
     const nodeModulesPath = this.findNodeModules(this.sourceDir);
     if (nodeModulesPath) {
       const themeInNodeModules = join(nodeModulesPath, themeName);
-      if (existsSync(themeInNodeModules) && statSync(themeInNodeModules).isDirectory()) {
-        return themeInNodeModules;
+      // Verify the resolved path is within node_modules (defense against any traversal)
+      if (isPathWithinBase(nodeModulesPath, themeInNodeModules)) {
+        if (existsSync(themeInNodeModules) && statSync(themeInNodeModules).isDirectory()) {
+          return themeInNodeModules;
+        }
       }
     }
 
-    // Try as relative path
+    // Try as relative path (must be within source directory for security)
     const relativePath = resolve(this.sourceDir, themeName);
-    if (existsSync(relativePath) && statSync(relativePath).isDirectory()) {
-      return relativePath;
+    if (isPathWithinBase(this.sourceDir, relativePath)) {
+      if (existsSync(relativePath) && statSync(relativePath).isDirectory()) {
+        return relativePath;
+      }
     }
 
-    // Try as absolute path
-    if (existsSync(themeName) && statSync(themeName).isDirectory()) {
-      return resolve(themeName);
-    }
+    // Note: We no longer support arbitrary absolute paths for security reasons
+    // Themes must be in node_modules, source directory, or be bundled themes
 
     return null;
   }
@@ -354,18 +442,30 @@ export class ThemeManager {
    * @returns Full path to include file or null if not found
    */
   public resolveInclude(includePath: string): string | null {
+    // Security: Validate include path to prevent path traversal
+    if (!this.isRelativePathSafe(includePath)) {
+      logger.warn(`Security warning: Include path contains path traversal: ${includePath}`);
+      return null;
+    }
+
     // Check site includes first
     const siteIncludesDir = join(this.sourceDir, this.config.includes_dir || '_includes');
     const siteIncludePath = join(siteIncludesDir, includePath);
-    if (existsSync(siteIncludePath) && statSync(siteIncludePath).isFile()) {
-      return siteIncludePath;
+    // Security: Verify resolved path is within the includes directory
+    if (isPathWithinBase(siteIncludesDir, siteIncludePath)) {
+      if (existsSync(siteIncludePath) && statSync(siteIncludePath).isFile()) {
+        return siteIncludePath;
+      }
     }
 
     // Check theme includes
     if (this.theme) {
       const themeIncludePath = join(this.theme.includesDir, includePath);
-      if (existsSync(themeIncludePath) && statSync(themeIncludePath).isFile()) {
-        return themeIncludePath;
+      // Security: Verify resolved path is within the theme includes directory
+      if (isPathWithinBase(this.theme.includesDir, themeIncludePath)) {
+        if (existsSync(themeIncludePath) && statSync(themeIncludePath).isFile()) {
+          return themeIncludePath;
+        }
       }
     }
 

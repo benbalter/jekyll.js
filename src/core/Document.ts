@@ -276,7 +276,7 @@ export class Document {
       url: this.url,
       // Include content for templates that need to access page.content
       content: this.content,
-      data: this.data,
+      data: { ...this.data },
     };
 
     return this._jsonCache;

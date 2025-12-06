@@ -15,6 +15,7 @@ import { Renderer } from '../core/Renderer';
 import { Site } from '../core/Site';
 import { Document } from '../core/Document';
 import { escapeHtml } from '../utils/html';
+import { processMarkdown } from '../core/markdown';
 
 /**
  * Get feed URL configuration from site config
@@ -57,9 +58,9 @@ export class FeedPlugin implements Plugin, GeneratorPlugin {
   /**
    * Generator interface - generates feed.xml file
    */
-  generate(site: Site, _renderer: Renderer): GeneratorResult {
+  async generate(site: Site, _renderer: Renderer): Promise<GeneratorResult> {
     const { feedPath } = getFeedUrlInfo(site);
-    const content = this.generateFeed(site);
+    const content = await this.generateFeed(site);
 
     // Remove leading slash for file path (destination expects relative path)
     const filePath = feedPath.replace(/^\//, '');
@@ -77,7 +78,7 @@ export class FeedPlugin implements Plugin, GeneratorPlugin {
   /**
    * Generate the Atom feed XML content using the feed library
    */
-  generateFeed(site: Site): string {
+  async generateFeed(site: Site): Promise<string> {
     const config = site.config;
     const { siteUrl, feedUrl } = getFeedUrlInfo(site);
 
@@ -129,7 +130,7 @@ export class FeedPlugin implements Plugin, GeneratorPlugin {
 
     // Add entries for each post
     for (const post of feedPosts) {
-      this.addFeedEntry(feed, post, site, siteUrl);
+      await this.addFeedEntry(feed, post, site, siteUrl);
     }
 
     // Generate Atom 1.0 feed
@@ -139,7 +140,12 @@ export class FeedPlugin implements Plugin, GeneratorPlugin {
   /**
    * Add a single feed entry for a post using the feed library
    */
-  private addFeedEntry(feed: Feed, post: Document, site: Site, siteUrl: string): void {
+  private async addFeedEntry(
+    feed: Feed,
+    post: Document,
+    site: Site,
+    siteUrl: string
+  ): Promise<void> {
     const postUrl = `${siteUrl}${post.url || ''}`;
     const postDate = post.date || new Date();
     const postTitle = post.title || 'Untitled';
@@ -151,7 +157,18 @@ export class FeedPlugin implements Plugin, GeneratorPlugin {
     const authorUri = typeof postAuthor === 'object' ? postAuthor.url || postAuthor.uri || '' : '';
 
     // Get post excerpt or description
-    const excerpt = post.data.excerpt || post.data.description || '';
+    const rawExcerpt = post.data.excerpt || post.data.description || '';
+    // Process markdown in excerpt/description for feed content
+    let excerpt = '';
+    if (rawExcerpt) {
+      try {
+        // Convert markdown to HTML for feed content
+        excerpt = await processMarkdown(String(rawExcerpt));
+      } catch (_error) {
+        // If markdown processing fails, use raw excerpt
+        excerpt = String(rawExcerpt);
+      }
+    }
 
     // Handle last_modified_at for updated date
     // In Atom feeds, 'date' represents when the entry was last updated

@@ -17,6 +17,7 @@ import { Site } from '../core/Site';
 import { Document } from '../core/Document';
 import { logger } from '../utils/logger';
 import { escapeXml } from '../utils/html';
+import { processMarkdown } from '../core/markdown';
 
 /**
  * Canvas configuration options
@@ -183,7 +184,7 @@ export class OgImagePlugin implements Plugin, GeneratorPlugin {
 
       // Set image metadata on post (if not already set)
       if (!post.data.image) {
-        const description = this.getDescription(post);
+        const description = await this.getDescription(post);
         post.data.image = {
           path: imagePath,
           width: IMAGE_WIDTH,
@@ -306,7 +307,7 @@ export class OgImagePlugin implements Plugin, GeneratorPlugin {
     canvas = await this.addTitle(canvas, post.title, config);
 
     // Add description if available
-    const description = this.getDescription(post);
+    const description = await this.getDescription(post);
     if (description) {
       canvas = await this.addDescription(canvas, description, config);
     }
@@ -638,11 +639,20 @@ export class OgImagePlugin implements Plugin, GeneratorPlugin {
   }
 
   /**
-   * Get description from post, stripping HTML
+   * Get description from post, processing markdown and stripping HTML
    */
-  private getDescription(post: Document): string {
+  private async getDescription(post: Document): Promise<string> {
     const desc = post.data.description || post.data.excerpt || '';
-    return striptags(String(desc)).trim().substring(0, 200);
+    if (!desc) return '';
+
+    try {
+      // Convert markdown to HTML, then strip HTML tags
+      const html = await processMarkdown(String(desc));
+      return striptags(html).trim().substring(0, 200);
+    } catch (_error) {
+      // If markdown processing fails, fall back to stripping HTML from raw text
+      return striptags(String(desc)).trim().substring(0, 200);
+    }
   }
 
   /**

@@ -213,8 +213,68 @@ describe('SeoTagPlugin', () => {
     });
 
     expect(result).toContain('Test &amp; &quot;Quotes&quot; &lt;script&gt;');
-    expect(result).toContain('Description with &lt;tags&gt;');
-    // Check that script tags are not in the meta tag values (escaped)
-    expect(result).toMatch(/<meta[^>]*content="[^"]*&lt;script&gt;[^"]*"/);
+    // HTML tags in description are stripped during markdown processing
+    // This matches Jekyll's behavior of markdownify | strip_html
+    expect(result).toContain('<meta name="description" content="Description with">');
+    // Check that script tags in title are properly escaped
+    expect(result).toMatch(/<title>[^<]*&lt;script&gt;[^<]*<\/title>/);
+  });
+
+  it('should process markdown in description fields', async () => {
+    const template = '{% seo %}';
+    const result = await renderer.render(template, {
+      page: {
+        title: 'Markdown Test',
+        description: 'This is **bold** and this is *italic* text',
+        url: '/markdown-test/',
+      },
+    });
+
+    // Markdown should be converted to HTML then stripped for meta tags
+    // **bold** becomes <strong>bold</strong> then "bold"
+    // *italic* becomes <em>italic</em> then "italic"
+    expect(result).toContain(
+      '<meta name="description" content="This is bold and this is italic text">'
+    );
+    expect(result).toContain(
+      '<meta property="og:description" content="This is bold and this is italic text">'
+    );
+    expect(result).toContain(
+      '<meta name="twitter:description" content="This is bold and this is italic text">'
+    );
+  });
+
+  it('should handle markdown with links in description', async () => {
+    const template = '{% seo %}';
+    const result = await renderer.render(template, {
+      page: {
+        title: 'Link Test',
+        description: 'Check out [this link](https://example.com) for more info',
+        url: '/link-test/',
+      },
+    });
+
+    // Markdown links should be converted to HTML then stripped
+    // [text](url) becomes <a href="url">text</a> then just "text"
+    expect(result).toContain(
+      '<meta name="description" content="Check out this link for more info">'
+    );
+  });
+
+  it('should handle markdown with code in description', async () => {
+    const template = '{% seo %}';
+    const result = await renderer.render(template, {
+      page: {
+        title: 'Code Test',
+        description: 'Use `npm install` to install packages',
+        url: '/code-test/',
+      },
+    });
+
+    // Inline code should be converted to HTML then stripped
+    // `code` becomes <code>code</code> then just "code"
+    expect(result).toContain(
+      '<meta name="description" content="Use npm install to install packages">'
+    );
   });
 });

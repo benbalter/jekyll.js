@@ -162,6 +162,8 @@ export interface GitHubMetadata {
   is_project_page: boolean;
   /** Whether the repository is a user page */
   is_user_page: boolean;
+  /** Owner name (username/login) - convenience property for templates */
+  owner_name: string;
   /** Source information */
   source: {
     branch: string;
@@ -376,6 +378,7 @@ export class GitHubMetadataPlugin implements Plugin {
       repository_url: repoUrl,
       is_project_page: isProjectPage,
       is_user_page: isUserPage,
+      owner_name: owner,
       source: {
         branch,
         path: sourcePath,

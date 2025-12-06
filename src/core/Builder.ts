@@ -529,11 +529,46 @@ export class Builder {
       slug = dateMatch[1];
     }
 
-    // Apply permalink pattern (default: /:categories/:year/:month/:day/:title.html)
-    const categories = post.categories.join('/');
-    const categoryPath = categories ? `/${categories}` : '';
+    // Get the permalink pattern from config (default: /:categories/:year/:month/:day/:title.html)
+    // Jekyll supports built-in styles: date, pretty, ordinal, weekdate, none
+    // and custom patterns with placeholders like :year, :month, :day, :title, :categories
+    let pattern = this.site.config.permalink || '/:categories/:year/:month/:day/:title.html';
 
-    return this.normalizeUrl(`${categoryPath}/${year}/${month}/${day}/${slug}.html`);
+    // Handle built-in permalink styles
+    if (pattern === 'date') {
+      pattern = '/:categories/:year/:month/:day/:title.html';
+    } else if (pattern === 'pretty') {
+      pattern = '/:categories/:year/:month/:day/:title/';
+    } else if (pattern === 'ordinal') {
+      pattern = '/:categories/:year/:y_day/:title.html';
+    } else if (pattern === 'weekdate') {
+      pattern = '/:categories/:year/W:week/:short_day/:title.html';
+    } else if (pattern === 'none') {
+      pattern = '/:categories/:title.html';
+    }
+
+    // Replace placeholders in the pattern
+    const categories = post.categories.join('/');
+
+    let url = pattern
+      .replace(/:categories/g, categories)
+      .replace(/:year/g, String(year))
+      .replace(/:month/g, month)
+      .replace(/:i_month/g, String(date.getMonth() + 1)) // Month without padding
+      .replace(/:day/g, day)
+      .replace(/:i_day/g, String(date.getDate())) // Day without padding
+      .replace(/:title/g, slug)
+      .replace(/:slug/g, slug);
+
+    // Clean up double slashes (from empty categories)
+    url = url.replace(/\/+/g, '/');
+
+    // Ensure URL starts with /
+    if (!url.startsWith('/')) {
+      url = '/' + url;
+    }
+
+    return this.normalizeUrl(url);
   }
 
   /**

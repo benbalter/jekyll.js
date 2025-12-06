@@ -263,7 +263,8 @@ This is a test page.`;
       const doc = new Document(filePath, testDir, DocumentType.PAGE);
       const json = doc.toJSON();
 
-      expect(json.path).toBe(filePath);
+      // In Jekyll, page.path is the relative path for template compatibility
+      expect(json.path).toBe('test.md');
       expect(json.relativePath).toBe('test.md');
       expect(json.type).toBe(DocumentType.PAGE);
       expect(json.title).toBe('Test');

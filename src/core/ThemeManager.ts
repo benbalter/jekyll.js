@@ -558,6 +558,12 @@ export class ThemeManager {
       return null;
     }
 
+    // Security: Early validation of basename to prevent path traversal
+    if (!this.isRelativePathSafe(fileBasename)) {
+      logger.warn(`Security warning: File basename contains unsafe characters: ${fileBasename}`);
+      return null;
+    }
+
     // Get markdown extensions from config (default: 'markdown,mkdown,mkdn,mkd,md')
     const markdownExtConfig = this.config.markdown_ext || 'markdown,mkdown,mkdn,mkd,md';
     const markdownExtensions = markdownExtConfig
@@ -569,6 +575,11 @@ export class ThemeManager {
 
     for (const ext of extensions) {
       const filePath = join(dir, fileBasename + ext);
+      // Security: Verify resolved path stays within the base directory
+      if (!isPathWithinBase(dir, filePath)) {
+        logger.warn(`Security warning: Resolved file path escapes base directory: ${filePath}`);
+        continue;
+      }
       if (existsSync(filePath) && statSync(filePath).isFile()) {
         return filePath;
       }

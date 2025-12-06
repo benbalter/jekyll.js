@@ -7,6 +7,7 @@ import {
   renameSync,
   unlinkSync,
 } from 'fs';
+import { writeFile, mkdir, stat, rename, unlink } from 'fs/promises';
 import { join, dirname } from 'path';
 
 /**
@@ -163,6 +164,45 @@ export class CacheManager {
   }
 
   /**
+   * Save cache to disk asynchronously using atomic write (write to temp file, then rename)
+   * This is the preferred method for saving cache as it uses async I/O
+   */
+  async saveAsync(): Promise<void> {
+    try {
+      // Ensure cache directory exists
+      const cacheDir = dirname(this.cacheFile);
+      try {
+        await stat(cacheDir);
+      } catch {
+        await mkdir(cacheDir, { recursive: true });
+      }
+
+      // Update last build time
+      this.metadata.lastBuild = Date.now();
+
+      // Write to temp file first (atomic write)
+      const tempFile = this.cacheFile + '.tmp';
+      await writeFile(tempFile, JSON.stringify(this.metadata, null, 2), 'utf-8');
+
+      // Rename temp file to actual cache file (atomic operation)
+      await rename(tempFile, this.cacheFile);
+    } catch (error) {
+      // Clean up temp file if it exists
+      try {
+        const tempFile = this.cacheFile + '.tmp';
+        await unlink(tempFile);
+      } catch {
+        // Ignore cleanup errors (file may not exist)
+      }
+      // Don't fail the build if cache can't be saved
+      console.warn(
+        'Warning: Failed to save build cache:',
+        error instanceof Error ? error.message : String(error)
+      );
+    }
+  }
+
+  /**
    * Check if a file has changed since last build
    * @param filePath Absolute path to file
    * @param relativePath Path relative to source
@@ -197,6 +237,35 @@ export class CacheManager {
   }
 
   /**
+   * Check if a file has changed since last build - async version
+   * @param filePath Absolute path to file
+   * @param relativePath Path relative to source
+   * @returns true if file has changed or is new
+   */
+  async hasChangedAsync(filePath: string, relativePath: string): Promise<boolean> {
+    const cached = this.metadata.files[relativePath];
+
+    // If not in cache, it's new
+    if (!cached) {
+      return true;
+    }
+
+    try {
+      const stats = await stat(filePath);
+
+      // Use epsilon comparison to avoid false positives due to timestamp precision
+      if (Math.abs(stats.mtimeMs - cached.mtime) > 1) {
+        return true;
+      }
+
+      return false;
+    } catch {
+      // If we can't stat the file, consider it changed
+      return true;
+    }
+  }
+
+  /**
    * Update cache entry for a file
    * @param filePath Absolute path to file
    * @param relativePath Path relative to source
@@ -205,6 +274,34 @@ export class CacheManager {
   updateFile(filePath: string, relativePath: string, dependencies: string[] = []): void {
     try {
       const stats = statSync(filePath);
+
+      this.metadata.files[relativePath] = {
+        path: relativePath,
+        mtime: stats.mtimeMs,
+        dependencies,
+      };
+    } catch (error) {
+      // Don't fail if we can't update cache for a file
+      console.warn(
+        `Warning: Failed to update cache for ${relativePath}:`,
+        error instanceof Error ? error.message : String(error)
+      );
+    }
+  }
+
+  /**
+   * Update cache entry for a file - async version
+   * @param filePath Absolute path to file
+   * @param relativePath Path relative to source
+   * @param dependencies List of dependency paths (relative to source)
+   */
+  async updateFileAsync(
+    filePath: string,
+    relativePath: string,
+    dependencies: string[] = []
+  ): Promise<void> {
+    try {
+      const stats = await stat(filePath);
 
       this.metadata.files[relativePath] = {
         path: relativePath,
@@ -251,6 +348,30 @@ export class CacheManager {
     }
 
     return false;
+  }
+
+  /**
+   * Check if any dependencies of a file have changed - async version
+   * @param relativePath Path relative to source
+   * @param sourcePath Absolute path to source directory
+   * @returns true if any dependency has changed
+   */
+  async hasDependencyChangesAsync(relativePath: string, sourcePath: string): Promise<boolean> {
+    const cached = this.metadata.files[relativePath];
+
+    if (!cached) {
+      return false; // File not in cache, no dependencies to check
+    }
+
+    // Check each dependency in parallel
+    const results = await Promise.all(
+      cached.dependencies.map(async (depPath) => {
+        const depAbsPath = join(sourcePath, depPath);
+        return this.hasChangedAsync(depAbsPath, depPath);
+      })
+    );
+
+    return results.some((changed) => changed);
   }
 
   /**

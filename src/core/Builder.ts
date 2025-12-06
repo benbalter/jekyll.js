@@ -16,7 +16,6 @@ import { existsSync, readdirSync, statSync } from 'fs';
 import { writeFile, mkdir, readFile, copyFile, stat, rm, readdir } from 'fs/promises';
 import { join, dirname, extname, basename, relative, resolve, normalize } from 'path';
 import { createProgressIndicator } from '../utils/progress';
-import { rmSync } from 'fs';
 import { registerPlugins, PluginRegistry, Hooks } from '../plugins';
 import { CacheManager } from './CacheManager';
 import matter from 'gray-matter';

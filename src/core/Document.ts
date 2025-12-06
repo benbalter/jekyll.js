@@ -262,8 +262,9 @@ export class Document {
     Object.defineProperty(doc, 'content', { value: content, writable: false, enumerable: true });
 
     return doc;
-    }
+  }
 
+  /**
    * URL for the generated page
    * Setting the URL invalidates the cached JSON representation
    */

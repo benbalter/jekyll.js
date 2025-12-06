@@ -11,6 +11,7 @@ import slugifyLib from 'slugify';
 import { format, parseISO, formatISO, formatRFC7231, isValid } from 'date-fns';
 import strftime from 'strftime';
 import striptags from 'striptags';
+import { smartypantsu } from 'smartypants';
 import { dirname, join, resolve, normalize, relative } from 'path';
 import { readFileSync, existsSync, statSync } from 'fs';
 import { PluginRegistry, Hooks } from '../plugins';
@@ -308,15 +309,13 @@ export class Renderer {
       }
     });
 
+    // String filter for converting ASCII punctuation to smart typography
+    // Uses the smartypants library (https://github.com/othree/smartypants.js)
+    // which is a port of the original SmartyPants Perl library
     this.liquid.registerFilter('smartify', (input: string) => {
       if (!input) return '';
-      return String(input)
-        .replace(/\.\.\./g, '…')
-        .replace(/--/g, '—')
-        .replace(/''/g, '"') // double single quotes first
-        .replace(/``/g, '"') // double backticks next
-        .replace(/'/g, '\u2019') // then remaining single quotes
-        .replace(/`/g, '\u2018'); // then remaining backticks
+      // Use smartypantsu for Unicode output (instead of HTML entities)
+      return smartypantsu(String(input));
     });
 
     this.liquid.registerFilter('slugify', (input: string, mode: string = 'default') => {

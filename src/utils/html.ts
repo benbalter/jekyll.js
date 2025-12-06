@@ -44,3 +44,18 @@ export function escapeJs(str: string): string {
     .replace(/\t/g, '\\t')
     .replace(/\f/g, '\\f');
 }
+
+/**
+ * Escape XML special characters for use in XML/SVG content
+ * Escapes &, <, >, ", and ' for safe XML output
+ * @param str String to escape
+ * @returns Escaped string safe for XML context
+ */
+export function escapeXml(str: string): string {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}

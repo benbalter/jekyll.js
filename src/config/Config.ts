@@ -12,6 +12,7 @@ import merge from 'lodash.merge';
 import { minimatch } from 'minimatch';
 import { ConfigError } from '../utils/errors';
 import { VALID_ENCODINGS } from './validation';
+import { normalizePathSeparators } from '../utils/path-security';
 
 /**
  * Jekyll configuration interface
@@ -961,8 +962,8 @@ function matchesScope(
   }
 
   // Normalize path separators for cross-platform compatibility
-  const normalizedRelPath = relativePath.replace(/\\/g, '/');
-  const normalizedScopePath = scope.path.replace(/\\/g, '/');
+  const normalizedRelPath = normalizePathSeparators(relativePath);
+  const normalizedScopePath = normalizePathSeparators(scope.path);
 
   // Use minimatch for glob pattern matching
   // Match against the path or check if the file is within the directory

@@ -1,6 +1,7 @@
 import { statSync } from 'fs';
 import { basename, extname, relative, dirname } from 'path';
 import { FileSystemError } from '../utils/errors';
+import { normalizePathSeparators } from '../utils/path-security';
 
 /**
  * StaticFile class represents a static file (non-Jekyll processed) in the site
@@ -76,7 +77,7 @@ export class StaticFile {
    */
   get url(): string {
     // Convert backslashes to forward slashes for URL
-    const urlPath = this.relativePath.replace(/\\/g, '/');
+    const urlPath = normalizePathSeparators(this.relativePath);
     return urlPath.startsWith('/') ? urlPath : `/${urlPath}`;
   }
 
@@ -85,7 +86,7 @@ export class StaticFile {
    */
   get directory(): string {
     const dir = dirname(this.relativePath);
-    return dir === '.' ? '' : dir.replace(/\\/g, '/');
+    return dir === '.' ? '' : normalizePathSeparators(dir);
   }
 
   /**

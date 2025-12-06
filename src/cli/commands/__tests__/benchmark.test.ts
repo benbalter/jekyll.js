@@ -889,12 +889,16 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
       .filter((op) => variableCostOps.includes(op.name))
       .reduce((sum, op) => sum + op.duration, 0);
 
-    // Count documents
-    const docCount =
-      (sortedOps.find((op) => op.name === 'Render pages')?.details?.match(/(\d+) pages/)?.[1] ||
-        '0') +
-      (sortedOps.find((op) => op.name === 'Render posts')?.details?.match(/(\d+) posts/)?.[1] ||
-        '0');
+    // Count documents - parse to numbers before adding
+    const pageCount = parseInt(
+      sortedOps.find((op) => op.name === 'Render pages')?.details?.match(/(\d+) pages/)?.[1] || '0',
+      10
+    );
+    const postCount = parseInt(
+      sortedOps.find((op) => op.name === 'Render posts')?.details?.match(/(\d+) posts/)?.[1] || '0',
+      10
+    );
+    const docCount = pageCount + postCount;
 
     // Print analysis
     process.stdout.write('\n');
@@ -908,11 +912,11 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
       'Variable costs:',
       `${variableCost}ms (${((variableCost / timings.totalDuration) * 100).toFixed(1)}%)`
     );
-    printStat('Documents:', docCount);
+    printStat('Documents:', String(docCount));
     process.stdout.write('\n');
 
     // Estimate scaling
-    const perDocCost = variableCost / (parseInt(docCount) || 1);
+    const perDocCost = variableCost / (docCount || 1);
     const estimatedLargeSite100 = fixedCost + perDocCost * 100;
     const estimatedLargeSite500 = fixedCost + perDocCost * 500;
 

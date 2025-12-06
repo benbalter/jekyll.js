@@ -25,8 +25,8 @@ These costs are incurred once per build, regardless of site size:
 | Runtime startup | ~50ms (Node.js) | ~100ms (Ruby VM) | |
 | Module loading | ~200ms (dynamic imports) | ~100ms (gem loading) | |
 | Template engine | ~30ms (LiquidJS) | ~50ms (Liquid gem) | |
-| Markdown processor | ~200ms (parallel, ~0ms blocking) | ~50ms (Kramdown) | Loads in parallel with site reading |
-| **Total blocking time** | **~280ms** | **~300ms** | |
+| Markdown processor | ~200ms (non-blocking) | ~50ms (Kramdown) | Runs in parallel with file I/O |
+| **Total blocking time** | **~280ms** | **~300ms** | Excludes markdown (non-blocking) |
 
 **Optimization**: Markdown processor initialization (~200ms) now happens in parallel with site file
 reading, effectively eliminating it from the critical path. The total wall-clock time includes

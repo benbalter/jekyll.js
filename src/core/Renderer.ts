@@ -1640,11 +1640,16 @@ export class Renderer {
   /**
    * Wait for the background markdown processor initialization to complete.
    * If startMarkdownProcessorInit() was not called, this will initialize synchronously.
+   * Resets the promise after completion to allow retrying in watch mode or after errors.
    * @returns Promise that resolves when initialization is complete
    */
   async waitForMarkdownProcessor(): Promise<void> {
     if (this.markdownInitPromise) {
-      await this.markdownInitPromise;
+      try {
+        await this.markdownInitPromise;
+      } finally {
+        this.markdownInitPromise = null;
+      }
     } else {
       await initMarkdownProcessor(this.markdownOptions);
     }

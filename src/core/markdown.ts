@@ -628,7 +628,7 @@ async function applySyntaxHighlighting(html: string, theme: string): Promise<str
     matches.push({
       match: fullMatch,
       index: match.index,
-      replacement: highlightCode(decodedCode, language, { theme: theme as any }),
+      replacement: highlightCode(decodedCode, language, { theme }),
     });
   }
 

@@ -23,7 +23,7 @@ import { escapeHtml } from '../utils/html';
  */
 export interface SyntaxHighlightingOptions {
   /** Theme to use for highlighting (default: 'github-light') */
-  theme?: BundledTheme;
+  theme?: BundledTheme | string;
 
   /** Additional themes to load */
   themes?: BundledTheme[];
@@ -130,7 +130,7 @@ export async function highlightCode(
 
       const html = highlighter.codeToHtml(code, {
         lang: normalizedLang as BundledLanguage,
-        theme: theme,
+        theme: theme as BundledTheme,
       });
 
       return html;

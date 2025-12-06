@@ -22,7 +22,9 @@ let syntaxHighlightingModule: typeof import('../plugins/syntax-highlighting') | 
 /**
  * Get the syntax highlighting module, caching the import
  */
-async function getSyntaxHighlightingModule(): Promise<typeof import('../plugins/syntax-highlighting')> {
+async function getSyntaxHighlightingModule(): Promise<
+  typeof import('../plugins/syntax-highlighting')
+> {
   if (!syntaxHighlightingModule) {
     syntaxHighlightingModule = await import('../plugins/syntax-highlighting');
   }
@@ -1053,10 +1055,13 @@ export class Renderer {
           // Use cached module import for better performance
           const syntaxModule = await getSyntaxHighlightingModule();
           const highlighted = await syntaxModule.highlightCode(content, this.language, {
-            theme: theme as any,
+            theme: theme,
           });
           result = `<div class="highlight">${highlighted}</div>`;
-        } catch (_error) {
+        } catch (error) {
+          logger.warn(
+            `Failed to highlight code in {% highlight %} tag: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
           // Fall back to basic highlighting on error
           const escapedContent = escapeHtml(content);
           result = `<div class="highlight"><pre class="highlight"><code class="language-${this.language}">${escapedContent}</code></pre></div>`;

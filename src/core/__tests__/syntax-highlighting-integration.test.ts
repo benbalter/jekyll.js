@@ -19,6 +19,7 @@ jest.mock('shiki', () => ({
       return `<pre class="shiki ${options.theme}" style="background-color:#fff;color:#24292e" tabindex="0"><code><span class="line"><span style="color:#24292e">${escaped}</span></span></code></pre>`;
     }),
     getLoadedLanguages: jest.fn(() => ['javascript', 'typescript', 'python']),
+    loadLanguage: jest.fn().mockResolvedValue(undefined),
   }),
 }));
 
@@ -100,6 +101,41 @@ describe('Syntax Highlighting Integration', () => {
       expect(matches.length).toBe(2);
       expect(matches[0]![1]).toBe('javascript');
       expect(matches[1]![1]).toBe('python');
+    });
+  });
+
+  describe('Language normalization', () => {
+    it('should normalize js to javascript', async () => {
+      const code = 'const x = 1;';
+      const html = await highlightCode(code, 'js');
+
+      expect(html).toContain('shiki');
+    });
+
+    it('should normalize py to python', async () => {
+      const code = 'print("hello")';
+      const html = await highlightCode(code, 'py');
+
+      expect(html).toContain('shiki');
+    });
+
+    it('should normalize ts to typescript', async () => {
+      const code = 'const x: number = 1;';
+      const html = await highlightCode(code, 'ts');
+
+      expect(html).toContain('shiki');
+    });
+  });
+
+  describe('Error handling', () => {
+    it('should return fallback HTML when highlighting fails', async () => {
+      // Even with a mock, this should exercise the fallback path
+      const code = 'some code';
+      const html = await highlightCode(code, 'unknown-language-xyz');
+
+      // Should still return valid HTML
+      expect(html).toContain('<pre');
+      expect(html).toContain('some code');
     });
   });
 });

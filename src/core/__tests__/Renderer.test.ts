@@ -7,12 +7,16 @@ import { join } from 'path';
 // Mock the markdown module to avoid ESM import issues in Jest
 jest.mock('../markdown', () => ({
   processMarkdown: jest.fn(async (input: string) => {
+    // Normalize HTML blocks (remove newlines after > and before <)
+    let normalized = input.replace(/>(\s*\n\s*)/g, '>').replace(/(\s*\n\s*)</g, '<');
+
     // Simple markdown-to-HTML conversion for testing
-    return input
+    return normalized
       .replace(/^# (.+)$/gm, '<h1>$1</h1>')
       .replace(/^## (.+)$/gm, '<h2>$1</h2>')
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.+?)\*/g, '<em>$1</em>')
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>') // Add link support
       .replace(/\n\n/g, '</p><p>')
       .replace(/^(?!<[h])/gm, '<p>')
       .replace(/$/gm, '</p>')
@@ -301,6 +305,19 @@ describe('Renderer', () => {
       expect(result).toContain('<h1>');
       expect(result).toContain('Hello');
       expect(result).toContain('<strong>bold</strong>');
+    });
+
+    it('should process markdown after prepended HTML with newlines (TLDR scenario)', async () => {
+      const renderer = new Renderer(site);
+      // Simulate the TLDR pattern: capture HTML with newlines, prepend, then markdownify
+      const template =
+        '{% capture prefix %}<strong>\n  TL;DR:\n</strong>\n{% endcapture %}{{ text | prepend: prefix | markdownify }}';
+      const result = await renderer.render(template, {
+        text: 'This is **bold** and [a link](https://example.com).',
+      });
+      // Should process the markdown even though HTML was prepended with newlines
+      expect(result).toContain('<strong>bold</strong>');
+      expect(result).toContain('<a href="https://example.com">a link</a>');
     });
 
     describe('Array manipulation filters', () => {

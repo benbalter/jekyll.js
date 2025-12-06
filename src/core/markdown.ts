@@ -203,6 +203,29 @@ async function getProcessor(options: MarkdownOptions): Promise<any> {
 }
 
 /**
+ * Normalize HTML blocks to allow markdown processing within/after them
+ *
+ * CommonMark treats block-level HTML as opaque (no markdown processing inside).
+ * Jekyll/Kramdown processes markdown within HTML blocks by default.
+ * This function converts block-level HTML into inline HTML by removing line breaks
+ * immediately after opening tags and before closing tags.
+ *
+ * @param content Markdown content that may contain HTML blocks
+ * @returns Content with normalized HTML blocks
+ */
+function normalizeHtmlBlocks(content: string): string {
+  // Remove line breaks and leading whitespace after opening HTML tags
+  // Example: "<strong>\n  text" -> "<strong>text"
+  content = content.replace(/>(\s*\n\s*)/g, '>');
+
+  // Remove line breaks and trailing whitespace before closing HTML tags
+  // Example: "text\n</strong>" -> "text</strong>"
+  content = content.replace(/(\s*\n\s*)</g, '<');
+
+  return content;
+}
+
+/**
  * Process markdown content to HTML using Remark
  *
  * @param content Markdown content to process
@@ -230,6 +253,13 @@ export async function processMarkdown(
   content: string,
   options: MarkdownOptions = {}
 ): Promise<string> {
+  // Preprocess: Normalize HTML blocks to prevent CommonMark from treating them as opaque
+  // This matches Jekyll/Kramdown behavior where markdown is processed within/after HTML blocks
+  // Pattern: Converts block-level HTML tags with newlines into inline HTML
+  // Example: "<strong>\n  text\n</strong>\nMore **markdown**"
+  //       -> "<strong> text </strong> More **markdown**"
+  content = normalizeHtmlBlocks(content);
+
   const processor = await getProcessor(options);
   const result = await processor.process(content);
   let html = String(result);

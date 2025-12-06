@@ -7,7 +7,7 @@
  * @see https://github.com/jekyll/jekyll-redirect-from
  */
 
-import { Plugin } from './types';
+import { Plugin, GeneratorPlugin, GeneratorResult, GeneratorPriority } from './types';
 import { Renderer } from '../core/Renderer';
 import { Site } from '../core/Site';
 import { Document } from '../core/Document';
@@ -25,13 +25,64 @@ export interface RedirectInfo {
 
 /**
  * Redirect From Plugin implementation
+ * Implements both Plugin and GeneratorPlugin interfaces
  */
-export class RedirectFromPlugin implements Plugin {
+export class RedirectFromPlugin implements Plugin, GeneratorPlugin {
   name = 'jekyll-redirect-from';
+  priority = GeneratorPriority.LOW; // Run late, after URLs are generated
 
   register(_renderer: Renderer, _site: Site): void {
-    // Plugin is invoked explicitly when needed via generateRedirects()
-    // No need to store a reference on the site object
+    // No-op: redirect generation is handled via the GeneratorPlugin interface
+  }
+
+  /**
+   * Generator interface - generates redirect HTML files
+   */
+  generate(site: Site, _renderer: Renderer): GeneratorResult {
+    const redirects = this.generateRedirects(site);
+
+    // Mark documents with redirect_to so they don't get rendered as normal pages
+    // The redirect HTML from the generator will be used instead
+    const allDocuments: Document[] = [
+      ...site.pages,
+      ...site.posts,
+      ...Array.from(site.collections.values()).flat(),
+    ];
+
+    for (const doc of allDocuments) {
+      if (doc.data.redirect_to) {
+        // Mark document as having no output to prevent normal rendering
+        doc.data.output = false;
+      }
+    }
+
+    return {
+      files: redirects.map((redirect) => {
+        // Remove leading slash to make path relative to destination
+        let path = redirect.from.replace(/^\//, '');
+
+        // If path is empty, use index.html
+        if (path === '') {
+          path = 'index.html';
+        }
+        // If path ends with /, add index.html
+        else if (path.endsWith('/')) {
+          path = path + 'index.html';
+        }
+        // If path doesn't have an extension at the end (e.g., /books, /old-page), add .html
+        // This handles redirect_from URLs which typically don't have extensions
+        // Use regex to check for extension at end of path to avoid matching dots in directory names
+        else if (!/\.[a-zA-Z0-9]+$/.test(path)) {
+          path = path + '.html';
+        }
+        // Otherwise use path as-is (it already has an extension like .html from doc.url)
+
+        return {
+          path,
+          content: redirect.html,
+        };
+      }),
+    };
   }
 
   /**

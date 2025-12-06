@@ -160,7 +160,11 @@ export class Builder {
     }
 
     try {
-      // Read all site files
+      // Start markdown processor initialization in background (non-blocking)
+      // This allows module loading to happen in parallel with reading site files
+      this.renderer.startMarkdownProcessorInit();
+
+      // Read all site files (markdown modules load in parallel)
       logger.info('Reading site files...');
       if (this.timer) {
         await this.timer.timeAsync(
@@ -223,14 +227,15 @@ export class Builder {
       // Pre-cache site data before batch rendering operations for better performance
       this.renderer.preloadSiteData();
 
-      // Pre-initialize markdown processor to avoid cold-start latency on first markdown render
-      // This loads all remark modules and creates a cached frozen processor
+      // Wait for markdown processor initialization to complete
+      // By now, modules should be loaded (started in parallel with site.read())
+      // This just ensures initialization is complete before rendering
       if (this.timer) {
         await this.timer.timeAsync('Initialize markdown', () =>
-          this.renderer.initializeMarkdownProcessor()
+          this.renderer.waitForMarkdownProcessor()
         );
       } else {
-        await this.renderer.initializeMarkdownProcessor();
+        await this.renderer.waitForMarkdownProcessor();
       }
 
       // Trigger site:pre_render hook

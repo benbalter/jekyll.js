@@ -314,6 +314,31 @@ const BLOCK_TAGS =
 const INLINE_TAGS =
   'span|a|em|strong|code|mark|del|ins|sub|sup|abbr|cite|q|kbd|samp|var|time|small|s|u|b|i';
 
+/**
+ * Maximum length for Kramdown attribute strings.
+ * This limit prevents ReDoS attacks by bounding the regex match length.
+ */
+const MAX_KRAMDOWN_ATTR_LENGTH = 500;
+
+/**
+ * Pre-compiled regex patterns for Kramdown attribute processing.
+ * These are compiled once at module load time to avoid repeated compilation overhead.
+ * When using global ('g') flag patterns with replace(), the lastIndex is automatically
+ * reset by the replace method, so no manual reset is needed.
+ */
+const KRAMDOWN_BLOCK_PATTERN = new RegExp(
+  `(<(?:${BLOCK_TAGS})[^>]*>)([\\s\\S]*?)(<\\/(?:${BLOCK_TAGS})>)\\s*\\n?<p>\\{:\\s*([^}]{1,${MAX_KRAMDOWN_ATTR_LENGTH}})\\s*\\}<\\/p>`,
+  'gi'
+);
+const KRAMDOWN_INLINE_PATTERN = new RegExp(
+  `(<(?:${INLINE_TAGS})[^>]*>)([\\s\\S]*?)(<\\/(?:${INLINE_TAGS})>)\\{:\\s*([^}]{1,${MAX_KRAMDOWN_ATTR_LENGTH}})\\s*\\}`,
+  'gi'
+);
+const KRAMDOWN_STANDALONE_PATTERN = new RegExp(
+  `<p>\\{:\\s*[^}]{1,${MAX_KRAMDOWN_ATTR_LENGTH}}\\s*\\}<\\/p>\\s*\\n?`,
+  'gi'
+);
+
 // Dangerous event handler attributes that should be blocked to prevent XSS
 const DANGEROUS_ATTRS = new Set([
   'onabort',
@@ -392,32 +417,23 @@ const DANGEROUS_ATTRS = new Set([
 ]);
 
 function processKramdownAttributes(html: string): string {
-  // Build regex patterns from tag constants
-  const blockPattern = new RegExp(
-    `(<(?:${BLOCK_TAGS})[^>]*>)([\\s\\S]*?)(<\\/(?:${BLOCK_TAGS})>)\\s*\\n?<p>\\{:\\s*([^}]{1,500})\\s*\\}<\\/p>`,
-    'gi'
-  );
-  const inlinePattern = new RegExp(
-    `(<(?:${INLINE_TAGS})[^>]*>)([\\s\\S]*?)(<\\/(?:${INLINE_TAGS})>)\\{:\\s*([^}]{1,500})\\s*\\}`,
-    'gi'
-  );
-
   // Handle block-level attributes (on separate lines wrapped in <p> tags)
-  html = html.replace(blockPattern, (match, openTag, content, closeTag, attrs) => {
+  // Note: String.replace() automatically resets lastIndex for global regex patterns
+  html = html.replace(KRAMDOWN_BLOCK_PATTERN, (match, openTag, content, closeTag, attrs) => {
     const attributes = parseKramdownAttributes(attrs);
     if (!attributes) return match;
     return applyAttributesToTag(openTag, attributes) + content + closeTag;
   });
 
   // Handle inline Kramdown attributes that appear immediately after a closing tag
-  html = html.replace(inlinePattern, (match, openTag, content, closeTag, attrs) => {
+  html = html.replace(KRAMDOWN_INLINE_PATTERN, (match, openTag, content, closeTag, attrs) => {
     const attributes = parseKramdownAttributes(attrs);
     if (!attributes) return match;
     return applyAttributesToTag(openTag, attributes) + content + closeTag;
   });
 
   // Remove any remaining standalone Kramdown attribute blocks that weren't matched
-  html = html.replace(/<p>\{:\s*[^}]{1,500}\s*\}<\/p>\s*\n?/gi, '');
+  html = html.replace(KRAMDOWN_STANDALONE_PATTERN, '');
 
   return html;
 }
@@ -430,7 +446,7 @@ function processKramdownAttributes(html: string): string {
 function parseKramdownAttributes(
   attrString: string
 ): { classes: string[]; id?: string; attrs: Record<string, string> } | null {
-  if (!attrString || attrString.length > 500) return null;
+  if (!attrString || attrString.length > MAX_KRAMDOWN_ATTR_LENGTH) return null;
 
   const result: { classes: string[]; id?: string; attrs: Record<string, string> } = {
     classes: [],

@@ -36,6 +36,10 @@ export class StaticFile {
   /** Collection name (if this static file is in a collection directory) */
   public readonly collection?: string;
 
+  /** Cached JSON representation for performance.
+   * Since all StaticFile properties are immutable, the cache never needs invalidation. */
+  private _jsonCache: Record<string, unknown> | null = null;
+
   /**
    * Create a new StaticFile
    * @param filePath Absolute path to the file
@@ -90,11 +94,16 @@ export class StaticFile {
   }
 
   /**
-   * Convert the static file to a JSON representation
-   * This is used to expose static files in Liquid templates as site.static_files
+   * Convert the static file to a JSON representation.
+   * This is used to expose static files in Liquid templates as site.static_files.
+   * The result is cached for performance - repeated calls return the same object.
    */
   toJSON(): Record<string, unknown> {
-    return {
+    if (this._jsonCache) {
+      return this._jsonCache;
+    }
+
+    this._jsonCache = {
       path: this.url,
       modified_time: this.modified_time.toISOString(),
       name: this.name,
@@ -102,5 +111,7 @@ export class StaticFile {
       extname: this.extname,
       collection: this.collection,
     };
+
+    return this._jsonCache;
   }
 }

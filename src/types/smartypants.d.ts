@@ -6,6 +6,7 @@
 declare module 'smartypants' {
   /**
    * Attribute value for SmartyPants to control which transformations are applied.
+   * String values control specific transformations:
    * - "0" - suppress all transformations
    * - "1" - standard transformations: quotes, backticks, dashes, ellipses
    * - "2" - standard + old-style dashes
@@ -19,8 +20,27 @@ declare module 'smartypants' {
    * - "i" - inverted old-school dashes
    * - "e" - ellipses
    * - "w" - prevent_breaks
+   * Number values 0-3 and -1 are also accepted for compatibility.
    */
-  type Attr = string | number;
+  type Attr =
+    | '0'
+    | '1'
+    | '2'
+    | '3'
+    | '-1'
+    | 'q'
+    | 'b'
+    | 'B'
+    | 'd'
+    | 'D'
+    | 'i'
+    | 'e'
+    | 'w'
+    | 0
+    | 1
+    | 2
+    | 3
+    | -1;
 
   /**
    * Convert plain ASCII punctuation characters to "smart" typographic HTML entities.
@@ -66,7 +86,11 @@ declare module 'smartypants' {
   export function smartypantsu(text: string, attr?: Attr): string;
 
   /**
-   * Default export is the same as smartypants function.
+   * Default export - Convert plain ASCII punctuation to "smart" typographic HTML entities.
+   * Same as smartypants function.
+   * @param text - Text to process
+   * @param attr - Optional attribute to control transformations
+   * @returns Text with HTML entities for smart characters
    */
-  export default smartypants;
+  export default function smartypants(text: string, attr?: Attr): string;
 }

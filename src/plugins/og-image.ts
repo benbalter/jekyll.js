@@ -10,13 +10,12 @@
 import { existsSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import sharp from 'sharp';
-import striptags from 'striptags';
 import { Plugin, GeneratorPlugin, GeneratorResult, GeneratorPriority } from './types';
 import { Renderer } from '../core/Renderer';
 import { Site } from '../core/Site';
 import { Document } from '../core/Document';
 import { logger } from '../utils/logger';
-import { escapeXml } from '../utils/html';
+import { escapeXml, processTextWithMarkdown } from '../utils';
 
 /**
  * Canvas configuration options
@@ -183,7 +182,7 @@ export class OgImagePlugin implements Plugin, GeneratorPlugin {
 
       // Set image metadata on post (if not already set)
       if (!post.data.image) {
-        const description = this.getDescription(post);
+        const description = await this.getDescription(post);
         post.data.image = {
           path: imagePath,
           width: IMAGE_WIDTH,
@@ -306,7 +305,7 @@ export class OgImagePlugin implements Plugin, GeneratorPlugin {
     canvas = await this.addTitle(canvas, post.title, config);
 
     // Add description if available
-    const description = this.getDescription(post);
+    const description = await this.getDescription(post);
     if (description) {
       canvas = await this.addDescription(canvas, description, config);
     }
@@ -638,11 +637,12 @@ export class OgImagePlugin implements Plugin, GeneratorPlugin {
   }
 
   /**
-   * Get description from post, stripping HTML
+   * Get description from post, processing markdown and stripping HTML
    */
-  private getDescription(post: Document): string {
+  private async getDescription(post: Document): Promise<string> {
     const desc = post.data.description || post.data.excerpt || '';
-    return striptags(String(desc)).trim().substring(0, 200);
+    // Use shared utility with max length of 200 characters
+    return await processTextWithMarkdown(desc, { maxLength: 200 });
   }
 
   /**

@@ -7,7 +7,7 @@
  * @see https://github.com/jekyll/jekyll-redirect-from
  */
 
-import { Plugin } from './types';
+import { Plugin, GeneratorPlugin, GeneratorResult, GeneratorPriority } from './types';
 import { Renderer } from '../core/Renderer';
 import { Site } from '../core/Site';
 import { Document } from '../core/Document';
@@ -25,13 +25,43 @@ export interface RedirectInfo {
 
 /**
  * Redirect From Plugin implementation
+ * Implements both Plugin and GeneratorPlugin interfaces
  */
-export class RedirectFromPlugin implements Plugin {
+export class RedirectFromPlugin implements Plugin, GeneratorPlugin {
   name = 'jekyll-redirect-from';
+  priority = GeneratorPriority.LOW; // Run late, after URLs are generated
 
   register(_renderer: Renderer, _site: Site): void {
-    // Plugin is invoked explicitly when needed via generateRedirects()
-    // No need to store a reference on the site object
+    // No-op: redirect generation is handled via the GeneratorPlugin interface
+  }
+
+  /**
+   * Generator interface - generates redirect HTML files
+   */
+  generate(site: Site, _renderer: Renderer): GeneratorResult {
+    const redirects = this.generateRedirects(site);
+    
+    return {
+      files: redirects.map(redirect => {
+        // Remove leading slash to make path relative to destination
+        let path = redirect.from.replace(/^\//, '');
+        
+        // If path ends with /, it's a directory - add index.html
+        // Otherwise, add .html extension
+        if (path.endsWith('/')) {
+          path = path + 'index.html';
+        } else if (path === '') {
+          path = 'index.html';
+        } else {
+          path = path + '.html';
+        }
+        
+        return {
+          path,
+          content: redirect.html,
+        };
+      }),
+    };
   }
 
   /**

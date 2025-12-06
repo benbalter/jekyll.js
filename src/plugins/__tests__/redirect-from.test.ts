@@ -194,4 +194,76 @@ describe('RedirectFromPlugin', () => {
 
     expect(redirects[0]!.from).toBe('/old-page');
   });
+
+  describe('GeneratorPlugin interface', () => {
+    it('should implement generate method', () => {
+      expect(plugin.generate).toBeDefined();
+      expect(typeof plugin.generate).toBe('function');
+    });
+
+    it('should have LOW priority', () => {
+      expect(plugin.priority).toBeDefined();
+      // LOW priority is 90 - runs late after URLs are generated
+      expect(plugin.priority).toBe(90);
+    });
+
+    it('should generate files from redirect_from', () => {
+      const pageFile = join(testSiteDir, 'new-page.html');
+      writeFileSync(
+        pageFile,
+        '---\ntitle: New Page\nredirect_from:\n  - /books\n  - /old-page/\n---\nContent'
+      );
+
+      const page = new Document(pageFile, testSiteDir, DocumentType.PAGE);
+      page.url = '/new-page/';
+      site.pages.push(page);
+
+      const result = plugin.generate(site, renderer);
+
+      expect(result).toBeDefined();
+      expect(result.files).toBeDefined();
+      expect(result.files).toHaveLength(2);
+
+      // /books should become books.html (no trailing slash)
+      expect(result.files![0]!.path).toBe('books.html');
+      expect(result.files![0]!.content).toContain('/new-page/');
+      expect(result.files![0]!.content).toContain('<!DOCTYPE html>');
+
+      // /old-page/ should become old-page/index.html (has trailing slash)
+      expect(result.files![1]!.path).toBe('old-page/index.html');
+      expect(result.files![1]!.content).toContain('/new-page/');
+    });
+
+    it('should handle nested paths correctly', () => {
+      const pageFile = join(testSiteDir, 'new-page.html');
+      writeFileSync(
+        pageFile,
+        '---\ntitle: New Page\nredirect_from: /path/to/old-page/\n---\nContent'
+      );
+
+      const page = new Document(pageFile, testSiteDir, DocumentType.PAGE);
+      page.url = '/new-page/';
+      site.pages.push(page);
+
+      const result = plugin.generate(site, renderer);
+
+      expect(result.files).toHaveLength(1);
+      expect(result.files![0]!.path).toBe('path/to/old-page/index.html');
+    });
+
+    it('should handle redirect_to', () => {
+      const pageFile = join(testSiteDir, 'old-page.html');
+      writeFileSync(pageFile, '---\ntitle: Old Page\nredirect_to: /new-page/\n---\nContent');
+
+      const page = new Document(pageFile, testSiteDir, DocumentType.PAGE);
+      page.url = '/old-page/';
+      site.pages.push(page);
+
+      const result = plugin.generate(site, renderer);
+
+      expect(result.files).toHaveLength(1);
+      expect(result.files![0]!.path).toBe('old-page/index.html');
+      expect(result.files![0]!.content).toContain('/new-page/');
+    });
+  });
 });

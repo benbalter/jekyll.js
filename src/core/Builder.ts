@@ -12,18 +12,9 @@ import {
   shouldExcludePath,
   normalizePathSeparators,
 } from '../utils/path-security';
-import { mkdirSync, existsSync, readdirSync, statSync } from 'fs';
-import {
-  writeFile,
-  mkdir,
-  readFile,
-  copyFile,
-  stat,
-  rm,
-  readdir,
-} from 'fs/promises';
+import { existsSync, readdirSync, statSync } from 'fs';
+import { writeFile, mkdir, readFile, copyFile, stat, rm, readdir } from 'fs/promises';
 import { join, dirname, extname, basename, relative, resolve, normalize } from 'path';
-import { rmSync } from 'fs';
 import { registerPlugins, PluginRegistry, Hooks } from '../plugins';
 import { CacheManager } from './CacheManager';
 import matter from 'gray-matter';
@@ -849,7 +840,7 @@ export class Builder {
 
         // Ensure directory exists
         try {
-          mkdirSync(dirname(outputPath), { recursive: true });
+          await mkdir(dirname(outputPath), { recursive: true });
         } catch (error) {
           throw new FileSystemError('Failed to create pagination output directory', {
             file: dirname(outputPath),
@@ -859,7 +850,7 @@ export class Builder {
 
         // Write file
         try {
-          writeFileSync(outputPath, html, 'utf-8');
+          await writeFile(outputPath, html, 'utf-8');
         } catch (error) {
           throw new FileSystemError('Failed to write pagination file', {
             file: outputPath,
@@ -978,80 +969,81 @@ export class Builder {
     // Get site data for Liquid context
     const siteData = this.site.toJSON();
 
-    for (const file of sassFiles) {
-      try {
-        // Read the file
-        const fileContent = readFileSync(file, 'utf-8');
-
-        // Parse front matter
-        const parsed = matter(fileContent);
-
-        // Only process files with front matter (Jekyll convention)
-        // We detect front matter by comparing content to original: if gray-matter removed
-        // delimiters (---), the content will differ from the original file content.
-        // This approach correctly identifies both empty front matter (---\n---) and
-        // front matter with data, while skipping files with no delimiters at all.
-        const hasFrontMatter = fileContent.trimStart().startsWith('---');
-        if (!hasFrontMatter) {
-          logger.debug(`Skipping ${relative(this.site.source, file)} (no front matter)`);
-          continue;
-        }
-
-        // Process Liquid tags in SCSS content before SASS compilation
-        // This is required for Jekyll compatibility where SCSS files can contain
-        // Liquid includes like {% include css/file.css %}
-        const relativePath = relative(this.site.source, file);
-        // Build Liquid context matching the pattern used in Renderer.ensureSiteDataCached()
-        // - Spread config properties for direct access (e.g., site.title)
-        // - Keep config property for backward compatibility (e.g., site.config.title)
-        const liquidContext = {
-          site: {
-            ...siteData.config,
-            config: siteData.config,
-            data: siteData.data,
-            pages: siteData.pages,
-            posts: siteData.posts,
-            static_files: siteData.static_files,
-            collections: siteData.collections,
-            source: siteData.source,
-            destination: siteData.destination,
-          },
-          page: {
-            path: relativePath,
-            ...parsed.data,
-          },
-        };
-
-        let processedContent = parsed.content;
+    // Process SASS files in parallel
+    await Promise.all(
+      sassFiles.map(async (file) => {
         try {
-          processedContent = await this.renderer.render(parsed.content, liquidContext);
-        } catch (liquidError) {
-          logger.warn(`Failed to process Liquid in SASS file: ${relativePath}`, {
-            error: liquidError instanceof Error ? liquidError.message : String(liquidError),
+          // Read the file asynchronously
+          const fileContent = await readFile(file, 'utf-8');
+
+          // Parse front matter
+          const parsed = matter(fileContent);
+
+          // Only process files with front matter (Jekyll convention)
+          // We detect front matter by comparing content to original: if gray-matter removed
+          // delimiters (---), the content will differ from the original file content.
+          // This approach correctly identifies both empty front matter (---\n---) and
+          // front matter with data, while skipping files with no delimiters at all.
+          const hasFrontMatter = fileContent.trimStart().startsWith('---');
+          if (!hasFrontMatter) {
+            logger.debug(`Skipping ${relative(this.site.source, file)} (no front matter)`);
+            return;
+          }
+
+          // Process Liquid tags in SCSS content before SASS compilation
+          // This is required for Jekyll compatibility where SCSS files can contain
+          // Liquid includes like {% include css/file.css %}
+          const relativePath = relative(this.site.source, file);
+          // Build Liquid context matching the pattern used in Renderer.ensureSiteDataCached()
+          // - Spread config properties for direct access (e.g., site.title)
+          // - Keep config property for backward compatibility (e.g., site.config.title)
+          const liquidContext = {
+            site: {
+              ...siteData.config,
+              config: siteData.config,
+              data: siteData.data,
+              pages: siteData.pages,
+              posts: siteData.posts,
+              static_files: siteData.static_files,
+              collections: siteData.collections,
+              source: siteData.source,
+              destination: siteData.destination,
+            },
+            page: {
+              path: relativePath,
+              ...parsed.data,
+            },
+          };
+
+          let processedContent = parsed.content;
+          try {
+            processedContent = await this.renderer.render(parsed.content, liquidContext);
+          } catch (liquidError) {
+            logger.warn(`Failed to process Liquid in SASS file: ${relativePath}`, {
+              error: liquidError instanceof Error ? liquidError.message : String(liquidError),
+            });
+            // Continue with original content if Liquid processing fails
+          }
+
+          // Compile SASS/SCSS
+          const css = this.sassProcessor.process(file, processedContent);
+
+          // Determine output path (replace .scss/.sass with .css)
+          const outputPath = relativePath.replace(/\.(scss|sass)$/, '.css');
+          const destPath = join(this.site.destination, outputPath);
+
+          // Ensure directory exists and write CSS file
+          await mkdir(dirname(destPath), { recursive: true });
+          await writeFile(destPath, css, 'utf-8');
+
+          logger.debug(`Compiled: ${relativePath} → ${outputPath}`);
+        } catch (error) {
+          logger.warn(`Failed to process SASS file: ${relative(this.site.source, file)}`, {
+            error: error instanceof Error ? error.message : String(error),
           });
-          // Continue with original content if Liquid processing fails
         }
-
-        // Compile SASS/SCSS
-        const css = this.sassProcessor.process(file, processedContent);
-
-        // Determine output path (replace .scss/.sass with .css)
-        const outputPath = relativePath.replace(/\.(scss|sass)$/, '.css');
-        const destPath = join(this.site.destination, outputPath);
-
-        // Ensure directory exists
-        mkdirSync(dirname(destPath), { recursive: true });
-
-        // Write CSS file
-        writeFileSync(destPath, css, 'utf-8');
-
-        logger.debug(`Compiled: ${relativePath} → ${outputPath}`);
-      } catch (error) {
-        logger.warn(`Failed to process SASS file: ${relative(this.site.source, file)}`, {
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
-    }
+      })
+    );
   }
 
   /**
@@ -1101,8 +1093,9 @@ export class Builder {
   /**
    * Copy static files (non-Jekyll files) to destination
    * Uses the static_files array from Site and skips unchanged files for optimization
+   * Uses parallel async I/O for better performance on large sites
    */
-  private copyStaticFiles(): void {
+  private async copyStaticFiles(): Promise<void> {
     const staticFiles = this.site.static_files;
 
     logger.info(`Copying ${staticFiles.length} static files...`);
@@ -1110,51 +1103,65 @@ export class Builder {
     let copiedCount = 0;
     let skippedCount = 0;
 
-    for (const staticFile of staticFiles) {
-      const destPath = join(this.site.destination, staticFile.destinationRelativePath);
-      const resolvedDestPath = resolve(destPath);
+    // Process static files in parallel batches
+    const BATCH_SIZE = 50;
+    for (let i = 0; i < staticFiles.length; i += BATCH_SIZE) {
+      const batch = staticFiles.slice(i, i + BATCH_SIZE);
+      const results = await Promise.all(
+        batch.map(async (staticFile) => {
+          const destPath = join(this.site.destination, staticFile.destinationRelativePath);
+          const resolvedDestPath = resolve(destPath);
 
-      // Security check: Ensure the destination path is within the destination directory
-      if (!isPathWithinBase(this.site.destination, resolvedDestPath)) {
-        logger.warn(
-          `Security warning: Skipping static file that would write outside destination: ${staticFile.relativePath}`
-        );
-        continue;
-      }
-
-      // Security check: Also verify source path is within source directory
-      const resolvedSourcePath = resolve(staticFile.path);
-      if (!isPathWithinBase(this.site.source, resolvedSourcePath)) {
-        logger.warn(
-          `Security warning: Skipping static file with source outside source directory: ${staticFile.relativePath}`
-        );
-        continue;
-      }
-
-      try {
-        // Ensure directory exists
-        mkdirSync(dirname(resolvedDestPath), { recursive: true });
-
-        // Check if destination file exists and has same or newer modification time
-        if (existsSync(resolvedDestPath)) {
-          const destStats = statSync(resolvedDestPath);
-          // Skip if destination is newer than or same age as source
-          if (destStats.mtime >= staticFile.modified_time) {
-            skippedCount++;
-            logger.debug(`Skipped (unchanged): ${staticFile.relativePath}`);
-            continue;
+          // Security check: Ensure the destination path is within the destination directory
+          if (!isPathWithinBase(this.site.destination, resolvedDestPath)) {
+            logger.warn(
+              `Security warning: Skipping static file that would write outside destination: ${staticFile.relativePath}`
+            );
+            return { copied: false, skipped: false };
           }
-        }
 
-        // Copy file
-        copyFileSync(staticFile.path, resolvedDestPath);
-        copiedCount++;
+          // Security check: Also verify source path is within source directory
+          const resolvedSourcePath = resolve(staticFile.path);
+          if (!isPathWithinBase(this.site.source, resolvedSourcePath)) {
+            logger.warn(
+              `Security warning: Skipping static file with source outside source directory: ${staticFile.relativePath}`
+            );
+            return { copied: false, skipped: false };
+          }
 
-        logger.debug(`Copied: ${staticFile.relativePath}`);
-      } catch (error) {
-        logger.warn(`Failed to copy static file: ${staticFile.relativePath}`, {
-          error: error instanceof Error ? error.message : String(error),
-        });
+          try {
+            // Ensure directory exists
+            await mkdir(dirname(resolvedDestPath), { recursive: true });
+
+            // Check if destination file exists and has same or newer modification time
+            try {
+              const destStats = await stat(resolvedDestPath);
+              // Skip if destination is newer than or same age as source
+              if (destStats.mtime >= staticFile.modified_time) {
+                logger.debug(`Skipped (unchanged): ${staticFile.relativePath}`);
+                return { copied: false, skipped: true };
+              }
+            } catch {
+              // File doesn't exist, proceed with copy
+            }
+
+            // Copy file
+            await copyFile(staticFile.path, resolvedDestPath);
+
+            logger.debug(`Copied: ${staticFile.relativePath}`);
+            return { copied: true, skipped: false };
+          } catch (error) {
+            logger.warn(`Failed to copy static file: ${staticFile.relativePath}`, {
+              error: error instanceof Error ? error.message : String(error),
+            });
+            return { copied: false, skipped: false };
+          }
+        })
+      );
+
+      for (const result of results) {
+        if (result.copied) copiedCount++;
+        if (result.skipped) skippedCount++;
       }
     }
 
@@ -1206,28 +1213,29 @@ export class Builder {
 
         // Handle generated files
         if (result?.files) {
-          for (const file of result.files) {
-            // Use path.normalize to canonicalize the path, then resolve relative to destination
-            // This properly handles ../, ./, and multiple slashes
-            const outputPath = join(this.site.destination, normalize(file.path));
-            const resolvedPath = resolve(outputPath);
+          // Write generated files in parallel
+          await Promise.all(
+            result.files.map(async (file) => {
+              // Use path.normalize to canonicalize the path, then resolve relative to destination
+              // This properly handles ../, ./, and multiple slashes
+              const outputPath = join(this.site.destination, normalize(file.path));
+              const resolvedPath = resolve(outputPath);
 
-            // Security check: Ensure the output path is within the destination directory
-            // This check is the primary security mechanism - it validates the final resolved path
-            if (!isPathWithinBase(this.site.destination, resolvedPath)) {
-              logger.warn(
-                `Security warning: Generator '${generator.name}' tried to write outside destination: ${file.path}`
-              );
-              continue;
-            }
+              // Security check: Ensure the output path is within the destination directory
+              // This check is the primary security mechanism - it validates the final resolved path
+              if (!isPathWithinBase(this.site.destination, resolvedPath)) {
+                logger.warn(
+                  `Security warning: Generator '${generator.name}' tried to write outside destination: ${file.path}`
+                );
+                return;
+              }
 
-            // Ensure directory exists
-            mkdirSync(dirname(resolvedPath), { recursive: true });
-
-            // Write file
-            writeFileSync(resolvedPath, file.content, 'utf-8');
-            logger.debug(`Generator '${generator.name}' created: ${file.path}`);
-          }
+              // Ensure directory exists and write file
+              await mkdir(dirname(resolvedPath), { recursive: true });
+              await writeFile(resolvedPath, file.content, 'utf-8');
+              logger.debug(`Generator '${generator.name}' created: ${file.path}`);
+            })
+          );
         }
 
         // TODO: Implement document handling for generators
@@ -1244,23 +1252,29 @@ export class Builder {
   /**
    * Generate plugin output files (sitemap, feed, etc.)
    */
-  private generatePluginFiles(): void {
+  private async generatePluginFiles(): Promise<void> {
     const configuredPlugins = this.site.config.plugins || [];
+
+    const writePromises: Promise<void>[] = [];
 
     // Generate sitemap if plugin is explicitly enabled
     if (configuredPlugins.includes('jekyll-sitemap')) {
       const sitemapPlugin = (this.site as any)._sitemapPlugin;
       if (sitemapPlugin) {
-        try {
-          const sitemapContent = sitemapPlugin.generateSitemap(this.site);
-          const sitemapPath = join(this.site.destination, 'sitemap.xml');
-          writeFileSync(sitemapPath, sitemapContent, 'utf-8');
-          logger.debug('Generated sitemap.xml');
-        } catch (error) {
-          logger.warn('Failed to generate sitemap', {
-            error: error instanceof Error ? error.message : String(error),
-          });
-        }
+        writePromises.push(
+          (async () => {
+            try {
+              const sitemapContent = sitemapPlugin.generateSitemap(this.site);
+              const sitemapPath = join(this.site.destination, 'sitemap.xml');
+              await writeFile(sitemapPath, sitemapContent, 'utf-8');
+              logger.debug('Generated sitemap.xml');
+            } catch (error) {
+              logger.warn('Failed to generate sitemap', {
+                error: error instanceof Error ? error.message : String(error),
+              });
+            }
+          })()
+        );
       }
     }
 
@@ -1268,23 +1282,30 @@ export class Builder {
     if (configuredPlugins.includes('jekyll-feed')) {
       const feedPlugin = (this.site as any)._feedPlugin;
       if (feedPlugin) {
-        try {
-          const feedContent = feedPlugin.generateFeed(this.site);
-          const feedPath = this.site.config.feed?.path || '/feed.xml';
-          const feedFilePath = join(this.site.destination, feedPath.replace(/^\//, ''));
+        writePromises.push(
+          (async () => {
+            try {
+              const feedContent = feedPlugin.generateFeed(this.site);
+              const feedPath = this.site.config.feed?.path || '/feed.xml';
+              const feedFilePath = join(this.site.destination, feedPath.replace(/^\//, ''));
 
-          // Ensure directory exists
-          mkdirSync(dirname(feedFilePath), { recursive: true });
+              // Ensure directory exists
+              await mkdir(dirname(feedFilePath), { recursive: true });
 
-          writeFileSync(feedFilePath, feedContent, 'utf-8');
-          logger.debug(`Generated ${feedPath}`);
-        } catch (error) {
-          logger.warn('Failed to generate feed', {
-            error: error instanceof Error ? error.message : String(error),
-          });
-        }
+              await writeFile(feedFilePath, feedContent, 'utf-8');
+              logger.debug(`Generated ${feedPath}`);
+            } catch (error) {
+              logger.warn('Failed to generate feed', {
+                error: error instanceof Error ? error.message : String(error),
+              });
+            }
+          })()
+        );
       }
     }
+
+    // Wait for all plugin file writes to complete
+    await Promise.all(writePromises);
   }
 
   /**

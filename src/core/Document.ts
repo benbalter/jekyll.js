@@ -187,8 +187,10 @@ export class Document {
     // For posts, try to extract date from filename (YYYY-MM-DD-title format)
     if (this.type === DocumentType.POST) {
       const match = this.basename.match(/^(\d{4})-(\d{2})-(\d{2})-/);
-      if (match) {
-        const [, year, month, day] = match;
+      if (match && match[1] && match[2] && match[3]) {
+        const year = match[1];
+        const month = match[2];
+        const day = match[3];
         // Use Date.UTC to ensure the date represents midnight UTC on the specified date
         // This prevents timezone-related date shifts when using getFullYear/Month/Date later
         return new Date(Date.UTC(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10)));

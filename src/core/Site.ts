@@ -656,19 +656,23 @@ export class Site {
       return [];
     }
 
-    // First row is the header
-    const headers = rows[0];
+    // First row is the header - we know it exists since rows.length > 0
+    const headers = rows[0] as string[];
+    if (headers.length === 0) {
+      return [];
+    }
+
     const data: Record<string, string>[] = [];
 
     // Process each data row
     for (let i = 1; i < rows.length; i++) {
-      const row = rows[i];
+      const row = rows[i] as string[];
       const record: Record<string, string> = {};
 
       for (let j = 0; j < headers.length; j++) {
-        const key = headers[j];
+        const key = headers[j] as string;
         // Use empty string if value is missing
-        const value = j < row.length ? row[j] : '';
+        const value = j < row.length ? (row[j] as string) : '';
         record[key] = value;
       }
 

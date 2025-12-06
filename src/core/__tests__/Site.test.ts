@@ -254,6 +254,147 @@ collections:
       expect(site.data.team.developers.members).toEqual(['Bob', 'Carol']);
     });
 
+    it('should read CSV data files', async () => {
+      // Create _data directory and test CSV file
+      const dataDir = join(testSiteDir, '_data');
+      mkdirSync(dataDir);
+
+      // CSV data file with header row
+      writeFileSync(
+        join(dataDir, 'members.csv'),
+        'name,github,role\nEric Mill,konklone,Developer\nParker Moore,parkr,Maintainer'
+      );
+
+      const site = new Site(testSiteDir);
+      await site.read();
+
+      expect(site.data).toBeDefined();
+      expect(site.data.members).toBeDefined();
+      expect(Array.isArray(site.data.members)).toBe(true);
+      expect(site.data.members).toHaveLength(2);
+      expect(site.data.members[0]).toEqual({
+        name: 'Eric Mill',
+        github: 'konklone',
+        role: 'Developer',
+      });
+      expect(site.data.members[1]).toEqual({
+        name: 'Parker Moore',
+        github: 'parkr',
+        role: 'Maintainer',
+      });
+    });
+
+    it('should read TSV data files', async () => {
+      // Create _data directory and test TSV file
+      const dataDir = join(testSiteDir, '_data');
+      mkdirSync(dataDir);
+
+      // TSV data file with header row (using actual tabs)
+      writeFileSync(
+        join(dataDir, 'products.tsv'),
+        'id\tname\tprice\n1\tWidget\t9.99\n2\tGadget\t19.99'
+      );
+
+      const site = new Site(testSiteDir);
+      await site.read();
+
+      expect(site.data).toBeDefined();
+      expect(site.data.products).toBeDefined();
+      expect(Array.isArray(site.data.products)).toBe(true);
+      expect(site.data.products).toHaveLength(2);
+      expect(site.data.products[0]).toEqual({
+        id: '1',
+        name: 'Widget',
+        price: '9.99',
+      });
+      expect(site.data.products[1]).toEqual({
+        id: '2',
+        name: 'Gadget',
+        price: '19.99',
+      });
+    });
+
+    it('should handle CSV files with quoted fields', async () => {
+      const dataDir = join(testSiteDir, '_data');
+      mkdirSync(dataDir);
+
+      // CSV with quoted fields containing commas and embedded quotes
+      writeFileSync(
+        join(dataDir, 'quotes.csv'),
+        'name,description,quote\nProduct A,"A product with, commas",Simple\nProduct B,Plain,"He said ""Hello"""\n'
+      );
+
+      const site = new Site(testSiteDir);
+      await site.read();
+
+      expect(site.data.quotes).toBeDefined();
+      expect(site.data.quotes).toHaveLength(2);
+      expect(site.data.quotes[0]).toEqual({
+        name: 'Product A',
+        description: 'A product with, commas',
+        quote: 'Simple',
+      });
+      expect(site.data.quotes[1]).toEqual({
+        name: 'Product B',
+        description: 'Plain',
+        quote: 'He said "Hello"',
+      });
+    });
+
+    it('should handle CSV files with missing values', async () => {
+      const dataDir = join(testSiteDir, '_data');
+      mkdirSync(dataDir);
+
+      // CSV with missing values
+      writeFileSync(join(dataDir, 'sparse.csv'), 'name,email,phone\nAlice,alice@example.com,\nBob,,555-1234');
+
+      const site = new Site(testSiteDir);
+      await site.read();
+
+      expect(site.data.sparse).toBeDefined();
+      expect(site.data.sparse).toHaveLength(2);
+      expect(site.data.sparse[0]).toEqual({
+        name: 'Alice',
+        email: 'alice@example.com',
+        phone: '',
+      });
+      expect(site.data.sparse[1]).toEqual({
+        name: 'Bob',
+        email: '',
+        phone: '555-1234',
+      });
+    });
+
+    it('should handle empty CSV files gracefully', async () => {
+      const dataDir = join(testSiteDir, '_data');
+      mkdirSync(dataDir);
+
+      // Empty CSV file
+      writeFileSync(join(dataDir, 'empty.csv'), '');
+
+      const site = new Site(testSiteDir);
+      await site.read();
+
+      // Empty CSV should result in an empty array
+      expect(site.data.empty).toBeDefined();
+      expect(site.data.empty).toEqual([]);
+    });
+
+    it('should handle CSV files with only headers', async () => {
+      const dataDir = join(testSiteDir, '_data');
+      mkdirSync(dataDir);
+
+      // CSV with only header row
+      writeFileSync(join(dataDir, 'headers_only.csv'), 'name,email,phone\n');
+
+      const site = new Site(testSiteDir);
+      await site.read();
+
+      // Should be an empty array (headers but no data)
+      expect(site.data.headers_only).toBeDefined();
+      expect(site.data.headers_only).toEqual([]);
+    });
+
     it('should handle invalid data files gracefully', async () => {
       const dataDir = join(testSiteDir, '_data');
       mkdirSync(dataDir);

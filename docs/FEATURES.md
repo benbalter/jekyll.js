@@ -42,7 +42,7 @@ Quick reference for feature implementation status in jekyll.js compared to Jekyl
 | Collections | ✅ | v0.1.0 | Custom content types |
 | Layouts | ✅ | v0.1.0 | Template inheritance |
 | Includes | ✅ | v0.1.0 | Reusable partials |
-| Data Files | ✅ | v0.1.0 | `_data/` directory - YAML and JSON |
+| Data Files | ✅ | v0.1.0 | `_data/` directory - YAML, JSON, CSV, and TSV |
 | Static Files | ✅ | v0.1.0 | Copies files to destination |
 
 ---

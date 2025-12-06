@@ -12,19 +12,10 @@ import {
   shouldExcludePath,
   normalizePathSeparators,
 } from '../utils/path-security';
-import {
-  mkdirSync,
-  writeFileSync,
-  existsSync,
-  readdirSync,
-  statSync,
-  copyFileSync,
-  readFileSync,
-} from 'fs';
-import { writeFile, mkdir } from 'fs/promises';
+import { existsSync, readdirSync, statSync } from 'fs';
+import { writeFile, mkdir, readFile, copyFile, stat, rm, readdir } from 'fs/promises';
 import { join, dirname, extname, basename, relative, resolve, normalize } from 'path';
 import { createProgressIndicator } from '../utils/progress';
-import { rmSync } from 'fs';
 import { registerPlugins, PluginRegistry, Hooks } from '../plugins';
 import { CacheManager } from './CacheManager';
 import matter from 'gray-matter';
@@ -54,6 +45,13 @@ const PROGRESS_THRESHOLD = 5;
 function pathMatchesOrInside(path: string, pattern: string): boolean {
   return path === pattern || path.startsWith(pattern + '/');
 }
+
+/**
+ * Default batch size for parallel file operations.
+ * This limits the number of concurrent file operations to avoid overwhelming
+ * the file system and to provide better error isolation.
+ */
+const DEFAULT_BATCH_SIZE = 50;
 
 /**
  * Builder options interface
@@ -194,15 +192,15 @@ export class Builder {
       // Clean destination directory if needed (skip for incremental)
       if (this.options.clean && !this.options.incremental) {
         if (this.timer) {
-          this.timer.timeSync('Clean destination', () => this.cleanDestination());
+          await this.timer.timeAsync('Clean destination', () => this.cleanDestination());
         } else {
-          this.cleanDestination();
+          await this.cleanDestination();
         }
       }
 
       // Ensure destination exists
       try {
-        mkdirSync(this.site.destination, { recursive: true });
+        await mkdir(this.site.destination, { recursive: true });
       } catch (error) {
         throw new FileSystemError('Failed to create destination directory', {
           file: this.site.destination,
@@ -251,14 +249,24 @@ export class Builder {
         const cacheStats = this.cacheManager.getStats();
         logger.info(`Using incremental build (${cacheStats.fileCount} files cached)`);
 
-        // Filter documents that need rebuilding
-        pagesToRender = this.filterChangedDocuments(this.site.pages);
-        postsToRender = this.filterChangedDocuments(this.site.posts);
+        // Filter documents that need rebuilding - use parallel async checks
+        const [filteredPages, filteredPosts] = await Promise.all([
+          this.filterChangedDocuments(this.site.pages),
+          this.filterChangedDocuments(this.site.posts),
+        ]);
+        pagesToRender = filteredPages;
+        postsToRender = filteredPosts;
 
-        // Filter collection documents
+        // Filter collection documents in parallel
         collectionsToRender = new Map();
-        for (const [name, docs] of this.site.collections) {
-          const changedDocs = this.filterChangedDocuments(docs);
+        const collectionPromises = Array.from(this.site.collections.entries()).map(
+          async ([name, docs]) => {
+            const changedDocs = await this.filterChangedDocuments(docs);
+            return { name, changedDocs };
+          }
+        );
+        const collectionResults = await Promise.all(collectionPromises);
+        for (const { name, changedDocs } of collectionResults) {
           if (changedDocs.length > 0) {
             collectionsToRender.set(name, changedDocs);
           }
@@ -272,7 +280,7 @@ export class Builder {
         if (totalToRender === 0) {
           logger.success('No changes detected, skipping build');
           // Save cache in case it was newly initialized or loaded from old version
-          this.cacheManager.save();
+          await this.cacheManager.saveAsync();
           return this.timer?.getTimings();
         }
 
@@ -332,13 +340,13 @@ export class Builder {
 
       // Copy static files
       if (this.timer) {
-        this.timer.timeSync(
+        await this.timer.timeAsync(
           'Copy static files',
           () => this.copyStaticFiles(),
           () => `${this.site.static_files.length} files`
         );
       } else {
-        this.copyStaticFiles();
+        await this.copyStaticFiles();
       }
 
       // Generate plugin output files (sitemap, feed, etc.)
@@ -349,9 +357,9 @@ export class Builder {
         Array.from(collectionsToRender.values()).reduce((sum, docs) => sum + docs.length, 0);
       if (!this.options.incremental || totalRendered > 0) {
         if (this.timer) {
-          this.timer.timeSync('Generate plugin files', () => this.generatePluginFiles());
+          await this.timer.timeAsync('Generate plugin files', () => this.generatePluginFiles());
         } else {
-          this.generatePluginFiles();
+          await this.generatePluginFiles();
         }
       }
 
@@ -360,7 +368,7 @@ export class Builder {
 
       // Save cache if incremental mode is enabled
       if (this.options.incremental) {
-        this.cacheManager.save();
+        await this.cacheManager.saveAsync();
       }
 
       // Trigger site:post_write hook (after all files are written)
@@ -386,7 +394,7 @@ export class Builder {
    * Clean the destination directory, respecting keep_files configuration
    * Files and directories listed in keep_files will not be deleted
    */
-  private cleanDestination(): void {
+  private async cleanDestination(): Promise<void> {
     if (!existsSync(this.site.destination)) {
       return;
     }
@@ -397,7 +405,7 @@ export class Builder {
     if (keepFiles.length === 0) {
       logger.info(`Cleaning destination directory: ${this.site.destination}`);
       try {
-        rmSync(this.site.destination, { recursive: true, force: true });
+        await rm(this.site.destination, { recursive: true, force: true });
       } catch (error) {
         throw new FileSystemError('Failed to clean destination directory', {
           file: this.site.destination,
@@ -411,7 +419,7 @@ export class Builder {
     logger.info(
       `Cleaning destination directory (keeping: ${keepFiles.join(', ')}): ${this.site.destination}`
     );
-    this.cleanDirectorySelectively(this.site.destination, keepFiles);
+    await this.cleanDirectorySelectively(this.site.destination, keepFiles);
   }
 
   /**
@@ -420,11 +428,11 @@ export class Builder {
    * @param keepFiles Files/directories to keep (relative to destination)
    * @param relativePath Current relative path from destination
    */
-  private cleanDirectorySelectively(
+  private async cleanDirectorySelectively(
     dir: string,
     keepFiles: string[],
     relativePath: string = ''
-  ): void {
+  ): Promise<void> {
     if (!existsSync(dir)) {
       return;
     }
@@ -432,50 +440,59 @@ export class Builder {
     // Normalize keep patterns to use forward slashes
     const normalizedKeepFiles = keepFiles.map(normalizePathSeparators);
 
-    const entries = readdirSync(dir);
+    const entries = await readdir(dir);
 
-    for (const entry of entries) {
-      const fullPath = join(dir, entry);
-      const relPath = relativePath ? join(relativePath, entry) : entry;
-      const normalizedRelPath = normalizePathSeparators(relPath);
+    // Process entries in parallel
+    await Promise.all(
+      entries.map(async (entry) => {
+        const fullPath = join(dir, entry);
+        const relPath = relativePath ? join(relativePath, entry) : entry;
+        const normalizedRelPath = normalizePathSeparators(relPath);
 
-      // Check if this path should be kept
-      const shouldKeep = normalizedKeepFiles.some((keepPattern) => {
-        // Path matches or is inside a kept directory
-        if (pathMatchesOrInside(normalizedRelPath, keepPattern)) {
-          return true;
+        // Check if this path should be kept
+        const shouldKeep = normalizedKeepFiles.some((keepPattern) => {
+          // Path matches or is inside a kept directory
+          if (pathMatchesOrInside(normalizedRelPath, keepPattern)) {
+            return true;
+          }
+          // keepPattern is inside relPath (so relPath dir contains a keep file)
+          if (pathMatchesOrInside(keepPattern, normalizedRelPath)) {
+            return true;
+          }
+          return false;
+        });
+
+        if (shouldKeep) {
+          // Check if this is a directory that contains something to keep
+          const containsKeptFile = normalizedKeepFiles.some(
+            (keepPattern) =>
+              pathMatchesOrInside(keepPattern, normalizedRelPath) &&
+              keepPattern !== normalizedRelPath
+          );
+
+          try {
+            const stats = await stat(fullPath);
+            if (containsKeptFile && stats.isDirectory()) {
+              // Recurse into the directory
+              await this.cleanDirectorySelectively(fullPath, keepFiles, relPath);
+            }
+          } catch {
+            // If stat fails, skip this entry
+          }
+          // Otherwise, keep the entire file/directory
+          return;
         }
-        // keepPattern is inside relPath (so relPath dir contains a keep file)
-        if (pathMatchesOrInside(keepPattern, normalizedRelPath)) {
-          return true;
+
+        // Delete this entry
+        try {
+          await rm(fullPath, { recursive: true, force: true });
+        } catch (error) {
+          logger.warn(
+            `Failed to delete ${relPath}: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
         }
-        return false;
-      });
-
-      if (shouldKeep) {
-        // Check if this is a directory that contains something to keep
-        const containsKeptFile = normalizedKeepFiles.some(
-          (keepPattern) =>
-            pathMatchesOrInside(keepPattern, normalizedRelPath) && keepPattern !== normalizedRelPath
-        );
-
-        if (containsKeptFile && statSync(fullPath).isDirectory()) {
-          // Recurse into the directory
-          this.cleanDirectorySelectively(fullPath, keepFiles, relPath);
-        }
-        // Otherwise, keep the entire file/directory
-        continue;
-      }
-
-      // Delete this entry
-      try {
-        rmSync(fullPath, { recursive: true, force: true });
-      } catch (error) {
-        logger.warn(
-          `Failed to delete ${relPath}: ${error instanceof Error ? error.message : 'Unknown error'}`
-        );
-      }
-    }
+      })
+    );
   }
 
   /**
@@ -802,8 +819,8 @@ export class Builder {
           }
         }
 
-        // Update cache
-        this.cacheManager.updateFile(doc.path, doc.relativePath, dependencies);
+        // Update cache asynchronously
+        await this.cacheManager.updateFileAsync(doc.path, doc.relativePath, dependencies);
       }
 
       // Trigger documents:post_write hook after document is written
@@ -880,7 +897,7 @@ export class Builder {
 
         // Ensure directory exists
         try {
-          mkdirSync(dirname(outputPath), { recursive: true });
+          await mkdir(dirname(outputPath), { recursive: true });
         } catch (error) {
           throw new FileSystemError('Failed to create pagination output directory', {
             file: dirname(outputPath),
@@ -890,7 +907,7 @@ export class Builder {
 
         // Write file
         try {
-          writeFileSync(outputPath, html, 'utf-8');
+          await writeFile(outputPath, html, 'utf-8');
         } catch (error) {
           throw new FileSystemError('Failed to write pagination file', {
             file: outputPath,
@@ -1011,80 +1028,81 @@ export class Builder {
     // Get site data for Liquid context
     const siteData = this.site.toJSON();
 
-    for (const file of sassFiles) {
-      try {
-        // Read the file
-        const fileContent = readFileSync(file, 'utf-8');
-
-        // Parse front matter
-        const parsed = matter(fileContent);
-
-        // Only process files with front matter (Jekyll convention)
-        // We detect front matter by comparing content to original: if gray-matter removed
-        // delimiters (---), the content will differ from the original file content.
-        // This approach correctly identifies both empty front matter (---\n---) and
-        // front matter with data, while skipping files with no delimiters at all.
-        const hasFrontMatter = fileContent.trimStart().startsWith('---');
-        if (!hasFrontMatter) {
-          logger.debug(`Skipping ${relative(this.site.source, file)} (no front matter)`);
-          continue;
-        }
-
-        // Process Liquid tags in SCSS content before SASS compilation
-        // This is required for Jekyll compatibility where SCSS files can contain
-        // Liquid includes like {% include css/file.css %}
-        const relativePath = relative(this.site.source, file);
-        // Build Liquid context matching the pattern used in Renderer.ensureSiteDataCached()
-        // - Spread config properties for direct access (e.g., site.title)
-        // - Keep config property for backward compatibility (e.g., site.config.title)
-        const liquidContext = {
-          site: {
-            ...siteData.config,
-            config: siteData.config,
-            data: siteData.data,
-            pages: siteData.pages,
-            posts: siteData.posts,
-            static_files: siteData.static_files,
-            collections: siteData.collections,
-            source: siteData.source,
-            destination: siteData.destination,
-          },
-          page: {
-            path: relativePath,
-            ...parsed.data,
-          },
-        };
-
-        let processedContent = parsed.content;
+    // Process SASS files in parallel
+    await Promise.all(
+      sassFiles.map(async (file) => {
         try {
-          processedContent = await this.renderer.render(parsed.content, liquidContext);
-        } catch (liquidError) {
-          logger.warn(`Failed to process Liquid in SASS file: ${relativePath}`, {
-            error: liquidError instanceof Error ? liquidError.message : String(liquidError),
+          // Read the file asynchronously
+          const fileContent = await readFile(file, 'utf-8');
+
+          // Parse front matter
+          const parsed = matter(fileContent);
+
+          // Only process files with front matter (Jekyll convention)
+          // We detect front matter by comparing content to original: if gray-matter removed
+          // delimiters (---), the content will differ from the original file content.
+          // This approach correctly identifies both empty front matter (---\n---) and
+          // front matter with data, while skipping files with no delimiters at all.
+          const hasFrontMatter = fileContent.trimStart().startsWith('---');
+          if (!hasFrontMatter) {
+            logger.debug(`Skipping ${relative(this.site.source, file)} (no front matter)`);
+            return;
+          }
+
+          // Process Liquid tags in SCSS content before SASS compilation
+          // This is required for Jekyll compatibility where SCSS files can contain
+          // Liquid includes like {% include css/file.css %}
+          const relativePath = relative(this.site.source, file);
+          // Build Liquid context matching the pattern used in Renderer.ensureSiteDataCached()
+          // - Spread config properties for direct access (e.g., site.title)
+          // - Keep config property for backward compatibility (e.g., site.config.title)
+          const liquidContext = {
+            site: {
+              ...siteData.config,
+              config: siteData.config,
+              data: siteData.data,
+              pages: siteData.pages,
+              posts: siteData.posts,
+              static_files: siteData.static_files,
+              collections: siteData.collections,
+              source: siteData.source,
+              destination: siteData.destination,
+            },
+            page: {
+              path: relativePath,
+              ...parsed.data,
+            },
+          };
+
+          let processedContent = parsed.content;
+          try {
+            processedContent = await this.renderer.render(parsed.content, liquidContext);
+          } catch (liquidError) {
+            logger.warn(`Failed to process Liquid in SASS file: ${relativePath}`, {
+              error: liquidError instanceof Error ? liquidError.message : String(liquidError),
+            });
+            // Continue with original content if Liquid processing fails
+          }
+
+          // Compile SASS/SCSS
+          const css = this.sassProcessor.process(file, processedContent);
+
+          // Determine output path (replace .scss/.sass with .css)
+          const outputPath = relativePath.replace(/\.(scss|sass)$/, '.css');
+          const destPath = join(this.site.destination, outputPath);
+
+          // Ensure directory exists and write CSS file
+          await mkdir(dirname(destPath), { recursive: true });
+          await writeFile(destPath, css, 'utf-8');
+
+          logger.debug(`Compiled: ${relativePath} → ${outputPath}`);
+        } catch (error) {
+          logger.warn(`Failed to process SASS file: ${relative(this.site.source, file)}`, {
+            error: error instanceof Error ? error.message : String(error),
           });
-          // Continue with original content if Liquid processing fails
         }
-
-        // Compile SASS/SCSS
-        const css = this.sassProcessor.process(file, processedContent);
-
-        // Determine output path (replace .scss/.sass with .css)
-        const outputPath = relativePath.replace(/\.(scss|sass)$/, '.css');
-        const destPath = join(this.site.destination, outputPath);
-
-        // Ensure directory exists
-        mkdirSync(dirname(destPath), { recursive: true });
-
-        // Write CSS file
-        writeFileSync(destPath, css, 'utf-8');
-
-        logger.debug(`Compiled: ${relativePath} → ${outputPath}`);
-      } catch (error) {
-        logger.warn(`Failed to process SASS file: ${relative(this.site.source, file)}`, {
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
-    }
+      })
+    );
   }
 
   /**
@@ -1134,8 +1152,9 @@ export class Builder {
   /**
    * Copy static files (non-Jekyll files) to destination
    * Uses the static_files array from Site and skips unchanged files for optimization
+   * Uses parallel async I/O for better performance on large sites
    */
-  private copyStaticFiles(): void {
+  private async copyStaticFiles(): Promise<void> {
     const staticFiles = this.site.static_files;
 
     logger.info(`Copying ${staticFiles.length} static files...`);
@@ -1143,51 +1162,64 @@ export class Builder {
     let copiedCount = 0;
     let skippedCount = 0;
 
-    for (const staticFile of staticFiles) {
-      const destPath = join(this.site.destination, staticFile.destinationRelativePath);
-      const resolvedDestPath = resolve(destPath);
+    // Process static files in parallel batches
+    for (let i = 0; i < staticFiles.length; i += DEFAULT_BATCH_SIZE) {
+      const batch = staticFiles.slice(i, i + DEFAULT_BATCH_SIZE);
+      const results = await Promise.all(
+        batch.map(async (staticFile) => {
+          const destPath = join(this.site.destination, staticFile.destinationRelativePath);
+          const resolvedDestPath = resolve(destPath);
 
-      // Security check: Ensure the destination path is within the destination directory
-      if (!isPathWithinBase(this.site.destination, resolvedDestPath)) {
-        logger.warn(
-          `Security warning: Skipping static file that would write outside destination: ${staticFile.relativePath}`
-        );
-        continue;
-      }
-
-      // Security check: Also verify source path is within source directory
-      const resolvedSourcePath = resolve(staticFile.path);
-      if (!isPathWithinBase(this.site.source, resolvedSourcePath)) {
-        logger.warn(
-          `Security warning: Skipping static file with source outside source directory: ${staticFile.relativePath}`
-        );
-        continue;
-      }
-
-      try {
-        // Ensure directory exists
-        mkdirSync(dirname(resolvedDestPath), { recursive: true });
-
-        // Check if destination file exists and has same or newer modification time
-        if (existsSync(resolvedDestPath)) {
-          const destStats = statSync(resolvedDestPath);
-          // Skip if destination is newer than or same age as source
-          if (destStats.mtime >= staticFile.modified_time) {
-            skippedCount++;
-            logger.debug(`Skipped (unchanged): ${staticFile.relativePath}`);
-            continue;
+          // Security check: Ensure the destination path is within the destination directory
+          if (!isPathWithinBase(this.site.destination, resolvedDestPath)) {
+            logger.warn(
+              `Security warning: Skipping static file that would write outside destination: ${staticFile.relativePath}`
+            );
+            return { copied: false, skipped: false };
           }
-        }
 
-        // Copy file
-        copyFileSync(staticFile.path, resolvedDestPath);
-        copiedCount++;
+          // Security check: Also verify source path is within source directory
+          const resolvedSourcePath = resolve(staticFile.path);
+          if (!isPathWithinBase(this.site.source, resolvedSourcePath)) {
+            logger.warn(
+              `Security warning: Skipping static file with source outside source directory: ${staticFile.relativePath}`
+            );
+            return { copied: false, skipped: false };
+          }
 
-        logger.debug(`Copied: ${staticFile.relativePath}`);
-      } catch (error) {
-        logger.warn(`Failed to copy static file: ${staticFile.relativePath}`, {
-          error: error instanceof Error ? error.message : String(error),
-        });
+          try {
+            // Ensure directory exists
+            await mkdir(dirname(resolvedDestPath), { recursive: true });
+
+            // Check if destination file exists and has same or newer modification time
+            try {
+              const destStats = await stat(resolvedDestPath);
+              // Skip if destination is newer than or same age as source
+              if (destStats.mtime >= staticFile.modified_time) {
+                logger.debug(`Skipped (unchanged): ${staticFile.relativePath}`);
+                return { copied: false, skipped: true };
+              }
+            } catch {
+              // File doesn't exist, proceed with copy
+            }
+
+            // Copy file
+            await copyFile(staticFile.path, resolvedDestPath);
+
+            logger.debug(`Copied: ${staticFile.relativePath}`);
+            return { copied: true, skipped: false };
+          } catch (error) {
+            logger.warn(`Failed to copy static file: ${staticFile.relativePath}`, {
+              error: error instanceof Error ? error.message : String(error),
+            });
+            return { copied: false, skipped: false };
+          }
+        })
+      );
+
+      for (const result of results) {
+        if (result.copied) copiedCount++;
+        if (result.skipped) skippedCount++;
       }
     }
 
@@ -1239,28 +1271,29 @@ export class Builder {
 
         // Handle generated files
         if (result?.files) {
-          for (const file of result.files) {
-            // Use path.normalize to canonicalize the path, then resolve relative to destination
-            // This properly handles ../, ./, and multiple slashes
-            const outputPath = join(this.site.destination, normalize(file.path));
-            const resolvedPath = resolve(outputPath);
+          // Write generated files in parallel
+          await Promise.all(
+            result.files.map(async (file) => {
+              // Use path.normalize to canonicalize the path, then resolve relative to destination
+              // This properly handles ../, ./, and multiple slashes
+              const outputPath = join(this.site.destination, normalize(file.path));
+              const resolvedPath = resolve(outputPath);
 
-            // Security check: Ensure the output path is within the destination directory
-            // This check is the primary security mechanism - it validates the final resolved path
-            if (!isPathWithinBase(this.site.destination, resolvedPath)) {
-              logger.warn(
-                `Security warning: Generator '${generator.name}' tried to write outside destination: ${file.path}`
-              );
-              continue;
-            }
+              // Security check: Ensure the output path is within the destination directory
+              // This check is the primary security mechanism - it validates the final resolved path
+              if (!isPathWithinBase(this.site.destination, resolvedPath)) {
+                logger.warn(
+                  `Security warning: Generator '${generator.name}' tried to write outside destination: ${file.path}`
+                );
+                return;
+              }
 
-            // Ensure directory exists
-            mkdirSync(dirname(resolvedPath), { recursive: true });
-
-            // Write file
-            writeFileSync(resolvedPath, file.content, 'utf-8');
-            logger.debug(`Generator '${generator.name}' created: ${file.path}`);
-          }
+              // Ensure directory exists and write file
+              await mkdir(dirname(resolvedPath), { recursive: true });
+              await writeFile(resolvedPath, file.content, 'utf-8');
+              logger.debug(`Generator '${generator.name}' created: ${file.path}`);
+            })
+          );
         }
 
         // TODO: Implement document handling for generators
@@ -1277,23 +1310,29 @@ export class Builder {
   /**
    * Generate plugin output files (sitemap, feed, etc.)
    */
-  private generatePluginFiles(): void {
+  private async generatePluginFiles(): Promise<void> {
     const configuredPlugins = this.site.config.plugins || [];
+
+    const writePromises: Promise<void>[] = [];
 
     // Generate sitemap if plugin is explicitly enabled
     if (configuredPlugins.includes('jekyll-sitemap')) {
       const sitemapPlugin = (this.site as any)._sitemapPlugin;
       if (sitemapPlugin) {
-        try {
-          const sitemapContent = sitemapPlugin.generateSitemap(this.site);
-          const sitemapPath = join(this.site.destination, 'sitemap.xml');
-          writeFileSync(sitemapPath, sitemapContent, 'utf-8');
-          logger.debug('Generated sitemap.xml');
-        } catch (error) {
-          logger.warn('Failed to generate sitemap', {
-            error: error instanceof Error ? error.message : String(error),
-          });
-        }
+        writePromises.push(
+          (async () => {
+            try {
+              const sitemapContent = sitemapPlugin.generateSitemap(this.site);
+              const sitemapPath = join(this.site.destination, 'sitemap.xml');
+              await writeFile(sitemapPath, sitemapContent, 'utf-8');
+              logger.debug('Generated sitemap.xml');
+            } catch (error) {
+              logger.warn('Failed to generate sitemap', {
+                error: error instanceof Error ? error.message : String(error),
+              });
+            }
+          })()
+        );
       }
     }
 
@@ -1301,46 +1340,59 @@ export class Builder {
     if (configuredPlugins.includes('jekyll-feed')) {
       const feedPlugin = (this.site as any)._feedPlugin;
       if (feedPlugin) {
-        try {
-          const feedContent = feedPlugin.generateFeed(this.site);
-          const feedPath = this.site.config.feed?.path || '/feed.xml';
-          const feedFilePath = join(this.site.destination, feedPath.replace(/^\//, ''));
+        writePromises.push(
+          (async () => {
+            try {
+              const feedContent = feedPlugin.generateFeed(this.site);
+              const feedPath = this.site.config.feed?.path || '/feed.xml';
+              const feedFilePath = join(this.site.destination, feedPath.replace(/^\//, ''));
 
-          // Ensure directory exists
-          mkdirSync(dirname(feedFilePath), { recursive: true });
+              // Ensure directory exists
+              await mkdir(dirname(feedFilePath), { recursive: true });
 
-          writeFileSync(feedFilePath, feedContent, 'utf-8');
-          logger.debug(`Generated ${feedPath}`);
-        } catch (error) {
-          logger.warn('Failed to generate feed', {
-            error: error instanceof Error ? error.message : String(error),
-          });
-        }
+              await writeFile(feedFilePath, feedContent, 'utf-8');
+              logger.debug(`Generated ${feedPath}`);
+            } catch (error) {
+              logger.warn('Failed to generate feed', {
+                error: error instanceof Error ? error.message : String(error),
+              });
+            }
+          })()
+        );
       }
     }
+
+    // Wait for all plugin file writes to complete
+    await Promise.all(writePromises);
   }
 
   /**
    * Filter documents to only include those that have changed
+   * Uses parallel async I/O for better performance
    * @param documents List of documents to filter
    * @returns Documents that need to be rebuilt
    */
-  private filterChangedDocuments(documents: Document[]): Document[] {
-    return documents.filter((doc) => {
-      // Check if document itself has changed
-      if (this.cacheManager.hasChanged(doc.path, doc.relativePath)) {
-        logger.debug(`Changed: ${doc.relativePath}`);
-        return true;
-      }
+  private async filterChangedDocuments(documents: Document[]): Promise<Document[]> {
+    // Check all documents in parallel
+    const results = await Promise.all(
+      documents.map(async (doc) => {
+        // Check if document itself has changed
+        if (await this.cacheManager.hasChangedAsync(doc.path, doc.relativePath)) {
+          logger.debug(`Changed: ${doc.relativePath}`);
+          return doc;
+        }
 
-      // Check if any dependencies have changed (includes layouts tracked in cache)
-      if (this.cacheManager.hasDependencyChanges(doc.relativePath, this.site.source)) {
-        logger.debug(`Dependency changed for: ${doc.relativePath}`);
-        return true;
-      }
+        // Check if any dependencies have changed (includes layouts tracked in cache)
+        if (await this.cacheManager.hasDependencyChangesAsync(doc.relativePath, this.site.source)) {
+          logger.debug(`Dependency changed for: ${doc.relativePath}`);
+          return doc;
+        }
 
-      return false;
-    });
+        return null;
+      })
+    );
+
+    return results.filter((doc): doc is Document => doc !== null);
   }
 
   /**

@@ -23,6 +23,10 @@ jest.mock('../markdown', () => ({
   processMarkdownSync: jest.fn((_input: string) => {
     throw new Error('processMarkdownSync is not supported. Use processMarkdown instead.');
   }),
+  initMarkdownProcessor: jest.fn(async () => {
+    // Simulate async initialization
+    return Promise.resolve();
+  }),
 }));
 
 describe('Renderer', () => {
@@ -1997,6 +2001,80 @@ Second`
         // Rendering should work
         const result = await renderer.renderDocument(doc);
         expect(result).toContain('Content');
+      });
+    });
+
+    describe('Markdown processor initialization', () => {
+      it('should support normal flow: startMarkdownProcessorInit followed by waitForMarkdownProcessor', async () => {
+        const renderer = new Renderer(site);
+
+        // Start initialization
+        renderer.startMarkdownProcessorInit();
+
+        // Wait for completion - should not throw
+        await expect(renderer.waitForMarkdownProcessor()).resolves.not.toThrow();
+      });
+
+      it('should support direct waitForMarkdownProcessor call without prior startMarkdownProcessorInit', async () => {
+        const renderer = new Renderer(site);
+
+        // Direct call should work (initializes synchronously)
+        await expect(renderer.waitForMarkdownProcessor()).resolves.not.toThrow();
+      });
+
+      it('should be idempotent: multiple calls to startMarkdownProcessorInit should be safe', async () => {
+        const renderer = new Renderer(site);
+
+        // Multiple calls should not cause issues
+        renderer.startMarkdownProcessorInit();
+        renderer.startMarkdownProcessorInit();
+        renderer.startMarkdownProcessorInit();
+
+        // Wait should still work
+        await expect(renderer.waitForMarkdownProcessor()).resolves.not.toThrow();
+      });
+
+      it('should reset state after waitForMarkdownProcessor to allow retrying', async () => {
+        const renderer = new Renderer(site);
+
+        // First initialization cycle
+        renderer.startMarkdownProcessorInit();
+        await renderer.waitForMarkdownProcessor();
+
+        // Second initialization cycle should work (for watch mode scenarios)
+        renderer.startMarkdownProcessorInit();
+        await expect(renderer.waitForMarkdownProcessor()).resolves.not.toThrow();
+      });
+
+      it('should support initializeMarkdownProcessor as a combined operation', async () => {
+        const renderer = new Renderer(site);
+
+        // Combined call should work
+        await expect(renderer.initializeMarkdownProcessor()).resolves.not.toThrow();
+      });
+
+      it('should work with different markdownOptions configurations', async () => {
+        const renderer = new Renderer(site);
+
+        // Enable emoji processing
+        renderer.enableEmojiProcessing();
+
+        // Initialization should still work
+        renderer.startMarkdownProcessorInit();
+        await expect(renderer.waitForMarkdownProcessor()).resolves.not.toThrow();
+      });
+
+      it('should allow multiple sequential initialization cycles (watch mode simulation)', async () => {
+        const renderer = new Renderer(site);
+
+        // Simulate multiple build cycles like in watch mode
+        for (let i = 0; i < 3; i++) {
+          renderer.startMarkdownProcessorInit();
+          await renderer.waitForMarkdownProcessor();
+        }
+
+        // Should complete without error
+        expect(true).toBe(true);
       });
     });
   });

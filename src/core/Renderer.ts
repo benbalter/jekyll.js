@@ -1021,9 +1021,7 @@ export class Renderer {
         // Search in pages
         if (site.pages) {
           for (const page of site.pages) {
-            const pagePath = normalizePathSeparators(
-              page.relativePath || page.path || ''
-            );
+            const pagePath = normalizePathSeparators(page.relativePath || page.path || '');
             if (pagePath === normalizedPath) {
               if (page.url) {
                 return page.url;
@@ -1035,9 +1033,7 @@ export class Renderer {
         // Search in posts
         if (site.posts) {
           for (const post of site.posts) {
-            const postPath = normalizePathSeparators(
-              post.relativePath || post.path || ''
-            );
+            const postPath = normalizePathSeparators(post.relativePath || post.path || '');
             // Posts are typically in _posts/ directory
             if (postPath === normalizedPath || `_posts/${postPath}` === normalizedPath) {
               if (post.url) {
@@ -1056,9 +1052,7 @@ export class Renderer {
           for (const [collectionName, docs] of Object.entries(collections)) {
             if (Array.isArray(docs)) {
               for (const doc of docs) {
-                const docPath = normalizePathSeparators(
-                  doc.relativePath || doc.path || ''
-                );
+                const docPath = normalizePathSeparators(doc.relativePath || doc.path || '');
                 if (
                   docPath === normalizedPath ||
                   `_${collectionName}/${docPath}` === normalizedPath
@@ -1141,9 +1135,7 @@ export class Renderer {
         // Search for matching post
         for (const post of site.posts) {
           // Get the basename without extension from the post's path
-          const postPath = normalizePathSeparators(
-            post.relativePath || post.path || ''
-          );
+          const postPath = normalizePathSeparators(post.relativePath || post.path || '');
 
           // Remove _posts/ prefix if present
           const normalizedPostPath = postPath.replace(/^_posts\//, '');

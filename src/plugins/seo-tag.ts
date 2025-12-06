@@ -50,7 +50,7 @@ function generateSeoTags(page: any, site: Site): string {
   const author = page.author || config.author || '';
   // Get image from page or config, handling both string and object formats
   const rawImage = page.image || config.image || '';
-  const image = typeof rawImage === 'string' ? rawImage : (rawImage?.src || rawImage?.path || '');
+  const image = typeof rawImage === 'string' ? rawImage : rawImage?.src || rawImage?.path || '';
   const imageUrl = image ? (image.startsWith('http') ? image : `${siteUrl}${baseurl}${image}`) : '';
 
   // Page type

@@ -44,6 +44,20 @@ export interface JekyllConfig {
   highlighter?: string;
   incremental?: boolean;
 
+  /**
+   * Kramdown processor options
+   * @see https://kramdown.gettalong.org/options.html
+   */
+  kramdown?: {
+    /**
+     * Enable or disable smart quotes conversion.
+     * When true (default), ASCII quotes are converted to typographic Unicode characters.
+     * Set to false or use ["apos", "apos", "quot", "quot"] to disable smart quotes.
+     * @default true
+     */
+    smart_quotes?: boolean | string[];
+  };
+
   // Serving
   port?: number;
   host?: string;

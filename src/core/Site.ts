@@ -661,10 +661,7 @@ export class Site {
    * @param delimiter Character used to separate fields
    * @returns Array of objects with header names as keys
    */
-  private parseDelimitedContent(
-    content: string,
-    delimiter: string
-  ): Record<string, string>[] {
+  private parseDelimitedContent(content: string, delimiter: string): Record<string, string>[] {
     const rows = this.parseDelimitedRows(content, delimiter);
 
     if (rows.length === 0) {

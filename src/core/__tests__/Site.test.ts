@@ -346,7 +346,10 @@ collections:
       mkdirSync(dataDir);
 
       // CSV with missing values
-      writeFileSync(join(dataDir, 'sparse.csv'), 'name,email,phone\nAlice,alice@example.com,\nBob,,555-1234');
+      writeFileSync(
+        join(dataDir, 'sparse.csv'),
+        'name,email,phone\nAlice,alice@example.com,\nBob,,555-1234'
+      );
 
       const site = new Site(testSiteDir);
       await site.read();

@@ -197,7 +197,7 @@ This roadmap outlines the development timeline for jekyll.js to achieve full com
   - Localization (i18n)
   - Custom collections metadata improvements
   - Math support (KaTeX/MathJax)
-  - CSV/TSV data file support
+  - ~~CSV/TSV data file support~~ ✅ Implemented
 
 ### Partially Completed ✅
 - [x] **Basic plugin system** (SEO, sitemap, feed, jemoji, mentions, redirect-from, avatar, github-metadata)

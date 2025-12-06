@@ -181,8 +181,8 @@ async function build() {
       
       console.log('\n✨ Watching for changes... (Press Ctrl+C to stop)\n');
       
-      // Keep the process running
-      await new Promise(() => {});
+      // Keep the process running indefinitely until interrupted
+      process.stdin.resume();
     } else {
       // Build in parallel for speed
       await Promise.all([buildCLI(), buildLib()]);

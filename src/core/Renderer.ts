@@ -107,10 +107,14 @@ export class Renderer {
       // (This is the Jekyll way to disable smart quotes)
       else if (Array.isArray(kramdownConfig.smart_quotes)) {
         const arr = kramdownConfig.smart_quotes;
-        // ASCII quote identifiers that indicate disabling smart quotes
-        const asciiQuoteIds = ['apos', 'quot'];
-        // Check if it's a "disable" array - all elements are ASCII quote identifiers
-        const isDisabled = arr.length === 4 && arr.every((item) => asciiQuoteIds.includes(item));
+        // Only the exact sequence ['apos', 'apos', 'quot', 'quot'] disables smart quotes in Jekyll/Kramdown
+        // This represents: left single quote, right single quote, left double quote, right double quote
+        const isDisabled =
+          arr.length === 4 &&
+          arr[0] === 'apos' &&
+          arr[1] === 'apos' &&
+          arr[2] === 'quot' &&
+          arr[3] === 'quot';
         this.markdownOptions.smartQuotes = !isDisabled;
       }
       // Otherwise, treat truthy values as enabled

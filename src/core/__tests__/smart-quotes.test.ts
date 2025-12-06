@@ -206,4 +206,51 @@ describe('Smart quotes functionality', () => {
       expect(result).toMatch(/[\u201C\u201D]/);
     });
   });
+
+  describe('Integration with processMarkdown', () => {
+    // Import processMarkdown for integration tests
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { processMarkdown } = require('../markdown');
+
+    it('should apply smart quotes when processing markdown by default', async () => {
+      const markdown = 'He said "Hello world"';
+      const html = await processMarkdown(markdown);
+      expect(html).toContain(LEFT_DOUBLE_QUOTE); // left double quote
+      expect(html).toContain(RIGHT_DOUBLE_QUOTE); // right double quote
+    });
+
+    it('should not apply smart quotes when disabled', async () => {
+      const markdown = 'He said "Hello world"';
+      const html = await processMarkdown(markdown, { smartQuotes: false });
+      expect(html).toContain('"'); // straight quotes preserved
+      expect(html).not.toContain(LEFT_DOUBLE_QUOTE);
+      expect(html).not.toContain(RIGHT_DOUBLE_QUOTE);
+    });
+
+    it('should convert apostrophes in contractions', async () => {
+      const markdown = "It's a beautiful day";
+      const html = await processMarkdown(markdown);
+      expect(html).toContain(RIGHT_SINGLE_QUOTE); // smart apostrophe
+    });
+
+    it('should convert ellipsis', async () => {
+      const markdown = 'And then...';
+      const html = await processMarkdown(markdown);
+      expect(html).toContain(ELLIPSIS);
+    });
+
+    it('should preserve quotes inside inline code', async () => {
+      const markdown = 'Use `"quotes"` in code';
+      const html = await processMarkdown(markdown);
+      // Code content should have straight quotes
+      expect(html).toMatch(/<code[^>]*>"quotes"<\/code>/);
+    });
+
+    it('should preserve quotes inside fenced code blocks', async () => {
+      const markdown = '```\nconst x = "hello";\n```';
+      const html = await processMarkdown(markdown);
+      // Code block content should have straight quotes
+      expect(html).toContain('"hello"');
+    });
+  });
 });

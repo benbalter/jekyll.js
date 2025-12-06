@@ -166,6 +166,80 @@ collections:
       expect(config.collections?.authors.output).toBe(false);
     });
 
+    it('should handle collections defined as an array of strings', () => {
+      const configPath = join(testConfigDir, '_config.yml');
+      const configContent = `
+collections:
+  - recipes
+  - authors
+  - events
+`;
+      writeFileSync(configPath, configContent);
+
+      const config = loadConfig(configPath);
+
+      // Array format should be normalized to object format with default output: true
+      expect(config.collections).toBeDefined();
+      expect(typeof config.collections).toBe('object');
+      expect(Array.isArray(config.collections)).toBe(false);
+      expect(config.collections?.recipes).toEqual({ output: true });
+      expect(config.collections?.authors).toEqual({ output: true });
+      expect(config.collections?.events).toEqual({ output: true });
+    });
+
+    it('should handle mixed YAML with array collections and other config', () => {
+      const configPath = join(testConfigDir, '_config.yml');
+      const configContent = `
+title: Test Site
+description: A site with array collections
+collections:
+  - recipes
+  - authors
+permalink: /:categories/:title/
+`;
+      writeFileSync(configPath, configContent);
+
+      const config = loadConfig(configPath);
+
+      expect(config.title).toBe('Test Site');
+      expect(config.description).toBe('A site with array collections');
+      expect(config.permalink).toBe('/:categories/:title/');
+      expect(config.collections?.recipes).toEqual({ output: true });
+      expect(config.collections?.authors).toEqual({ output: true });
+    });
+
+    it('should handle empty collections array', () => {
+      const configPath = join(testConfigDir, '_config.yml');
+      const configContent = `
+collections: []
+`;
+      writeFileSync(configPath, configContent);
+
+      const config = loadConfig(configPath);
+
+      expect(config.collections).toEqual({});
+    });
+
+    it('should skip empty strings in collections array', () => {
+      const configPath = join(testConfigDir, '_config.yml');
+      const configContent = `
+collections:
+  - recipes
+  - ""
+  - authors
+  - "  "
+`;
+      writeFileSync(configPath, configContent);
+
+      const config = loadConfig(configPath);
+
+      expect(config.collections).toBeDefined();
+      expect(config.collections?.recipes).toEqual({ output: true });
+      expect(config.collections?.authors).toEqual({ output: true });
+      // Empty strings should be skipped
+      expect(Object.keys(config.collections || {})).toHaveLength(2);
+    });
+
     it('should handle liquid configuration', () => {
       const configPath = join(testConfigDir, '_config.yml');
       const configContent = `
@@ -756,6 +830,73 @@ title: "Empty var: \${} and \${:-default}"
     it('should include default markdown_ext', () => {
       const config = getDefaultConfig(testConfigDir);
       expect(config.markdown_ext).toBe('markdown,mkdown,mkdn,mkd,md');
+    });
+  });
+
+  describe('normalizeCollections', () => {
+    it('should convert array format to object format with default settings', () => {
+      const { normalizeCollections } = require('../Config');
+      const input = ['recipes', 'authors', 'events'];
+      const result = normalizeCollections(input);
+
+      expect(result).toEqual({
+        recipes: { output: true },
+        authors: { output: true },
+        events: { output: true },
+      });
+    });
+
+    it('should return object format unchanged', () => {
+      const { normalizeCollections } = require('../Config');
+      const input = {
+        recipes: { output: true, permalink: '/recipes/:name/' },
+        authors: { output: false },
+      };
+      const result = normalizeCollections(input);
+
+      expect(result).toEqual(input);
+    });
+
+    it('should return empty object for undefined input', () => {
+      const { normalizeCollections } = require('../Config');
+      const result = normalizeCollections(undefined);
+
+      expect(result).toEqual({});
+    });
+
+    it('should return empty object for null input', () => {
+      const { normalizeCollections } = require('../Config');
+      const result = normalizeCollections(null);
+
+      expect(result).toEqual({});
+    });
+
+    it('should skip empty strings in array', () => {
+      const { normalizeCollections } = require('../Config');
+      const input = ['recipes', '', 'authors', '  ', 'events'];
+      const result = normalizeCollections(input);
+
+      expect(result).toEqual({
+        recipes: { output: true },
+        authors: { output: true },
+        events: { output: true },
+      });
+    });
+
+    it('should handle empty array', () => {
+      const { normalizeCollections } = require('../Config');
+      const result = normalizeCollections([]);
+
+      expect(result).toEqual({});
+    });
+
+    it('should handle array with one item', () => {
+      const { normalizeCollections } = require('../Config');
+      const result = normalizeCollections(['recipes']);
+
+      expect(result).toEqual({
+        recipes: { output: true },
+      });
     });
   });
 });

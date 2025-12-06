@@ -320,6 +320,40 @@ export function expandConfigEnvVariables(config: unknown): unknown {
 }
 
 /**
+ * Normalize collections configuration to object format
+ * Jekyll supports two formats for collections:
+ * 1. Object format: { recipes: { output: true }, authors: { output: false } }
+ * 2. Array format: ["recipes", "authors"] (uses default settings)
+ * This function converts array format to object format with default settings
+ * @param collections Collections configuration (object or array)
+ * @returns Normalized collections as an object
+ */
+export function normalizeCollections(
+  collections: Record<string, any> | string[] | undefined
+): Record<string, any> {
+  // If undefined or null, return empty object
+  if (!collections) {
+    return {};
+  }
+
+  // If already an object, return as-is
+  if (!Array.isArray(collections)) {
+    return collections;
+  }
+
+  // Convert array to object with default settings
+  // Default setting is output: true (matching Jekyll's behavior)
+  const normalized: Record<string, any> = {};
+  for (const collectionName of collections) {
+    if (typeof collectionName === 'string' && collectionName.trim() !== '') {
+      normalized[collectionName] = { output: true };
+    }
+  }
+
+  return normalized;
+}
+
+/**
  * Load a single configuration file
  * @param configPath Path to the configuration file
  * @param verbose Whether to print verbose output
@@ -350,6 +384,12 @@ function loadSingleConfigFile(configPath: string, verbose: boolean = false): Jek
     if (verbose) {
       console.log(chalk.green('✓ Loaded:'), resolvedPath);
     }
+
+    // Normalize collections immediately after parsing
+    // This ensures the config always has collections in object format
+    config.collections = normalizeCollections(
+      config.collections as Record<string, any> | string[] | undefined
+    );
 
     return config;
   } catch (error) {
@@ -632,6 +672,9 @@ export function mergeWithDefaults(
   if (merged.encoding) {
     merged.encoding = merged.encoding.toLowerCase() as BufferEncoding;
   }
+
+  // Normalize collections - convert array format to object format if needed
+  merged.collections = normalizeCollections(merged.collections);
 
   return merged;
 }

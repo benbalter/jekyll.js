@@ -78,6 +78,7 @@ export class Renderer {
       strictFilters: options.strictFilters ?? false,
       cache: true, // Enable template caching for better performance
       jekyllInclude: true, // Use Jekyll-style includes
+      greedy: false, // Jekyll-compatible whitespace control: only trim immediate whitespace, not entire blank lines
     });
 
     // Configure smart quotes based on kramdown settings

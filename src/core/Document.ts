@@ -167,10 +167,21 @@ export class Document {
 
   /**
    * Get the date from front matter or filename (for posts)
+   * Returns a Date object where the calendar date (year, month, day) is preserved
+   * regardless of the local timezone by storing the date as UTC midnight.
    */
   get date(): Date | undefined {
     if (this.data.date) {
-      return new Date(this.data.date);
+      // Front matter dates: Parse and convert to UTC midnight to ensure
+      // consistent calendar date regardless of timezone
+      const parsed = new Date(this.data.date);
+      if (!isNaN(parsed.getTime())) {
+        // Use the parsed date's UTC components to create a new date at UTC midnight
+        return new Date(
+          Date.UTC(parsed.getUTCFullYear(), parsed.getUTCMonth(), parsed.getUTCDate())
+        );
+      }
+      return undefined;
     }
 
     // For posts, try to extract date from filename (YYYY-MM-DD-title format)
@@ -178,7 +189,9 @@ export class Document {
       const match = this.basename.match(/^(\d{4})-(\d{2})-(\d{2})-/);
       if (match) {
         const [, year, month, day] = match;
-        return new Date(`${year}-${month}-${day}`);
+        // Use Date.UTC to ensure the date represents midnight UTC on the specified date
+        // This prevents timezone-related date shifts when using getFullYear/Month/Date later
+        return new Date(Date.UTC(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10)));
       }
     }
 

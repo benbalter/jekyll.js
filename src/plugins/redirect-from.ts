@@ -41,20 +41,41 @@ export class RedirectFromPlugin implements Plugin, GeneratorPlugin {
   generate(site: Site, _renderer: Renderer): GeneratorResult {
     const redirects = this.generateRedirects(site);
     
+    // Mark documents with redirect_to so they don't get rendered as normal pages
+    // The redirect HTML from the generator will be used instead
+    const allDocuments: Document[] = [
+      ...site.pages,
+      ...site.posts,
+      ...Array.from(site.collections.values()).flat(),
+    ];
+    
+    for (const doc of allDocuments) {
+      if (doc.data.redirect_to) {
+        // Mark document as having no output to prevent normal rendering
+        doc.data.output = false;
+      }
+    }
+    
     return {
       files: redirects.map(redirect => {
         // Remove leading slash to make path relative to destination
         let path = redirect.from.replace(/^\//, '');
         
-        // If path ends with /, it's a directory - add index.html
-        // Otherwise, add .html extension
-        if (path.endsWith('/')) {
-          path = path + 'index.html';
-        } else if (path === '') {
+        // If path is empty, use index.html
+        if (path === '') {
           path = 'index.html';
-        } else {
+        } 
+        // If path ends with /, add index.html
+        else if (path.endsWith('/')) {
+          path = path + 'index.html';
+        }
+        // If path doesn't have an extension, add .html
+        // This handles both redirect_from URLs (which don't have extensions)
+        // and ensures we don't double-add .html to redirect_to URLs
+        else if (!path.includes('.')) {
           path = path + '.html';
         }
+        // Otherwise use path as-is (it already has an extension like .html)
         
         return {
           path,

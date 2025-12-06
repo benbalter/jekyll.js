@@ -549,9 +549,11 @@ export class Builder {
    */
   private generatePostUrl(post: Document): string {
     const date = post.date || new Date();
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
+    // Use UTC methods to extract date components since dates are stored as UTC midnight
+    // This ensures the URL date matches the filename date regardless of local timezone
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(date.getUTCDate()).padStart(2, '0');
 
     // Get slug from basename (remove date prefix for posts)
     let slug = post.basename;
@@ -585,9 +587,9 @@ export class Builder {
       .replace(/:categories/g, categories)
       .replace(/:year/g, String(year))
       .replace(/:month/g, month)
-      .replace(/:i_month/g, String(date.getMonth() + 1)) // Month without padding
+      .replace(/:i_month/g, String(date.getUTCMonth() + 1)) // Month without padding (UTC)
       .replace(/:day/g, day)
-      .replace(/:i_day/g, String(date.getDate())) // Day without padding
+      .replace(/:i_day/g, String(date.getUTCDate())) // Day without padding (UTC)
       .replace(/:title/g, slug)
       .replace(/:slug/g, slug);
 
@@ -668,10 +670,12 @@ export class Builder {
    */
   private async renderPages(pages?: Document[]): Promise<void> {
     const pagesToRender = pages || this.site.pages;
-    logger.info(`Rendering ${pagesToRender.length} pages...`);
+    // Filter out pages with output: false (e.g., pages with redirect_to)
+    const filteredPages = pagesToRender.filter((page) => page.data.output !== false);
+    logger.info(`Rendering ${filteredPages.length} pages...`);
 
     // Use optimized batch rendering for better performance
-    await this.renderDocumentsBatch(pagesToRender, 'Pages');
+    await this.renderDocumentsBatch(filteredPages, 'Pages');
   }
 
   /**
@@ -682,6 +686,10 @@ export class Builder {
   private getFilteredPosts(posts?: Document[]): Document[] {
     const postsToFilter = posts || this.site.posts;
     return postsToFilter.filter((post) => {
+      // Filter out posts with output: false (e.g., posts with redirect_to)
+      if (post.data.output === false) {
+        return false;
+      }
       // Filter unpublished posts unless showDrafts is enabled
       if (!post.published && !this.options.showDrafts) {
         return false;
@@ -937,11 +945,16 @@ export class Builder {
         continue;
       }
 
-      logger.info(`Rendering ${documents.length} documents from collection '${collectionName}'...`);
+      // Filter out documents with output: false (e.g., documents with redirect_to)
+      const filteredDocuments = documents.filter((doc) => doc.data.output !== false);
+
+      logger.info(
+        `Rendering ${filteredDocuments.length} documents from collection '${collectionName}'...`
+      );
 
       // Use optimized batch rendering for better performance
       collectionPromises.push(
-        this.renderDocumentsBatch(documents, `Collection: ${collectionName}`)
+        this.renderDocumentsBatch(filteredDocuments, `Collection: ${collectionName}`)
       );
     }
 

@@ -490,6 +490,7 @@ describe('Integration Test: benbalter/benbalter.github.com', () => {
     // - jekyll-avatar: Generates GitHub avatar tags
     // - jekyll-github-metadata: Provides repository metadata in templates
     // - jekyll-mentions: Uses remark-github for @mention linking
+    // - jekyll-og-image: Generates Open Graph images for posts using Sharp
     const supportedPlugins = [
       'jekyll-feed',
       'jekyll-sitemap',
@@ -499,6 +500,7 @@ describe('Integration Test: benbalter/benbalter.github.com', () => {
       'jekyll-avatar',
       'jekyll-github-metadata',
       'jekyll-mentions',
+      'jekyll-og-image',
     ];
 
     return supportedPlugins.includes(plugin);

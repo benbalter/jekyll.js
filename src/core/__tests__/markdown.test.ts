@@ -2,119 +2,180 @@
 // We mock processMarkdown to simulate what real Remark would do
 jest.mock('../markdown', () => {
   const actualModule = jest.requireActual('../markdown');
+  
+  // Helper function to process markdown-like content
+  const processMockMarkdown = (content: string): string => {
+    const lines = content.split('\n');
+    let html = '';
+    let inCodeBlock = false;
+    let codeLanguage = '';
+    let codeContent = '';
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (!line) continue;
+
+      // Handle code blocks
+      if (line.startsWith('```')) {
+        if (!inCodeBlock) {
+          inCodeBlock = true;
+          codeLanguage = line.slice(3);
+          codeContent = '';
+        } else {
+          inCodeBlock = false;
+          html += `<pre><code class="language-${codeLanguage}">${codeContent}</code></pre>\n`;
+        }
+        continue;
+      }
+
+      if (inCodeBlock) {
+        codeContent += line + '\n';
+        continue;
+      }
+
+      // Handle headings
+      if (line.startsWith('# ')) {
+        html += `<h1>${line.slice(2)}</h1>\n`;
+      } else if (line.startsWith('## ')) {
+        html += `<h2>${line.slice(3)}</h2>\n`;
+      } else if (line.startsWith('### ')) {
+        html += `<h3>${line.slice(4)}</h3>\n`;
+      }
+      // Handle lists
+      else if (line.startsWith('- ')) {
+        const prevLine = lines[i - 1];
+        if (i === 0 || !prevLine?.startsWith('- ')) {
+          html += '<ul>\n';
+        }
+        html += `<li>${line.slice(2)}</li>\n`;
+        const nextLine = lines[i + 1];
+        if (i === lines.length - 1 || !nextLine?.startsWith('- ')) {
+          html += '</ul>\n';
+        }
+      }
+      // Handle tables (basic GFM)
+      else if (line.includes('|')) {
+        const cells = line
+          .split('|')
+          .map((c) => c.trim())
+          .filter((c) => c);
+        if (cells.every((c) => c.match(/^-+$/))) {
+          // Skip separator line
+          continue;
+        }
+
+        const prevLine = lines[i - 1];
+        const nextLine = lines[i + 1];
+
+        if (i === 0 || !prevLine?.includes('|')) {
+          html += '<table>\n<thead>\n<tr>\n';
+          cells.forEach((cell) => {
+            html += `<th>${cell}</th>\n`;
+          });
+          html += '</tr>\n</thead>\n<tbody>\n';
+        } else if (
+          i > 0 &&
+          prevLine?.includes('|') &&
+          prevLine.split('|').some((c) => c.match(/^-+$/))
+        ) {
+          html += '<tr>\n';
+          cells.forEach((cell) => {
+            html += `<td>${cell}</td>\n`;
+          });
+          html += '</tr>\n';
+        }
+
+        if (i === lines.length - 1 || !nextLine?.includes('|')) {
+          html += '</tbody>\n</table>\n';
+        }
+      }
+      // Handle paragraphs and inline formatting
+      else if (line.trim()) {
+        let processed: string = line;
+        // Bold
+        processed = processed.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        // Italic
+        processed = processed.replace(/\*(.+?)\*/g, '<em>$1</em>');
+        // Strikethrough
+        processed = processed.replace(/~~(.+?)~~/g, '<del>$1</del>');
+        // Links
+        processed = processed.replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2">$1</a>');
+
+        // Don't wrap if already has HTML tags
+        if (!processed.startsWith('<')) {
+          html += `<p>${processed}</p>\n`;
+        } else {
+          html += processed + '\n';
+        }
+      }
+    }
+
+    return html.trim();
+  };
+  
   return {
     ...actualModule,
     processMarkdown: jest.fn(async (content: string) => {
       if (!content) return '';
 
-      // Import unified and remark at runtime only in non-test environments
-      // For tests, we simulate markdown processing
-      const lines = content.split('\n');
-      let html = '';
-      let inCodeBlock = false;
-      let codeLanguage = '';
-      let codeContent = '';
-
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        if (!line) continue;
-
-        // Handle code blocks
-        if (line.startsWith('```')) {
-          if (!inCodeBlock) {
-            inCodeBlock = true;
-            codeLanguage = line.slice(3);
-            codeContent = '';
-          } else {
-            inCodeBlock = false;
-            html += `<pre><code class="language-${codeLanguage}">${codeContent}</code></pre>\n`;
-          }
-          continue;
+      // Handle markdown="1" attribute
+      let result = content;
+      const markdownBlockPattern = /<([a-zA-Z][a-zA-Z0-9]*)\s+markdown=["']1["']([^>]*)>([\s\S]*?)<\/\1>/g;
+      
+      result = result.replace(markdownBlockPattern, (_match, tagName, attrs, innerContent) => {
+        // Process the inner content as markdown
+        const processedInner = processMockMarkdown(innerContent);
+        // Return the tag without markdown="1" attribute but with other attributes
+        const cleanAttrs = attrs.trim();
+        if (cleanAttrs) {
+          return `<${tagName} ${cleanAttrs}>${processedInner}</${tagName}>`;
         }
-
-        if (inCodeBlock) {
-          codeContent += line + '\n';
-          continue;
+        return `<${tagName}>${processedInner}</${tagName}>`;
+      });
+      
+      // Handle markdown="1" as the first attribute
+      const markdownFirstPattern = /<([a-zA-Z][a-zA-Z0-9]*)\s+markdown=["']1["']([^>]*)>([\s\S]*?)<\/\1>/g;
+      result = result.replace(markdownFirstPattern, (_match, tagName, attrs, innerContent) => {
+        const processedInner = processMockMarkdown(innerContent);
+        const cleanAttrs = attrs.trim();
+        if (cleanAttrs) {
+          return `<${tagName} ${cleanAttrs}>${processedInner}</${tagName}>`;
         }
-
-        // Handle headings
-        if (line.startsWith('# ')) {
-          html += `<h1>${line.slice(2)}</h1>\n`;
-        } else if (line.startsWith('## ')) {
-          html += `<h2>${line.slice(3)}</h2>\n`;
-        } else if (line.startsWith('### ')) {
-          html += `<h3>${line.slice(4)}</h3>\n`;
+        return `<${tagName}>${processedInner}</${tagName}>`;
+      });
+      
+      // Process remaining content as markdown (but preserve HTML blocks without markdown="1")
+      // Split by HTML blocks
+      const parts: string[] = [];
+      let lastIndex = 0;
+      const htmlBlockPattern = /<([a-zA-Z][a-zA-Z0-9]*)[^>]*>[\s\S]*?<\/\1>/g;
+      let match: RegExpExecArray | null;
+      
+      // Create a copy for iteration
+      const testPattern = new RegExp(htmlBlockPattern.source, htmlBlockPattern.flags);
+      while ((match = testPattern.exec(content)) !== null) {
+        // Process text before this HTML block
+        if (match.index > lastIndex) {
+          const textBefore = content.slice(lastIndex, match.index);
+          parts.push(processMockMarkdown(textBefore));
         }
-        // Handle lists
-        else if (line.startsWith('- ')) {
-          const prevLine = lines[i - 1];
-          if (i === 0 || !prevLine?.startsWith('- ')) {
-            html += '<ul>\n';
-          }
-          html += `<li>${line.slice(2)}</li>\n`;
-          const nextLine = lines[i + 1];
-          if (i === lines.length - 1 || !nextLine?.startsWith('- ')) {
-            html += '</ul>\n';
-          }
-        }
-        // Handle tables (basic GFM)
-        else if (line.includes('|')) {
-          const cells = line
-            .split('|')
-            .map((c) => c.trim())
-            .filter((c) => c);
-          if (cells.every((c) => c.match(/^-+$/))) {
-            // Skip separator line
-            continue;
-          }
-
-          const prevLine = lines[i - 1];
-          const nextLine = lines[i + 1];
-
-          if (i === 0 || !prevLine?.includes('|')) {
-            html += '<table>\n<thead>\n<tr>\n';
-            cells.forEach((cell) => {
-              html += `<th>${cell}</th>\n`;
-            });
-            html += '</tr>\n</thead>\n<tbody>\n';
-          } else if (
-            i > 0 &&
-            prevLine?.includes('|') &&
-            prevLine.split('|').some((c) => c.match(/^-+$/))
-          ) {
-            html += '<tr>\n';
-            cells.forEach((cell) => {
-              html += `<td>${cell}</td>\n`;
-            });
-            html += '</tr>\n';
-          }
-
-          if (i === lines.length - 1 || !nextLine?.includes('|')) {
-            html += '</tbody>\n</table>\n';
-          }
-        }
-        // Handle paragraphs and inline formatting
-        else if (line.trim()) {
-          let processed: string = line;
-          // Bold
-          processed = processed.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-          // Italic
-          processed = processed.replace(/\*(.+?)\*/g, '<em>$1</em>');
-          // Strikethrough
-          processed = processed.replace(/~~(.+?)~~/g, '<del>$1</del>');
-          // Links
-          processed = processed.replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2">$1</a>');
-
-          // Don't wrap if already has HTML tags
-          if (!processed.startsWith('<')) {
-            html += `<p>${processed}</p>\n`;
-          } else {
-            html += processed + '\n';
-          }
-        }
+        // Keep HTML block as-is
+        parts.push(match[0]);
+        lastIndex = match.index + match[0].length;
+      }
+      
+      // Process any remaining text
+      if (lastIndex < content.length) {
+        parts.push(processMockMarkdown(content.slice(lastIndex)));
+      }
+      
+      if (parts.length > 0) {
+        result = parts.join('\n');
+      } else {
+        result = processMockMarkdown(result);
       }
 
-      return html.trim();
+      return result;
     }),
     initMarkdownProcessor: jest.fn(async () => {
       // Mock implementation that tracks it was called

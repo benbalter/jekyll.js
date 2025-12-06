@@ -230,9 +230,25 @@ export async function processMarkdown(
   content: string,
   options: MarkdownOptions = {}
 ): Promise<string> {
+  // Pre-process to handle markdown="1" attribute on HTML tags
+  // This extracts HTML blocks with markdown="1" and processes their content as markdown
+  const { processedContent, blocks } = extractMarkdownBlocks(content);
+
   const processor = await getProcessor(options);
-  const result = await processor.process(content);
+  
+  // Process the main content with extracted blocks replaced by placeholders
+  const result = await processor.process(processedContent);
   let html = String(result);
+
+  // Process the extracted markdown blocks
+  const processedBlocks: string[] = [];
+  for (const block of blocks) {
+    const blockResult = await processor.process(block.content);
+    processedBlocks.push(String(blockResult));
+  }
+
+  // Replace placeholders with processed blocks
+  html = restoreMarkdownBlocks(html, blocks, processedBlocks);
 
   // Post-process to handle Kramdown-style attribute lists
   // This supports syntax like {: .class #id attr="value" }
@@ -245,6 +261,260 @@ export async function processMarkdown(
   }
 
   return html;
+}
+
+/**
+ * Interface for extracted markdown blocks
+ */
+interface MarkdownBlock {
+  /** The original HTML tag */
+  tag: string;
+  /** The markdown content inside the tag */
+  content: string;
+  /** The placeholder ID used to mark the position */
+  placeholder: string;
+  /** Other attributes on the tag (excluding markdown) */
+  attributes: string;
+}
+
+/**
+ * Result of extracting markdown blocks
+ */
+interface ExtractResult {
+  /** Content with markdown blocks replaced by placeholders */
+  processedContent: string;
+  /** Extracted markdown blocks to be processed separately */
+  blocks: MarkdownBlock[];
+}
+
+/**
+ * Extract HTML blocks with markdown="1" attribute and replace them with placeholders.
+ * 
+ * This function scans the content for HTML tags with the markdown="1" attribute,
+ * which is a Kramdown feature that tells the parser to process the content inside
+ * the tag as markdown. The extracted blocks are replaced with unique placeholders
+ * that will be restored after markdown processing.
+ * 
+ * @param content The markdown content potentially containing HTML blocks
+ * @returns Object with processed content and extracted blocks
+ * 
+ * @example
+ * Input:
+ * <div markdown="1">
+ * # Heading
+ * </div>
+ * 
+ * Output processedContent:
+ * <!--JEKYLL_MARKDOWN_BLOCK_0-->
+ * 
+ * Output blocks:
+ * [{ tag: 'div', content: '# Heading\n', placeholder: '<!--JEKYLL_MARKDOWN_BLOCK_0-->', attributes: '' }]
+ */
+function extractMarkdownBlocks(content: string): ExtractResult {
+  const blocks: MarkdownBlock[] = [];
+  let blockIndex = 0;
+
+  // Pattern to match HTML tags with markdown="1" or markdown='1' attribute
+  // This uses a character-by-character parsing approach to avoid ReDoS vulnerabilities
+  let i = 0;
+  const result: string[] = [];
+  
+  while (i < content.length) {
+    const char = content.charAt(i);
+    
+    // Look for opening tag
+    if (char === '<' && i + 1 < content.length && /[a-zA-Z]/.test(content.charAt(i + 1))) {
+      const tagStart = i;
+      i++; // skip '<'
+      
+      // Extract tag name
+      let tagName = '';
+      while (i < content.length && /[a-zA-Z0-9]/.test(content.charAt(i))) {
+        tagName += content.charAt(i);
+        i++;
+      }
+      
+      if (!tagName) {
+        result.push(content.charAt(tagStart));
+        continue;
+      }
+      
+      // Skip whitespace
+      while (i < content.length && /\s/.test(content.charAt(i))) {
+        i++;
+      }
+      
+      // Parse attributes
+      let hasMarkdownAttr = false;
+      let otherAttrs = '';
+      
+      while (i < content.length && content.charAt(i) !== '>') {
+        // Check if this is the markdown attribute
+        if (content.slice(i, i + 8) === 'markdown') {
+          i += 8;
+          // Skip whitespace
+          while (i < content.length && /\s/.test(content.charAt(i))) {
+            i++;
+          }
+          if (i < content.length && content.charAt(i) === '=') {
+            i++;
+            // Skip whitespace
+            while (i < content.length && /\s/.test(content.charAt(i))) {
+              i++;
+            }
+            // Check for "1" or '1'
+            if (i < content.length && (content.charAt(i) === '"' || content.charAt(i) === "'")) {
+              const quote = content.charAt(i);
+              i++;
+              if (i < content.length && content.charAt(i) === '1') {
+                hasMarkdownAttr = true;
+                i++;
+                if (i < content.length && content.charAt(i) === quote) {
+                  i++;
+                  // Skip following whitespace
+                  while (i < content.length && /\s/.test(content.charAt(i))) {
+                    i++;
+                  }
+                }
+              }
+            }
+          }
+        } else {
+          // Parse other attributes
+          const attrStart = i;
+          // Skip attribute name
+          while (i < content.length && /[a-zA-Z0-9_:-]/.test(content.charAt(i))) {
+            i++;
+          }
+          // Skip whitespace
+          while (i < content.length && /\s/.test(content.charAt(i))) {
+            i++;
+          }
+          // Check for =
+          if (i < content.length && content.charAt(i) === '=') {
+            i++;
+            // Skip whitespace
+            while (i < content.length && /\s/.test(content.charAt(i))) {
+              i++;
+            }
+            // Parse value
+            if (i < content.length && (content.charAt(i) === '"' || content.charAt(i) === "'")) {
+              const quote = content.charAt(i);
+              i++;
+              while (i < content.length && content.charAt(i) !== quote) {
+                if (content.charAt(i) === '\\' && i + 1 < content.length) {
+                  i += 2; // skip escaped character
+                } else {
+                  i++;
+                }
+              }
+              if (i < content.length && content.charAt(i) === quote) {
+                i++;
+              }
+            }
+          }
+          // Skip whitespace
+          while (i < content.length && /\s/.test(content.charAt(i))) {
+            i++;
+          }
+          // Capture the attribute if it's not markdown
+          if (i > attrStart) {
+            otherAttrs += content.slice(attrStart, i);
+          }
+        }
+      }
+      
+      if (i >= content.length) {
+        // Unclosed tag, output as-is
+        result.push(content.slice(tagStart));
+        break;
+      }
+      
+      // Skip '>'
+      i++;
+      
+      // If this tag has markdown="1", extract its content
+      if (hasMarkdownAttr) {
+        // Find the closing tag
+        const closingTag = `</${tagName}>`;
+        const contentStart = i;
+        const closingIndex = content.indexOf(closingTag, i);
+        
+        if (closingIndex !== -1) {
+          // Extract the content between tags
+          const blockContent = content.slice(contentStart, closingIndex);
+          const placeholder = `<!--JEKYLL_MARKDOWN_BLOCK_${blockIndex}-->`;
+          
+          blocks.push({
+            tag: tagName,
+            content: blockContent,
+            placeholder,
+            attributes: otherAttrs.trim(),
+          });
+          
+          result.push(placeholder);
+          i = closingIndex + closingTag.length;
+          blockIndex++;
+          continue;
+        }
+      }
+      
+      // Not a markdown block, output the tag as-is
+      result.push(content.slice(tagStart, i));
+    } else {
+      result.push(char);
+      i++;
+    }
+  }
+  
+  const processedContent = result.join('');
+  
+  return { processedContent, blocks };
+}
+
+/**
+ * Restore processed markdown blocks into the HTML content.
+ * 
+ * This function replaces the placeholder comments with the actual HTML tags
+ * containing the processed markdown content.
+ * 
+ * @param html The HTML content with placeholders
+ * @param blocks The original extracted blocks
+ * @param processedBlocks The processed markdown content for each block
+ * @returns HTML with placeholders replaced by processed blocks
+ */
+function restoreMarkdownBlocks(
+  html: string,
+  blocks: MarkdownBlock[],
+  processedBlocks: string[]
+): string {
+  let result = html;
+  
+  for (let i = 0; i < blocks.length; i++) {
+    const block = blocks[i];
+    const processedContent = processedBlocks[i];
+    
+    // Guard against undefined values
+    if (!block || processedContent === undefined) {
+      continue;
+    }
+    
+    // Build the opening tag with attributes (excluding markdown="1")
+    let openTag = `<${block.tag}`;
+    if (block.attributes) {
+      openTag += ` ${block.attributes}`;
+    }
+    openTag += '>';
+    
+    // Build the closing tag
+    const closeTag = `</${block.tag}>`;
+    
+    // Replace the placeholder with the full tag and processed content
+    const replacement = openTag + processedContent + closeTag;
+    result = result.replace(block.placeholder, replacement);
+  }
+  
+  return result;
 }
 
 /**

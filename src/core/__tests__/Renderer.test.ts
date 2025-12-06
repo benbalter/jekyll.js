@@ -965,6 +965,48 @@ layout: default
       expect(result).toContain('<h1>Hello</h1>');
     });
 
+    it('should have access to layout front matter in templates', async () => {
+      // Create layout with front matter
+      writeFileSync(
+        join(testDir, '_layouts', 'default.html'),
+        `---
+hero: true
+custom_value: test123
+---
+<!DOCTYPE html>
+<html>
+<head><title>{{ page.title }}</title></head>
+<body>
+{% if layout.hero %}<div class="hero">Hero Image</div>{% endif %}
+<div class="custom">{{ layout.custom_value }}</div>
+{{ content }}
+</body>
+</html>`
+      );
+
+      // Create document
+      const docPath = join(testDir, 'test.md');
+      writeFileSync(
+        docPath,
+        `---
+title: Test Page
+layout: default
+---
+<p>Content here</p>`
+      );
+
+      site = new Site(testDir);
+      await site.read();
+
+      const doc = new Document(docPath, testDir, DocumentType.PAGE);
+      const renderer = new Renderer(site);
+      const result = await renderer.renderDocument(doc);
+
+      expect(result).toContain('<div class="hero">Hero Image</div>');
+      expect(result).toContain('<div class="custom">test123</div>');
+      expect(result).toContain('<p>Content here</p>');
+    });
+
     it('should have access to site data in templates', async () => {
       site = new Site(testDir, { title: 'My Site' });
       await site.read();

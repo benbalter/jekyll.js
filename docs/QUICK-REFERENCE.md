@@ -222,6 +222,26 @@ npm test
 npm run benchmark
 ```
 
+### Build System
+
+Jekyll.js uses **esbuild** for fast TypeScript bundling:
+
+- **Performance**: ~1.2s build time (vs ~10s+ with tsc alone)
+- **Tree shaking**: Automatically removes unused code
+- **Source maps**: For debugging bundled code
+- **Two outputs**:
+  - `dist/cli.js` - Executable CLI with shebang
+  - `dist/index.js` - Library entry point for npm
+- **External dependencies**: Native modules (sharp, chokidar, ws) remain external
+- **Type declarations**: Generated separately via TypeScript compiler
+
+The build process:
+1. Bundles all source files using esbuild
+2. Generates TypeScript declaration files (.d.ts)
+3. Copies theme files to dist directory
+
+For development, use `npm run dev` to automatically rebuild on file changes.
+
 ---
 
 ## 📝 Code Style

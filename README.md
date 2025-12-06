@@ -223,10 +223,22 @@ npm install
 
 ### Build
 
-Build the TypeScript source:
+Build the TypeScript source using esbuild:
 
 ```bash
 npm run build
+```
+
+The build process:
+- Bundles TypeScript files into optimized JavaScript
+- Generates type declarations (.d.ts files)
+- Copies theme files to dist directory
+- Creates two bundles: CLI executable and library entry point
+
+For development with automatic rebuilding on file changes:
+
+```bash
+npm run dev
 ```
 
 ### Test

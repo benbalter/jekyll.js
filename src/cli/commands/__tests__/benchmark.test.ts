@@ -32,11 +32,12 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
    * - Jest's memory overhead
    * - TypeScript/ts-jest compilation
    * - Varying CI environment base memory usage
+   * - Expanded fixture with 52 posts
    *
    * The max heap threshold can be configured via JEKYLLJS_BENCHMARK_MAX_HEAP_MB
-   * environment variable (defaults to 1024MB for CI compatibility)
+   * environment variable (defaults to 1536MB for CI compatibility with expanded fixture)
    */
-  const DEFAULT_MAX_HEAP_MB = 1024;
+  const DEFAULT_MAX_HEAP_MB = 1536;
   const MAX_EXPECTED_HEAP_BYTES =
     parseInt(process.env.JEKYLLJS_BENCHMARK_MAX_HEAP_MB || `${DEFAULT_MAX_HEAP_MB}`, 10) *
     1024 *
@@ -731,7 +732,7 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
     expect(existsSync(destDirTs)).toBe(true);
     expect(existsSync(join(destDirTs, 'index.html'))).toBe(true);
 
-    // Memory should stay within reasonable bounds for a small site
+    // Memory should stay within reasonable bounds for the expanded fixture (52 posts)
     expect(memoryResults.peakHeapUsed).toBeLessThan(MAX_EXPECTED_HEAP_BYTES);
   }, 30000);
 
@@ -826,12 +827,13 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
    *
    * ### Root Cause Analysis
    *
-   * The discrepancy stems from two factors:
+   * The discrepancy stemmed from the original fixture being too small. Now:
    *
-   * **1. Site Size in Benchmarks vs Real-World**
+   * **1. Expanded Benchmark Fixture**
    *
-   * - Benchmark fixture: 8 markdown files, 157 total lines, 2 posts
-   * - Real-world site (benbalter.github.com): 150+ posts, complex layouts
+   * - Benchmark fixture: 52 posts with varied content, tables, code blocks
+   * - This crosses the performance crossover point (~20-30 posts)
+   * - Now representative of real-world sites
    *
    * **2. Initialization Overhead vs Per-Document Cost**
    *
@@ -901,7 +903,7 @@ describe('Benchmark: Jekyll TS vs Ruby Jekyll', () => {
 
     // Print analysis
     process.stdout.write('\n');
-    process.stdout.write('  Cost Breakdown (small site):\n');
+    process.stdout.write('  Cost Breakdown:\n');
     process.stdout.write(`  ${SEPARATOR}\n`);
     printStat(
       'Fixed costs:',

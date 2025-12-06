@@ -437,6 +437,7 @@ export class ThemeManager {
 
   /**
    * Find a file with common Jekyll extensions
+   * Uses markdown_ext from config to support custom markdown extensions
    * @param dir Directory to search
    * @param basename File basename (without extension)
    * @returns Full path to file or null if not found
@@ -446,8 +447,14 @@ export class ThemeManager {
       return null;
     }
 
-    // Common Jekyll file extensions
-    const extensions = ['', '.html', '.md', '.markdown'];
+    // Get markdown extensions from config (default: 'markdown,mkdown,mkdn,mkd,md')
+    const markdownExtConfig = this.config.markdown_ext || 'markdown,mkdown,mkdn,mkd,md';
+    const markdownExtensions = markdownExtConfig
+      .split(',')
+      .map((e) => '.' + e.trim().toLowerCase());
+
+    // Common Jekyll file extensions: no extension, .html, and markdown extensions
+    const extensions = ['', '.html', ...markdownExtensions];
 
     for (const ext of extensions) {
       const filePath = join(dir, fileBasename + ext);

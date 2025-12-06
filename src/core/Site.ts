@@ -651,10 +651,23 @@ export class Site {
 
   /**
    * Check if a file is markdown or HTML
+   * Uses markdown_ext from config to support custom markdown extensions
    */
   private isMarkdownOrHtml(path: string): boolean {
     const ext = extname(path).toLowerCase();
-    return ['.md', '.markdown', '.html', '.htm'].includes(ext);
+
+    // HTML extensions are always supported
+    if (['.html', '.htm'].includes(ext)) {
+      return true;
+    }
+
+    // Get markdown extensions from config (default: 'markdown,mkdown,mkdn,mkd,md')
+    const markdownExtConfig = this.config.markdown_ext || 'markdown,mkdown,mkdn,mkd,md';
+    const markdownExtensions = markdownExtConfig
+      .split(',')
+      .map((e) => '.' + e.trim().toLowerCase());
+
+    return markdownExtensions.includes(ext);
   }
 
   /**

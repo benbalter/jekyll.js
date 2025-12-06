@@ -1426,9 +1426,13 @@ export class Renderer {
       content,
     });
 
-    // Helper to check if document is markdown
+    // Helper to check if document is markdown using config's markdown_ext
+    const markdownExtConfig = this.site.config.markdown_ext || 'markdown,mkdown,mkdn,mkd,md';
+    const markdownExtensions = markdownExtConfig
+      .split(',')
+      .map((e) => '.' + e.trim().toLowerCase());
     const isMarkdownDocument = (ext: string): boolean =>
-      ['.md', '.markdown'].includes(ext.toLowerCase());
+      markdownExtensions.includes(ext.toLowerCase());
 
     // Check if there's a custom converter plugin for this document type
     const converter = PluginRegistry.findConverter(document.extname.toLowerCase());

@@ -71,7 +71,7 @@ Quick reference for feature implementation status in jekyll.js compared to Jekyl
 | Verbose Output | ✅ | v0.1.0 | `--verbose` flag |
 | Custom Source/Dest | ✅ | v0.1.0 | `-s`, `-d` options |
 | Configuration File | ✅ | v0.1.0 | `--config` option |
-| Multiple Configs | 🔴 | v0.4.0 | Comma-separated configs |
+| Multiple Configs | ✅ | v0.1.0 | Comma-separated configs supported |
 
 ---
 
@@ -147,9 +147,9 @@ Quick reference for feature implementation status in jekyll.js compared to Jekyl
 | `paginate` | ✅ | v0.1.0 | Pagination settings |
 | `paginate_path` | ✅ | v0.1.0 | Pagination URL pattern |
 | `theme` | ✅ | v0.1.0 | Theme selection |
-| `timezone` | 🔴 | v0.4.0 | Date processing |
-| `encoding` | 🔴 | v0.4.0 | File encoding |
-| `markdown_ext` | 🔴 | v0.4.0 | Custom extensions |
+| `timezone` | ✅ | v0.1.0 | Date processing (validated) |
+| `encoding` | ✅ | v0.1.0 | File encoding for source files |
+| `markdown_ext` | ✅ | v0.1.0 | Custom markdown extensions |
 | `liquid.strict_filters` | ✅ | v0.1.0 | Strict filter mode |
 | `liquid.strict_variables` | ✅ | v0.1.0 | Strict variable mode |
 | `sass.sass_dir` | ✅ | v0.1.0 | SASS directory |

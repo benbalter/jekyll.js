@@ -6,7 +6,12 @@ import { SassProcessor } from './SassProcessor';
 import { logger } from '../utils/logger';
 import { BuildError, FileSystemError, JekyllError } from '../utils/errors';
 import { PerformanceTimer, BuildTimings } from '../utils/timer';
-import { isPathWithinBase, sanitizePermalink, shouldExcludePath } from '../utils/path-security';
+import {
+  isPathWithinBase,
+  sanitizePermalink,
+  shouldExcludePath,
+  normalizePathSeparators,
+} from '../utils/path-security';
 import {
   mkdirSync,
   writeFileSync,
@@ -16,7 +21,7 @@ import {
   copyFileSync,
   readFileSync,
 } from 'fs';
-import { join, dirname, extname, basename, relative, sep, resolve, normalize } from 'path';
+import { join, dirname, extname, basename, relative, resolve, normalize } from 'path';
 import { rmSync } from 'fs';
 import { registerPlugins, PluginRegistry, Hooks } from '../plugins';
 import { CacheManager } from './CacheManager';
@@ -31,15 +36,6 @@ import {
   isResourceHintsEnabled,
   getResourceHintsOptions,
 } from '../plugins/resource-hints';
-
-/**
- * Normalize path separators to forward slashes for consistent comparison
- * @param path Path to normalize
- * @returns Path with forward slashes
- */
-function normalizePath(path: string): string {
-  return path.split(sep).join('/');
-}
 
 /**
  * Check if a path matches or is inside a keep pattern
@@ -416,14 +412,14 @@ export class Builder {
     }
 
     // Normalize keep patterns to use forward slashes
-    const normalizedKeepFiles = keepFiles.map(normalizePath);
+    const normalizedKeepFiles = keepFiles.map(normalizePathSeparators);
 
     const entries = readdirSync(dir);
 
     for (const entry of entries) {
       const fullPath = join(dir, entry);
       const relPath = relativePath ? join(relativePath, entry) : entry;
-      const normalizedRelPath = normalizePath(relPath);
+      const normalizedRelPath = normalizePathSeparators(relPath);
 
       // Check if this path should be kept
       const shouldKeep = normalizedKeepFiles.some((keepPattern) => {

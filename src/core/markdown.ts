@@ -9,6 +9,8 @@
  * - Processor freezing: Processors are frozen after configuration for optimal performance
  */
 
+import { escapeHtmlAttribute } from '../utils/html';
+
 /**
  * Options for markdown processing
  */
@@ -553,20 +555,6 @@ function applyAttributesToTag(
 
   newTag += '>';
   return newTag;
-}
-
-/**
- * Escape a string for use in an HTML attribute value.
- * @param str The string to escape
- * @returns The escaped string safe for use in attribute values
- */
-function escapeHtmlAttribute(str: string): string {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
 }
 
 /**

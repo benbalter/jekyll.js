@@ -147,6 +147,25 @@ describe('SeoTagPlugin', () => {
     expect(result).toContain('<meta name="twitter:card" content="summary_large_image">');
   });
 
+  it('should handle images without leading slash', async () => {
+    const template = '{% seo %}';
+    const result = await renderer.render(template, {
+      page: {
+        title: 'Image Test',
+        description: 'Image description',
+        url: '/image-test/',
+        image: 'assets/images/og/posts/test-image.png',
+      },
+    });
+
+    expect(result).toContain(
+      '<meta property="og:image" content="https://example.com/assets/images/og/posts/test-image.png">'
+    );
+    expect(result).toContain(
+      '<meta name="twitter:image" content="https://example.com/assets/images/og/posts/test-image.png">'
+    );
+  });
+
   it('should escape HTML in metadata', async () => {
     const template = '{% seo %}';
     const result = await renderer.render(template, {

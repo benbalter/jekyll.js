@@ -3,7 +3,7 @@ import { readdir, stat, readFile } from 'fs/promises';
 import { join, resolve, extname, dirname, basename, relative } from 'path';
 import { Document, DocumentType } from './Document';
 import { StaticFile } from './StaticFile';
-import { JekyllConfig, loadConfig } from '../config';
+import { JekyllConfig, loadConfig, normalizeCollections } from '../config';
 import { ThemeManager } from './ThemeManager';
 import { logger } from '../utils/logger';
 import { FileSystemError } from '../utils/errors';
@@ -122,6 +122,8 @@ export class Site {
       destination: resolvedDest,
       exclude: mergedExcludes,
       include: config.include || [],
+      // Normalize collections - convert array format to object format if needed
+      collections: normalizeCollections(config.collections),
     };
     this.destination = resolve(this.config.destination as string);
 

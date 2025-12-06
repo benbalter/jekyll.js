@@ -57,7 +57,11 @@ export const JekyllConfigSchema = z
     includes_dir: z.string().optional(),
 
     // Collections
-    collections: z.record(z.string(), z.any()).optional(),
+    // Can be either an object with collection names as keys and settings as values:
+    //   collections: { recipes: { output: true }, authors: { output: false } }
+    // Or an array of collection names (with default settings):
+    //   collections: ["recipes", "authors"]
+    collections: z.union([z.record(z.string(), z.any()), z.array(z.string())]).optional(),
 
     // Content rendering
     markdown: z.string().optional(),

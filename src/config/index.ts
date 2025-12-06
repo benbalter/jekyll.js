@@ -14,6 +14,7 @@ export {
   applyFrontMatterDefaults,
   expandEnvVariables,
   expandConfigEnvVariables,
+  normalizeCollections,
 } from './Config';
 
 // Export modern validation with Zod

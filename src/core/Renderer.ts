@@ -181,12 +181,13 @@ export class Renderer {
   private computeRelatedPosts(currentDocument: Document): any[] {
     const allPosts = this.site.posts.map((p) => p.toJSON());
     
-    // Filter out the current post if it's a post
+    // Filter out the current post by comparing relative paths
+    // Note: post.path from toJSON() equals currentDocument.relativePath (both are relative to source)
     const filteredPosts = allPosts.filter((post) => {
       return post.path !== currentDocument.relativePath;
     });
     
-    // Return up to 10 most recent posts (posts are already sorted newest first)
+    // Return up to 10 most recent posts (posts are already sorted newest first in Site.posts)
     return filteredPosts.slice(0, 10);
   }
 

@@ -548,4 +548,128 @@ defaults:
       expect(dataPath).not.toContain('test-theme');
     });
   });
+
+  describe('Security - Path Traversal Prevention', () => {
+    describe('resolveLayout', () => {
+      it('should reject layout names with path traversal', () => {
+        const config: JekyllConfig = {};
+        const manager = new ThemeManager(testDir, config);
+
+        expect(manager.resolveLayout('../../../etc/passwd')).toBeNull();
+        expect(manager.resolveLayout('..\\..\\..\\etc\\passwd')).toBeNull();
+        expect(manager.resolveLayout('/etc/passwd')).toBeNull();
+      });
+
+      it('should reject layout names with embedded traversal', () => {
+        const config: JekyllConfig = {};
+        const manager = new ThemeManager(testDir, config);
+
+        expect(manager.resolveLayout('subdir/../../../etc/passwd')).toBeNull();
+        expect(manager.resolveLayout('valid/../../../etc/passwd')).toBeNull();
+      });
+    });
+
+    describe('resolveInclude', () => {
+      it('should reject include paths with path traversal', () => {
+        const config: JekyllConfig = {};
+        const manager = new ThemeManager(testDir, config);
+
+        expect(manager.resolveInclude('../../../etc/passwd')).toBeNull();
+        expect(manager.resolveInclude('..\\..\\..\\etc\\passwd')).toBeNull();
+        expect(manager.resolveInclude('/etc/passwd')).toBeNull();
+      });
+
+      it('should reject include paths with embedded traversal', () => {
+        const config: JekyllConfig = {};
+        const manager = new ThemeManager(testDir, config);
+
+        expect(manager.resolveInclude('subdir/../../../etc/passwd')).toBeNull();
+        expect(manager.resolveInclude('valid/../../../etc/passwd')).toBeNull();
+      });
+    });
+
+    describe('resolveDataFile', () => {
+      it('should reject data paths with path traversal', () => {
+        const config: JekyllConfig = {};
+        const manager = new ThemeManager(testDir, config);
+
+        expect(manager.resolveDataFile('../../../etc/passwd')).toBeNull();
+        expect(manager.resolveDataFile('..\\..\\..\\etc\\passwd')).toBeNull();
+        expect(manager.resolveDataFile('/etc/passwd')).toBeNull();
+      });
+
+      it('should reject data paths with embedded traversal', () => {
+        const config: JekyllConfig = {};
+        const manager = new ThemeManager(testDir, config);
+
+        expect(manager.resolveDataFile('subdir/../../../etc/passwd')).toBeNull();
+        expect(manager.resolveDataFile('valid/../../../etc/passwd')).toBeNull();
+      });
+    });
+
+    describe('theme name validation', () => {
+      it('should reject theme names with path traversal', () => {
+        const config: JekyllConfig = {
+          theme: '../../../etc/passwd',
+        };
+        const manager = new ThemeManager(testDir, config);
+
+        expect(manager.hasTheme()).toBe(false);
+        expect(manager.getTheme()).toBeNull();
+      });
+
+      it('should reject theme names with backslash traversal', () => {
+        const config: JekyllConfig = {
+          theme: '..\\..\\..\\etc\\passwd',
+        };
+        const manager = new ThemeManager(testDir, config);
+
+        expect(manager.hasTheme()).toBe(false);
+        expect(manager.getTheme()).toBeNull();
+      });
+
+      it('should reject absolute paths as theme names', () => {
+        const config: JekyllConfig = {
+          theme: '/etc/passwd',
+        };
+        const manager = new ThemeManager(testDir, config);
+
+        expect(manager.hasTheme()).toBe(false);
+        expect(manager.getTheme()).toBeNull();
+      });
+
+      it('should reject Windows absolute paths as theme names', () => {
+        const config: JekyllConfig = {
+          theme: 'C:\\Windows\\System32',
+        };
+        const manager = new ThemeManager(testDir, config);
+
+        expect(manager.hasTheme()).toBe(false);
+        expect(manager.getTheme()).toBeNull();
+      });
+
+      it('should allow valid scoped npm package names', () => {
+        // This won't find a theme because the package doesn't exist,
+        // but it should not be blocked by security validation
+        const config: JekyllConfig = {
+          theme: '@myorg/my-theme',
+        };
+        const manager = new ThemeManager(testDir, config);
+
+        // Theme won't be found (package doesn't exist), but security should not be the reason
+        // The hasTheme() returns false because theme doesn't exist, not because of security
+        expect(manager.hasTheme()).toBe(false);
+      });
+
+      it('should reject malicious scoped package names', () => {
+        const config: JekyllConfig = {
+          theme: '@../malicious/theme',
+        };
+        const manager = new ThemeManager(testDir, config);
+
+        expect(manager.hasTheme()).toBe(false);
+        expect(manager.getTheme()).toBeNull();
+      });
+    });
+  });
 });

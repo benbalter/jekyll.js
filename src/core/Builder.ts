@@ -22,7 +22,7 @@ import {
   readFileSync,
 } from 'fs';
 import { writeFile, mkdir } from 'fs/promises';
-import { join, dirname, extname, basename, relative, sep, resolve, normalize } from 'path';
+import { join, dirname, extname, basename, relative, resolve, normalize } from 'path';
 import { rmSync } from 'fs';
 import { registerPlugins, PluginRegistry, Hooks } from '../plugins';
 import { CacheManager } from './CacheManager';

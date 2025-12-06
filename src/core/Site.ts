@@ -602,7 +602,7 @@ export class Site {
   }
 
   /**
-   * Parse a data file (YAML, JSON, etc.) - async version
+   * Parse a data file (YAML, JSON, CSV, or TSV)
    * @param filePath Path to the data file
    * @returns Parsed data or null if file cannot be parsed
    */
@@ -618,7 +618,10 @@ export class Site {
           return yaml.load(content);
         case '.json':
           return JSON.parse(content);
-        // CSV and TSV can be added in the future
+        case '.csv':
+          return this.parseCsv(content);
+        case '.tsv':
+          return this.parseTsv(content);
         default:
           return null;
       }
@@ -629,6 +632,161 @@ export class Site {
       );
       return null;
     }
+  }
+
+  /**
+   * Parse CSV content into an array of objects
+   * The first row is treated as headers (column names)
+   * @param content CSV file content
+   * @returns Array of objects with header names as keys
+   */
+  private parseCsv(content: string): Record<string, string>[] {
+    return this.parseDelimitedContent(content, ',');
+  }
+
+  /**
+   * Parse TSV content into an array of objects
+   * The first row is treated as headers (column names)
+   * @param content TSV file content
+   * @returns Array of objects with header names as keys
+   */
+  private parseTsv(content: string): Record<string, string>[] {
+    return this.parseDelimitedContent(content, '\t');
+  }
+
+  /**
+   * Parse delimited content (CSV or TSV) into an array of objects
+   * Handles quoted fields with embedded delimiters, newlines, and escape sequences
+   * @param content File content
+   * @param delimiter Character used to separate fields
+   * @returns Array of objects with header names as keys
+   */
+  private parseDelimitedContent(content: string, delimiter: string): Record<string, string>[] {
+    const rows = this.parseDelimitedRows(content, delimiter);
+
+    if (rows.length === 0) {
+      return [];
+    }
+
+    // First row is the header - we know it exists since rows.length > 0
+    const headers = rows[0] as string[];
+    if (headers.length === 0) {
+      return [];
+    }
+
+    // Generate placeholder names for empty headers to avoid key collisions
+    const normalizedHeaders = headers.map((header, index) =>
+      header === '' ? `column_${index + 1}` : header
+    );
+
+    const data: Record<string, string>[] = [];
+
+    // Process each data row
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i] as string[];
+      const record: Record<string, string> = {};
+
+      for (let j = 0; j < normalizedHeaders.length; j++) {
+        const key = normalizedHeaders[j] as string;
+        // Use empty string if value is missing
+        const value = j < row.length ? (row[j] as string) : '';
+        record[key] = value;
+      }
+
+      data.push(record);
+    }
+
+    return data;
+  }
+
+  /**
+   * Parse delimited content into rows of fields
+   * Handles RFC 4180 compliant CSV/TSV:
+   * - Quoted fields (double quotes)
+   * - Escaped quotes within quoted fields (doubled quotes)
+   * - Newlines within quoted fields
+   * @param content File content
+   * @param delimiter Character used to separate fields
+   * @returns Array of rows, each row is an array of field values
+   */
+  private parseDelimitedRows(content: string, delimiter: string): string[][] {
+    const rows: string[][] = [];
+    let currentRow: string[] = [];
+    let currentField = '';
+    let inQuotes = false;
+    let i = 0;
+
+    while (i < content.length) {
+      const char = content[i];
+
+      if (inQuotes) {
+        if (char === '"') {
+          // Check for escaped quote (doubled)
+          if (i + 1 < content.length && content[i + 1] === '"') {
+            currentField += '"';
+            i += 2;
+            continue;
+          }
+          // End of quoted field
+          inQuotes = false;
+          i++;
+          continue;
+        }
+        // Add character to field (including newlines within quotes)
+        currentField += char;
+        i++;
+      } else {
+        if (char === '"' && currentField === '') {
+          // Start of quoted field (only if at field start per RFC 4180)
+          inQuotes = true;
+          i++;
+        } else if (char === '"') {
+          // Quote in middle of unquoted field: treat as literal
+          currentField += '"';
+          i++;
+        } else if (char === delimiter) {
+          // End of field - preserve whitespace per Jekyll.rb behavior
+          currentRow.push(currentField);
+          currentField = '';
+          i++;
+        } else if (char === '\r') {
+          // Handle CRLF or CR line endings
+          currentRow.push(currentField);
+          currentField = '';
+          if (currentRow.length > 0 && currentRow.some((f) => f !== '')) {
+            rows.push(currentRow);
+          }
+          currentRow = [];
+          i++;
+          // Skip LF if CRLF
+          if (i < content.length && content[i] === '\n') {
+            i++;
+          }
+        } else if (char === '\n') {
+          // End of row (LF line ending)
+          currentRow.push(currentField);
+          currentField = '';
+          if (currentRow.length > 0 && currentRow.some((f) => f !== '')) {
+            rows.push(currentRow);
+          }
+          currentRow = [];
+          i++;
+        } else {
+          currentField += char;
+          i++;
+        }
+      }
+    }
+
+    // Handle last field and row
+    if (currentField !== '' || currentRow.length > 0) {
+      currentRow.push(currentField);
+      if (currentRow.some((f) => f !== '')) {
+        rows.push(currentRow);
+      }
+    }
+
+    return rows;
   }
 
   /**

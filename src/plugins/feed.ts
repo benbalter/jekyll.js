@@ -14,9 +14,11 @@ import { Plugin, GeneratorPlugin, GeneratorResult, GeneratorPriority } from './t
 import { Renderer } from '../core/Renderer';
 import { Site } from '../core/Site';
 import { Document } from '../core/Document';
-import { escapeHtml } from '../utils/html';
-import { processMarkdown } from '../core/markdown';
-import striptags from 'striptags';
+import {
+  escapeHtml,
+  processTextWithMarkdown,
+  processTextWithMarkdownToHtml,
+} from '../utils';
 
 /**
  * Get feed URL configuration from site config
@@ -87,15 +89,7 @@ export class FeedPlugin implements Plugin, GeneratorPlugin {
     const title = config.title || 'Feed';
     const rawDescription = config.description || '';
     // Process site description with markdown and strip HTML for plain text subtitle
-    let description = '';
-    if (rawDescription) {
-      try {
-        const html = await processMarkdown(String(rawDescription));
-        description = striptags(html).trim();
-      } catch (_error) {
-        description = String(rawDescription);
-      }
-    }
+    const description = await processTextWithMarkdown(rawDescription);
     const author = config.author || {};
     const authorName = typeof author === 'string' ? author : author.name || '';
     const authorEmail = typeof author === 'object' ? author.email || '' : '';
@@ -169,17 +163,8 @@ export class FeedPlugin implements Plugin, GeneratorPlugin {
 
     // Get post excerpt or description
     const rawExcerpt = post.data.excerpt || post.data.description || '';
-    // Process markdown in excerpt/description for feed content
-    let excerpt = '';
-    if (rawExcerpt) {
-      try {
-        // Convert markdown to HTML for feed content
-        excerpt = await processMarkdown(String(rawExcerpt));
-      } catch (_error) {
-        // If markdown processing fails, use raw excerpt
-        excerpt = String(rawExcerpt);
-      }
-    }
+    // Process markdown in excerpt/description for feed content (preserves HTML)
+    const excerpt = await processTextWithMarkdownToHtml(rawExcerpt);
 
     // Handle last_modified_at for updated date
     // In Atom feeds, 'date' represents when the entry was last updated

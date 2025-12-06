@@ -10,9 +10,7 @@
 import { Plugin } from './types';
 import { Renderer } from '../core/Renderer';
 import { Site } from '../core/Site';
-import { escapeHtml, safeJsonStringify } from '../utils/html';
-import { processMarkdown } from '../core/markdown';
-import striptags from 'striptags';
+import { escapeHtml, safeJsonStringify, processTextWithMarkdown } from '../utils';
 
 /**
  * SEO Tag Plugin implementation
@@ -32,23 +30,6 @@ export class SeoTagPlugin implements Plugin {
         return await generateSeoTags(page, site);
       },
     });
-  }
-}
-
-/**
- * Process text that may contain markdown by converting to HTML and stripping tags.
- * This matches Jekyll's behavior of processing description fields with markdownify | strip_html.
- */
-async function processTextWithMarkdown(text: string): Promise<string> {
-  if (!text) return '';
-  try {
-    // Convert markdown to HTML
-    const html = await processMarkdown(text);
-    // Strip HTML tags to get plain text for meta tags
-    return striptags(html).trim();
-  } catch (_error) {
-    // If markdown processing fails, return the original text
-    return text;
   }
 }
 

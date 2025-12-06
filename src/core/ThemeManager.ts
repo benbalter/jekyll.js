@@ -21,6 +21,7 @@ import { join, resolve, dirname, basename } from 'path';
 import yaml from 'js-yaml';
 import { JekyllConfig } from '../config';
 import { logger } from '../utils/logger';
+import { normalizePathSeparators } from '../utils/path-security';
 
 /**
  * Theme metadata from package.json
@@ -547,15 +548,6 @@ export class ThemeManager {
   }
 
   /**
-   * Normalize path separators to forward slashes for cross-platform consistency
-   * @param path Path to normalize
-   * @returns Path with forward slashes
-   */
-  private normalizePath(path: string): string {
-    return path.replace(/\\/g, '/');
-  }
-
-  /**
    * Recursively collect site files into a Set for efficient lookup
    * @param dir Directory to scan
    * @param relativeBase Relative base path
@@ -572,7 +564,7 @@ export class ThemeManager {
 
     for (const entry of entries) {
       const fullPath = join(dir, entry);
-      const relativePath = this.normalizePath(join(relativeBase, entry));
+      const relativePath = normalizePathSeparators(join(relativeBase, entry));
 
       const stats = statSync(fullPath);
 
@@ -612,7 +604,7 @@ export class ThemeManager {
     for (const entry of entries) {
       const fullPath = join(dir, entry);
       // Normalize path for consistent cross-platform comparison
-      const relativePath = this.normalizePath(join(relativeBase, entry));
+      const relativePath = normalizePathSeparators(join(relativeBase, entry));
 
       const stats = statSync(fullPath);
 

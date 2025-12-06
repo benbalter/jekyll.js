@@ -6,6 +6,7 @@ import { logger } from '../utils/logger';
 import { TemplateError, parseErrorLocation } from '../utils/errors';
 import { processMarkdown, initMarkdownProcessor, MarkdownOptions } from './markdown';
 import { escapeHtml } from '../utils/html';
+import { normalizePathSeparators } from '../utils/path-security';
 import slugifyLib from 'slugify';
 import { format, parseISO, formatISO, formatRFC7231, isValid } from 'date-fns';
 import strftime from 'strftime';
@@ -1016,13 +1017,14 @@ export class Renderer {
         }
 
         // Normalize path separators for comparison
-        const normalizedPath = path.replace(/\\/g, '/');
+        const normalizedPath = normalizePathSeparators(path);
 
         // Search in pages
         if (site.pages) {
           for (const page of site.pages) {
-            const pagePath =
-              page.relativePath?.replace(/\\/g, '/') || page.path?.replace(/\\/g, '/');
+            const pagePath = normalizePathSeparators(
+              page.relativePath || page.path || ''
+            );
             if (pagePath === normalizedPath) {
               if (page.url) {
                 return page.url;
@@ -1034,8 +1036,9 @@ export class Renderer {
         // Search in posts
         if (site.posts) {
           for (const post of site.posts) {
-            const postPath =
-              post.relativePath?.replace(/\\/g, '/') || post.path?.replace(/\\/g, '/');
+            const postPath = normalizePathSeparators(
+              post.relativePath || post.path || ''
+            );
             // Posts are typically in _posts/ directory
             if (postPath === normalizedPath || `_posts/${postPath}` === normalizedPath) {
               if (post.url) {
@@ -1054,8 +1057,9 @@ export class Renderer {
           for (const [collectionName, docs] of Object.entries(collections)) {
             if (Array.isArray(docs)) {
               for (const doc of docs) {
-                const docPath =
-                  doc.relativePath?.replace(/\\/g, '/') || doc.path?.replace(/\\/g, '/');
+                const docPath = normalizePathSeparators(
+                  doc.relativePath || doc.path || ''
+                );
                 if (
                   docPath === normalizedPath ||
                   `_${collectionName}/${docPath}` === normalizedPath
@@ -1075,7 +1079,9 @@ export class Renderer {
             // Static files may have different path structures:
             // - Original StaticFile object: has relativePath property
             // - Serialized JSON (from toJSON): has 'path' property which is the URL (e.g., "/assets/style.css")
-            let filePath = staticFile.relativePath?.replace(/\\/g, '/');
+            let filePath = staticFile.relativePath
+              ? normalizePathSeparators(staticFile.relativePath)
+              : '';
 
             // If relativePath not available, reconstruct from URL
             // In serialized JSON, staticFile.path is the URL, not a file path
@@ -1123,7 +1129,7 @@ export class Renderer {
         }
 
         // Normalize path separators
-        const normalizedIdentifier = postIdentifier.replace(/\\/g, '/');
+        const normalizedIdentifier = normalizePathSeparators(postIdentifier);
 
         // Check if identifier includes a subdirectory
         const hasSubdir = normalizedIdentifier.includes('/');
@@ -1136,8 +1142,9 @@ export class Renderer {
         // Search for matching post
         for (const post of site.posts) {
           // Get the basename without extension from the post's path
-          const postPath =
-            post.relativePath?.replace(/\\/g, '/') || post.path?.replace(/\\/g, '/') || '';
+          const postPath = normalizePathSeparators(
+            post.relativePath || post.path || ''
+          );
 
           // Remove _posts/ prefix if present
           const normalizedPostPath = postPath.replace(/^_posts\//, '');

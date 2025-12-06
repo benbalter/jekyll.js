@@ -9,7 +9,7 @@
  * - Processor freezing: Processors are frozen after configuration for optimal performance
  */
 
-import { escape as escapeHtml } from 'html-escaper';
+import { escape as escapeHtml, unescape as unescapeHtml } from 'html-escaper';
 import { smartypantsu } from 'smartypants';
 
 /**
@@ -26,6 +26,13 @@ export interface MarkdownOptions {
         repository?: string;
         /** Wrap mentions in strong tags (default: true in remark-github) */
         mentionStrong?: boolean;
+      };
+  /** Enable syntax highlighting for code blocks */
+  syntaxHighlighting?:
+    | boolean
+    | {
+        /** Theme to use for highlighting (default: 'github-light') */
+        theme?: string;
       };
   /**
    * Enable smart typography (converts ASCII quotes, dashes, and ellipses to Unicode characters).
@@ -268,6 +275,15 @@ export async function processMarkdown(
   // This supports syntax like {: .class #id attr="value" }
   html = processKramdownAttributes(html);
 
+  // Apply syntax highlighting to code blocks if enabled
+  if (options.syntaxHighlighting) {
+    const theme =
+      typeof options.syntaxHighlighting === 'object'
+        ? options.syntaxHighlighting.theme || 'github-light'
+        : 'github-light';
+    html = await applySyntaxHighlighting(html, theme);
+  }
+
   // Apply smart typography (quotes, dashes, ellipses) if enabled
   // Default to true to match Jekyll/Kramdown behavior
   if (options.smartQuotes !== false) {
@@ -382,6 +398,15 @@ const KRAMDOWN_STANDALONE_PATTERN = new RegExp(
   `<p>\\{:\\s*[^}]{1,${MAX_KRAMDOWN_ATTR_LENGTH}}\\s*\\}<\\/p>\\s*\\n?`,
   'gi'
 );
+
+/**
+ * Pattern to match code blocks in HTML output.
+ * Matches: <pre><code class="language-xxx">...</code></pre>
+ * Also matches without the language class: <pre><code>...</code></pre>
+ * Exported for use in tests.
+ */
+export const CODE_BLOCK_PATTERN =
+  /<pre><code(?:\s+class="language-([^"]*)")?>([\s\S]*?)<\/code><\/pre>/gi;
 
 // Dangerous event handler attributes that should be blocked to prevent XSS
 const DANGEROUS_ATTRS = new Set([
@@ -615,6 +640,58 @@ function applyAttributesToTag(
 
   newTag += '>';
   return newTag;
+}
+
+/**
+ * Apply syntax highlighting to code blocks in HTML.
+ * This function finds <pre><code> blocks and applies Shiki syntax highlighting.
+ *
+ * @param html The HTML content to process
+ * @param theme The theme to use for syntax highlighting
+ * @returns HTML with syntax highlighted code blocks
+ */
+async function applySyntaxHighlighting(html: string, theme: string): Promise<string> {
+  // Dynamically import the syntax highlighting module to avoid ESM issues
+  const { highlightCode } = await import('../plugins/syntax-highlighting');
+
+  // Reset lastIndex since we're reusing the global pattern
+  CODE_BLOCK_PATTERN.lastIndex = 0;
+
+  // Collect all matches and their replacements
+  const matches: Array<{ match: string; index: number; replacement: Promise<string> }> = [];
+  let match: RegExpExecArray | null;
+
+  while ((match = CODE_BLOCK_PATTERN.exec(html)) !== null) {
+    const fullMatch = match[0];
+    const language = match[1] || 'text';
+    const code = match[2] || '';
+
+    // Decode HTML entities in the code content using html-escaper
+    const decodedCode = unescapeHtml(code);
+
+    matches.push({
+      match: fullMatch,
+      index: match.index,
+      replacement: highlightCode(decodedCode, language, { theme }),
+    });
+  }
+
+  // If no code blocks found, return original HTML
+  if (matches.length === 0) {
+    return html;
+  }
+
+  // Wait for all highlighting to complete
+  const replacements = await Promise.all(matches.map((m) => m.replacement));
+
+  // Replace code blocks from end to start to maintain correct indices
+  let result = html;
+  for (let i = matches.length - 1; i >= 0; i--) {
+    const m = matches[i]!;
+    result = result.slice(0, m.index) + replacements[i] + result.slice(m.index + m.match.length);
+  }
+
+  return result;
 }
 
 /**

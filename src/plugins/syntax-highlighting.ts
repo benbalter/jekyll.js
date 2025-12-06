@@ -23,7 +23,7 @@ import { escapeHtml } from '../utils/html';
  */
 export interface SyntaxHighlightingOptions {
   /** Theme to use for highlighting (default: 'github-light') */
-  theme?: BundledTheme;
+  theme?: BundledTheme | string;
 
   /** Additional themes to load */
   themes?: BundledTheme[];
@@ -111,11 +111,26 @@ export async function highlightCode(
     const highlighter = await getOrInitHighlighter(options);
     const theme = options.theme || 'github-light';
 
+    // Normalize language name (handle common aliases)
+    const normalizedLang = normalizeLanguage(language);
+
     // Try to highlight with the specified language
     try {
+      // Load the language if not already loaded
+      const loadedLangs = highlighter.getLoadedLanguages();
+      if (!loadedLangs.includes(normalizedLang as BundledLanguage)) {
+        try {
+          await highlighter.loadLanguage(normalizedLang as BundledLanguage);
+        } catch (_loadError) {
+          // Language not available, fall back to plain text
+          logger.debug(`Language '${language}' not available in Shiki, falling back to plain text`);
+          return `<pre class="shiki"><code>${escapeHtml(code)}</code></pre>`;
+        }
+      }
+
       const html = highlighter.codeToHtml(code, {
-        lang: language as BundledLanguage,
-        theme: theme,
+        lang: normalizedLang as BundledLanguage,
+        theme: theme as BundledTheme,
       });
 
       return html;
@@ -130,9 +145,31 @@ export async function highlightCode(
     logger.warn(
       `Failed to highlight code: ${error instanceof Error ? error.message : 'Unknown error'}`
     );
-    // Fallback to plain HTML
-    return `<pre><code class="${language}">${escapeHtml(code)}</code></pre>`;
+    // Fallback to plain HTML - use language class for consistency with markdown.ts pattern
+    return `<pre class="shiki"><code class="language-${escapeHtml(language)}">${escapeHtml(code)}</code></pre>`;
   }
+}
+
+/**
+ * Normalize language name to Shiki's expected format
+ * Handles common aliases and variations
+ */
+function normalizeLanguage(language: string): string {
+  const langMap: Record<string, string> = {
+    js: 'javascript',
+    ts: 'typescript',
+    py: 'python',
+    rb: 'ruby',
+    sh: 'bash',
+    shell: 'bash',
+    yml: 'yaml',
+    text: 'plaintext',
+    txt: 'plaintext',
+    '': 'plaintext',
+  };
+
+  const lower = language.toLowerCase().trim();
+  return langMap[lower] || lower;
 }
 
 /**

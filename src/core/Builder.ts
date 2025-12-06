@@ -48,6 +48,13 @@ function pathMatchesOrInside(path: string, pattern: string): boolean {
 }
 
 /**
+ * Default batch size for parallel file operations.
+ * This limits the number of concurrent file operations to avoid overwhelming
+ * the file system and to provide better error isolation.
+ */
+const DEFAULT_BATCH_SIZE = 50;
+
+/**
  * Builder options interface
  */
 export interface BuilderOptions {
@@ -1140,9 +1147,8 @@ export class Builder {
     let skippedCount = 0;
 
     // Process static files in parallel batches
-    const BATCH_SIZE = 50;
-    for (let i = 0; i < staticFiles.length; i += BATCH_SIZE) {
-      const batch = staticFiles.slice(i, i + BATCH_SIZE);
+    for (let i = 0; i < staticFiles.length; i += DEFAULT_BATCH_SIZE) {
+      const batch = staticFiles.slice(i, i + DEFAULT_BATCH_SIZE);
       const results = await Promise.all(
         batch.map(async (staticFile) => {
           const destPath = join(this.site.destination, staticFile.destinationRelativePath);

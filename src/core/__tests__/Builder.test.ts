@@ -924,4 +924,115 @@ layout: null
       expect(processedContent).not.toContain('{{ site.title }}');
     });
   });
+
+  describe('batch rendering optimization', () => {
+    it('should render multiple posts efficiently', async () => {
+      // Create multiple posts to test batch rendering
+      const postsDir = join(testSiteDir, '_posts');
+      mkdirSync(postsDir, { recursive: true });
+
+      // Create 10 posts
+      for (let i = 0; i < 10; i++) {
+        const day = String(i + 1).padStart(2, '0');
+        writeFileSync(
+          join(postsDir, `2024-01-${day}-post-${i}.md`),
+          `---
+title: Post ${i}
+---
+# Post ${i}
+
+Content for post ${i}.`
+        );
+      }
+
+      const site = new Site(testSiteDir);
+      const builder = new Builder(site);
+
+      // Build should complete successfully
+      await builder.build();
+
+      // All posts should be rendered
+      for (let i = 0; i < 10; i++) {
+        const day = String(i + 1).padStart(2, '0');
+        const postPath = join(destDir, '2024', '01', day, `post-${i}.html`);
+        expect(existsSync(postPath)).toBe(true);
+
+        const content = readFileSync(postPath, 'utf-8');
+        expect(content).toContain(`Post ${i}`);
+      }
+    });
+
+    it('should pre-create directories for batch rendering', async () => {
+      // Create posts in different category directories
+      const postsDir = join(testSiteDir, '_posts');
+      mkdirSync(postsDir, { recursive: true });
+
+      // Create posts with different categories that will create different output directories
+      for (let i = 0; i < 5; i++) {
+        const day = String(i + 1).padStart(2, '0');
+        writeFileSync(
+          join(postsDir, `2024-01-${day}-post-${i}.md`),
+          `---
+title: Post ${i}
+categories: [cat${i}]
+---
+Content`
+        );
+      }
+
+      const site = new Site(testSiteDir);
+      const builder = new Builder(site);
+
+      await builder.build();
+
+      // All posts should be rendered in their category directories
+      for (let i = 0; i < 5; i++) {
+        const day = String(i + 1).padStart(2, '0');
+        const postPath = join(destDir, `cat${i}`, '2024', '01', day, `post-${i}.html`);
+        expect(existsSync(postPath)).toBe(true);
+      }
+    });
+
+    it('should handle concurrent rendering without race conditions', async () => {
+      // Create multiple pages and posts to test concurrent rendering
+      const postsDir = join(testSiteDir, '_posts');
+      mkdirSync(postsDir, { recursive: true });
+
+      // Create multiple pages
+      for (let i = 0; i < 5; i++) {
+        writeFileSync(
+          join(testSiteDir, `page${i}.md`),
+          `---
+title: Page ${i}
+---
+Page ${i} content`
+        );
+      }
+
+      // Create multiple posts
+      for (let i = 0; i < 5; i++) {
+        const day = String(i + 1).padStart(2, '0');
+        writeFileSync(
+          join(postsDir, `2024-01-${day}-post-${i}.md`),
+          `---
+title: Post ${i}
+---
+Post ${i} content`
+        );
+      }
+
+      const site = new Site(testSiteDir);
+      const builder = new Builder(site);
+
+      // Build should complete without errors
+      await builder.build();
+
+      // Verify all pages and posts are rendered
+      for (let i = 0; i < 5; i++) {
+        expect(existsSync(join(destDir, `page${i}.html`))).toBe(true);
+        const day = String(i + 1).padStart(2, '0');
+        expect(existsSync(join(destDir, '2024', '01', day, `post-${i}.html`))).toBe(true);
+      }
+    });
+  });
 });

@@ -1570,6 +1570,13 @@ export class Renderer {
     // Add content to context
     context.content = content;
 
+    // Add layout front matter to context (for {% if layout.hero %} etc.)
+    // This represents the child layout that is using the current layout.
+    // Only set if not already set (preserve child layout's front matter in nested layouts)
+    if (!context.layout) {
+      context.layout = layout.data;
+    }
+
     // Render the layout
     let rendered: string;
     try {

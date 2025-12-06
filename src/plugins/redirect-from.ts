@@ -69,13 +69,13 @@ export class RedirectFromPlugin implements Plugin, GeneratorPlugin {
         else if (path.endsWith('/')) {
           path = path + 'index.html';
         }
-        // If path doesn't have an extension, add .html
-        // This handles both redirect_from URLs (which don't have extensions)
-        // and ensures we don't double-add .html to redirect_to URLs
-        else if (!path.includes('.')) {
+        // If path doesn't have an extension at the end (e.g., /books, /old-page), add .html
+        // This handles redirect_from URLs which typically don't have extensions
+        // Use regex to check for extension at end of path to avoid matching dots in directory names
+        else if (!/\.[a-zA-Z0-9]+$/.test(path)) {
           path = path + '.html';
         }
-        // Otherwise use path as-is (it already has an extension like .html)
+        // Otherwise use path as-is (it already has an extension like .html from doc.url)
         
         return {
           path,

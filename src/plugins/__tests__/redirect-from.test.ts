@@ -2,6 +2,7 @@ import { RedirectFromPlugin } from '../redirect-from';
 import { Site } from '../../core/Site';
 import { Renderer } from '../../core/Renderer';
 import { Document, DocumentType } from '../../core/Document';
+import { GeneratorPriority } from '../types';
 import { mkdirSync, writeFileSync, rmSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -203,8 +204,8 @@ describe('RedirectFromPlugin', () => {
 
     it('should have LOW priority', () => {
       expect(plugin.priority).toBeDefined();
-      // LOW priority is 90 - runs late after URLs are generated
-      expect(plugin.priority).toBe(90);
+      // LOW priority runs late after URLs are generated
+      expect(plugin.priority).toBe(GeneratorPriority.LOW);
     });
 
     it('should generate files from redirect_from', () => {

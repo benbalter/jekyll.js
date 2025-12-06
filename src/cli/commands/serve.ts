@@ -1,21 +1,16 @@
 import chalk from 'chalk';
-import { resolve, join, isAbsolute } from 'path';
-import { loadConfig, validateConfig, printValidation } from '../../config';
-import { Site, Builder } from '../../core';
 import { DevServer } from '../../server';
-import { logger } from '../../utils/logger';
+import {
+  CommonCLIOptions,
+  initializeCLI,
+  createSiteAndBuilder,
+  reportBuildProfile,
+} from './common';
 
-interface ServeOptions {
-  source: string;
-  destination: string;
-  config: string;
+interface ServeOptions extends CommonCLIOptions {
   port: string;
   host: string;
   livereload: boolean;
-  drafts?: boolean;
-  future?: boolean;
-  verbose?: boolean;
-  debug?: boolean;
 }
 
 /**
@@ -23,64 +18,15 @@ interface ServeOptions {
  * Builds the site and starts a development server
  */
 export async function serveCommand(options: ServeOptions): Promise<void> {
-  // Configure logger - debug mode enables verbose
-  const isDebug = options.debug || false;
-  const isVerbose = options.verbose || isDebug;
-  logger.setVerbose(isVerbose);
-
-  // Set DEBUG env var if debug mode is enabled
-  if (isDebug) {
-    process.env.DEBUG = '1';
-  }
-
   try {
-    // Resolve source directory from CLI option (defaults to '.')
-    const sourcePath = resolve(options.source);
-
-    // Resolve config path relative to source directory if it's a relative path
-    const configPath = isAbsolute(options.config)
-      ? options.config
-      : resolve(sourcePath, options.config);
-
-    if (isDebug) {
-      logger.section('Debug Mode');
-      console.log(chalk.cyan('  🔧 Debug mode enabled'));
-      console.log(chalk.gray('  Node version:'), process.version);
-      console.log(chalk.gray('  Platform:'), process.platform);
-      console.log(chalk.gray('  Working directory:'), process.cwd());
-    }
-
-    const config = loadConfig(configPath, isVerbose);
-
-    // Validate configuration
-    const validation = validateConfig(config);
-    printValidation(validation, isVerbose);
-
-    if (!validation.valid) {
-      throw new Error('Configuration validation failed. Please fix the errors above.');
-    }
-
-    // Override config with CLI options
-    // Destination path: CLI option takes precedence, then config, then default based on source
-    // Destination path: CLI option takes precedence, then config, then default based on source
-    const destPath = options.destination
-      ? resolve(options.destination)
-      : config.destination
-        ? resolve(config.destination)
-        : join(sourcePath, '_site');
+    // Initialize CLI with common setup
+    const { sourcePath, destPath, configPath, config, isVerbose, isDebug } = initializeCLI(options);
 
     // Parse port from CLI or use config
     const port = options.port ? parseInt(options.port, 10) : config.port || 4000;
     const host = options.host || config.host || 'localhost';
 
-    // Apply CLI flags to config
-    // CLI options override config when explicitly set (true or false via --no- flags)
-    if (options.drafts !== undefined) {
-      config.show_drafts = options.drafts;
-    }
-    if (options.future !== undefined) {
-      config.future = options.future;
-    }
+    // Apply serve-specific CLI flags to config
     config.livereload = options.livereload;
 
     if (isVerbose) {
@@ -98,16 +44,12 @@ export async function serveCommand(options: ServeOptions): Promise<void> {
     // Build the site first
     console.log(chalk.green('\nBuilding site...'));
 
-    // Update config with final paths
-    config.source = sourcePath;
-    config.destination = destPath;
-
     // Create site and builder
-    const site = new Site(sourcePath, config);
-    const builder = new Builder(site, {
-      showDrafts: options.drafts,
-      showFuture: options.future,
-      clean: true,
+    const { site, builder } = createSiteAndBuilder({
+      sourcePath,
+      config,
+      drafts: options.drafts,
+      future: options.future,
       verbose: isVerbose,
       timing: isDebug,
     });
@@ -123,14 +65,7 @@ export async function serveCommand(options: ServeOptions): Promise<void> {
 
     // Show timing profile if debug mode is enabled
     if (isDebug && timings) {
-      logger.section('Build Profile');
-      const sortedOps = timings.getMostCostlyOperations();
-      console.log(chalk.gray('  Operation timings (sorted by duration):'));
-      for (const op of sortedOps) {
-        const duration = (op.duration / 1000).toFixed(3);
-        const details = op.details ? chalk.gray(` (${op.details})`) : '';
-        console.log(`    ${chalk.cyan(op.name)}: ${duration}s${details}`);
-      }
+      reportBuildProfile(timings);
     }
 
     // Start the development server
@@ -161,7 +96,7 @@ export async function serveCommand(options: ServeOptions): Promise<void> {
   } catch (error) {
     if (error instanceof Error) {
       console.error(chalk.red('\nServer failed:'), error.message);
-      if (isVerbose && error.stack) {
+      if (options.verbose && error.stack) {
         console.error(error.stack);
       }
     }

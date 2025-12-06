@@ -1,20 +1,17 @@
 import chalk from 'chalk';
-import { resolve, join, isAbsolute } from 'path';
-import { loadConfig, validateConfig, printValidation } from '../../config';
-import { Site, Builder } from '../../core';
 import { logger } from '../../utils/logger';
 import { FileWatcher } from '../../utils/watcher';
+import {
+  CommonCLIOptions,
+  initializeCLI,
+  createSiteAndBuilder,
+  reportBuildProfile,
+  logBuildSuccess,
+} from './common';
 
-interface BuildOptions {
-  source: string;
-  destination: string;
-  config: string;
-  drafts?: boolean;
-  future?: boolean;
+interface BuildOptions extends CommonCLIOptions {
   watch?: boolean;
-  verbose?: boolean;
   incremental?: boolean;
-  debug?: boolean;
   profile?: boolean;
 }
 
@@ -23,61 +20,11 @@ interface BuildOptions {
  * Generates the static site from source to destination
  */
 export async function buildCommand(options: BuildOptions): Promise<void> {
-  // Configure logger - debug mode enables verbose
-  const isDebug = options.debug || false;
-  const isVerbose = options.verbose || isDebug;
-  logger.setVerbose(isVerbose);
-
-  // Set DEBUG env var if debug mode is enabled
-  if (isDebug) {
-    process.env.DEBUG = '1';
-  }
-
   try {
-    // Resolve source directory from CLI option (defaults to '.')
-    const sourcePath = resolve(options.source);
+    // Initialize CLI with common setup
+    const { sourcePath, destPath, configPath, config, isVerbose, isDebug } = initializeCLI(options);
 
-    // Resolve config path relative to source directory if it's a relative path
-    const configPath = isAbsolute(options.config)
-      ? options.config
-      : resolve(sourcePath, options.config);
-
-    if (isDebug) {
-      logger.section('Debug Mode');
-      console.log(chalk.cyan('  🔧 Debug mode enabled'));
-      console.log(chalk.gray('  Node version:'), process.version);
-      console.log(chalk.gray('  Platform:'), process.platform);
-      console.log(chalk.gray('  Working directory:'), process.cwd());
-    }
-
-    logger.debug('Loading configuration', { path: configPath });
-    const config = loadConfig(configPath, isVerbose);
-
-    // Validate configuration
-    const validation = validateConfig(config);
-    printValidation(validation, isVerbose);
-
-    if (!validation.valid) {
-      throw new Error('Configuration validation failed. Please fix the errors above.');
-    }
-
-    // Override config with CLI options
-    // Destination path: CLI option takes precedence, then config, then default based on source
-    const destPath =
-      options.destination !== undefined
-        ? resolve(options.destination)
-        : config.destination
-          ? resolve(config.destination)
-          : join(sourcePath, '_site');
-
-    // Apply CLI flags to config
-    // CLI options override config when explicitly set (true or false via --no- flags)
-    if (options.drafts !== undefined) {
-      config.show_drafts = options.drafts;
-    }
-    if (options.future !== undefined) {
-      config.future = options.future;
-    }
+    // Apply build-specific CLI flags to config
     if (options.watch !== undefined) {
       config.watch = options.watch;
     }
@@ -98,18 +45,14 @@ export async function buildCommand(options: BuildOptions): Promise<void> {
       if (options.profile) console.log('  Profile:', 'enabled');
     }
 
-    // Update config with final paths
-    config.source = sourcePath;
-    config.destination = destPath;
-
-    // Create site and builder
-    const site = new Site(sourcePath, config);
-    const builder = new Builder(site, {
-      showDrafts: options.drafts,
-      showFuture: options.future,
-      clean: true,
-      verbose: isVerbose,
+    // Create site and builder (site is unused in build command but returned for consistency)
+    const { builder } = createSiteAndBuilder({
+      sourcePath,
+      config,
+      drafts: options.drafts,
+      future: options.future,
       incremental: options.incremental,
+      verbose: isVerbose,
       timing: options.profile || isDebug,
     });
 
@@ -118,21 +61,11 @@ export async function buildCommand(options: BuildOptions): Promise<void> {
     const timings = await builder.build();
     const buildTime = ((Date.now() - startTime) / 1000).toFixed(3);
 
-    logger.success('Site built successfully!');
-    console.log('  Output:', destPath);
-    console.log(`  Done in ${buildTime} seconds.`);
+    logBuildSuccess(destPath, buildTime);
 
     // Show timing profile if enabled
     if ((options.profile || isDebug) && timings) {
-      logger.section('Build Profile');
-      const sortedOps = timings.getMostCostlyOperations();
-      console.log(chalk.gray('  Operation timings (sorted by duration):'));
-      for (const op of sortedOps) {
-        const duration = (op.duration / 1000).toFixed(3);
-        const details = op.details ? chalk.gray(` (${op.details})`) : '';
-        console.log(`    ${chalk.cyan(op.name)}: ${duration}s${details}`);
-      }
-      console.log(chalk.gray(`\n  Total: ${(timings.totalDuration / 1000).toFixed(3)}s`));
+      reportBuildProfile(timings);
     }
 
     if (config.watch) {

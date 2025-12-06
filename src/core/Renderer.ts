@@ -1003,8 +1003,8 @@ export class Renderer {
       );
     }
 
-    // The 'highlight' tag uses Shiki for syntax highlighting when enabled
-    // Otherwise falls back to basic HTML wrapping
+    // The 'highlight' tag always uses Shiki for syntax highlighting (like Jekyll's Rouge)
+    // This preserves backwards compatibility - {% highlight %} tags should always highlight
     const site = this.site; // Capture site reference for use in tag
 
     this.liquid.registerTag('highlight', {
@@ -1043,26 +1043,21 @@ export class Renderer {
         await toPromise(iterator);
         const content = collectingEmitter.buffer;
 
-        // Check if syntax highlighting is enabled in site config
+        // Always use Shiki for syntax highlighting (backwards compatible with Jekyll's Rouge)
+        // Use theme from config if available, otherwise default to github-light
         const syntaxHighlightingConfig = site.config.modern?.syntaxHighlighting;
+        const theme = syntaxHighlightingConfig?.theme || 'github-light';
         let result: string;
 
-        if (syntaxHighlightingConfig?.enabled) {
-          try {
-            // Use cached module import for better performance
-            const syntaxModule = await getSyntaxHighlightingModule();
-            const theme = syntaxHighlightingConfig.theme || 'github-light';
-            const highlighted = await syntaxModule.highlightCode(content, this.language, {
-              theme: theme as any,
-            });
-            result = `<div class="highlight">${highlighted}</div>`;
-          } catch (_error) {
-            // Fall back to basic highlighting on error
-            const escapedContent = escapeHtml(content);
-            result = `<div class="highlight"><pre class="highlight"><code class="language-${this.language}">${escapedContent}</code></pre></div>`;
-          }
-        } else {
-          // Fallback: escape HTML and wrap in basic code block
+        try {
+          // Use cached module import for better performance
+          const syntaxModule = await getSyntaxHighlightingModule();
+          const highlighted = await syntaxModule.highlightCode(content, this.language, {
+            theme: theme as any,
+          });
+          result = `<div class="highlight">${highlighted}</div>`;
+        } catch (_error) {
+          // Fall back to basic highlighting on error
           const escapedContent = escapeHtml(content);
           result = `<div class="highlight"><pre class="highlight"><code class="language-${this.language}">${escapedContent}</code></pre></div>`;
         }

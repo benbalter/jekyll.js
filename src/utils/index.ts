@@ -16,7 +16,14 @@ export {
   parseErrorLocation,
 } from './errors';
 export { FileWatcher, type WatcherOptions } from './watcher';
-export { escapeHtml, unescapeHtml, escapeJs, escapeXml, escapeHtmlAttribute } from './html';
+export {
+  escapeHtml,
+  unescapeHtml,
+  escapeJs,
+  escapeXml,
+  escapeHtmlAttribute,
+  safeJsonStringify,
+} from './html';
 export { PerformanceTimer, type TimedOperation, type BuildTimings } from './timer';
 export {
   walkDirectoryAsync,

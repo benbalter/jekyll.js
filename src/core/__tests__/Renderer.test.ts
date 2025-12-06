@@ -2077,6 +2077,64 @@ Second`
         expect(true).toBe(true);
       });
     });
+
+    describe('Smart quotes configuration', () => {
+      it('should enable smart quotes by default', () => {
+        const renderer = new Renderer(site);
+        const options = renderer.getMarkdownOptions();
+        // Default behavior: smart quotes enabled (undefined or true)
+        expect(options.smartQuotes).not.toBe(false);
+      });
+
+      it('should disable smart quotes when kramdown.smart_quotes is false', () => {
+        // Create a site with kramdown.smart_quotes = false
+        const siteWithConfig = new Site(testDir, {
+          kramdown: {
+            smart_quotes: false,
+          },
+        });
+        const renderer = new Renderer(siteWithConfig);
+        const options = renderer.getMarkdownOptions();
+        expect(options.smartQuotes).toBe(false);
+      });
+
+      it('should disable smart quotes when kramdown.smart_quotes is ["apos", "apos", "quot", "quot"]', () => {
+        // Create a site with kramdown disabled smart quotes array
+        const siteWithConfig = new Site(testDir, {
+          kramdown: {
+            smart_quotes: ['apos', 'apos', 'quot', 'quot'],
+          },
+        });
+        const renderer = new Renderer(siteWithConfig);
+        const options = renderer.getMarkdownOptions();
+        expect(options.smartQuotes).toBe(false);
+      });
+
+      it('should enable smart quotes when kramdown.smart_quotes is true', () => {
+        const siteWithConfig = new Site(testDir, {
+          kramdown: {
+            smart_quotes: true,
+          },
+        });
+        const renderer = new Renderer(siteWithConfig);
+        const options = renderer.getMarkdownOptions();
+        // true or undefined means enabled
+        expect(options.smartQuotes).not.toBe(false);
+      });
+
+      it('should enable smart quotes when kramdown.smart_quotes is ["lsquo", "rsquo", "ldquo", "rdquo"]', () => {
+        // Standard smart quotes array should enable them
+        const siteWithConfig = new Site(testDir, {
+          kramdown: {
+            smart_quotes: ['lsquo', 'rsquo', 'ldquo', 'rdquo'],
+          },
+        });
+        const renderer = new Renderer(siteWithConfig);
+        const options = renderer.getMarkdownOptions();
+        // Not explicitly false means enabled
+        expect(options.smartQuotes).not.toBe(false);
+      });
+    });
   });
 
   describe('Liquid whitespace handling', () => {

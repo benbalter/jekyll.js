@@ -10,6 +10,7 @@
  */
 
 import { escape as escapeHtml } from 'html-escaper';
+import { smartypantsu } from 'smartypants';
 
 /**
  * Options for markdown processing
@@ -26,6 +27,12 @@ export interface MarkdownOptions {
         /** Wrap mentions in strong tags (default: true in remark-github) */
         mentionStrong?: boolean;
       };
+  /**
+   * Enable smart typography (converts ASCII quotes, dashes, and ellipses to Unicode characters).
+   * This matches Kramdown's default behavior for smart quotes.
+   * Default: true (enabled by default to match Jekyll/Kramdown behavior)
+   */
+  smartQuotes?: boolean;
 }
 
 // Cached module imports to avoid repeated dynamic imports
@@ -49,6 +56,7 @@ const processorCache = new Map<string, any>();
 
 /**
  * Generate a cache key for the given options
+ * Note: smartQuotes is not included in cache key because it's applied as post-processing
  */
 function getOptionsCacheKey(options: MarkdownOptions): string {
   const emoji = options.emoji ? '1' : '0';
@@ -229,6 +237,12 @@ export async function processMarkdown(
   // Post-process to handle Kramdown-style attribute lists
   // This supports syntax like {: .class #id attr="value" }
   html = processKramdownAttributes(html);
+
+  // Apply smart typography (quotes, dashes, ellipses) if enabled
+  // Default to true to match Jekyll/Kramdown behavior
+  if (options.smartQuotes !== false) {
+    html = applySmartQuotes(html);
+  }
 
   return html;
 }
@@ -571,6 +585,96 @@ function applyAttributesToTag(
 
   newTag += '>';
   return newTag;
+}
+
+/**
+ * Apply smart typography to HTML content using the smartypants library.
+ *
+ * This converts ASCII quotes, dashes, and ellipses to their Unicode equivalents:
+ * - Straight quotes (", ') → Curly quotes (", ", ', ')
+ * - Double dashes (--) → Em dash (—)
+ * - Triple dashes (---) → Em dash (—)
+ * - Three dots (...) → Ellipsis (…)
+ *
+ * The function is careful to preserve content inside HTML tags, code blocks,
+ * and pre-formatted content to avoid breaking code snippets.
+ *
+ * @param html The HTML content to process
+ * @returns HTML with smart typography applied to text content
+ */
+function applySmartQuotes(html: string): string {
+  // We need to apply smart quotes only to text content, not to:
+  // - Content inside <code> tags
+  // - Content inside <pre> tags
+  // - HTML attributes
+  // - HTML tags themselves
+
+  // Split HTML by code/pre blocks and process only the non-code parts
+  // Using a simple state machine approach to handle nested tags
+
+  const result: string[] = [];
+  let i = 0;
+  let textStart = 0;
+
+  while (i < html.length) {
+    // Check for opening tags that should not have smart quotes applied
+    if (html[i] === '<') {
+      // Check for code, pre, script, style, or textarea opening tags
+      const tagMatch = html
+        .slice(i)
+        .match(/^<(code|pre|script|style|textarea|kbd|samp|var)(\s|>)/i);
+
+      if (tagMatch) {
+        // Process text before this tag
+        if (i > textStart) {
+          result.push(smartypantsu(html.slice(textStart, i)));
+        }
+
+        const tagName = (tagMatch[1] ?? '').toLowerCase();
+        // Find the closing tag
+        const closingTagRegex = new RegExp(`</${tagName}>`, 'i');
+        const closingMatch = html.slice(i).match(closingTagRegex);
+
+        if (closingMatch && closingMatch.index !== undefined) {
+          // Include the entire block unchanged (from opening tag to closing tag)
+          const blockEnd = i + closingMatch.index + closingMatch[0].length;
+          result.push(html.slice(i, blockEnd));
+          i = blockEnd;
+          textStart = i;
+        } else {
+          // No closing tag found, treat the rest as-is
+          result.push(html.slice(i));
+          return result.join('');
+        }
+      } else {
+        // Regular HTML tag - process text before it, then skip the tag
+        if (i > textStart) {
+          result.push(smartypantsu(html.slice(textStart, i)));
+        }
+
+        // Find the end of this tag
+        const tagEnd = html.indexOf('>', i);
+        if (tagEnd === -1) {
+          // Malformed HTML - append rest unchanged
+          result.push(html.slice(i));
+          return result.join('');
+        }
+
+        result.push(html.slice(i, tagEnd + 1));
+        i = tagEnd + 1;
+        textStart = i;
+      }
+    } else {
+      i++;
+    }
+  }
+
+  // Process any remaining text
+  if (textStart < html.length) {
+    result.push(smartypantsu(html.slice(textStart)));
+  }
+
+  return result.join('');
 }
 
 /**

@@ -926,7 +926,9 @@ export class Builder {
       logger.info(`Rendering ${documents.length} documents from collection '${collectionName}'...`);
 
       // Use optimized batch rendering for better performance
-      collectionPromises.push(this.renderDocumentsBatch(documents, `Collection: ${collectionName}`));
+      collectionPromises.push(
+        this.renderDocumentsBatch(documents, `Collection: ${collectionName}`)
+      );
     }
 
     await Promise.all(collectionPromises);

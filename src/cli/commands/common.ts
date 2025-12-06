@@ -131,6 +131,7 @@ export interface CreateSiteAndBuilderOptions {
   incremental?: boolean;
   verbose?: boolean;
   timing?: boolean;
+  showProgress?: boolean;
 }
 
 /**
@@ -156,6 +157,7 @@ export function createSiteAndBuilder(options: CreateSiteAndBuilderOptions): Site
     verbose: options.verbose,
     incremental: options.incremental,
     timing: options.timing,
+    showProgress: options.showProgress,
   };
   const builder = new Builder(site, builderOptions);
   return { site, builder };

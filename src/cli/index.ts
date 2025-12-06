@@ -30,6 +30,8 @@ program
   .option('-W, --no-watch', 'Do not watch for changes')
   .option('-I, --incremental', 'Enable incremental build')
   .option('--no-incremental', 'Disable incremental build')
+  .option('--progress', 'Show progress indicators (default: enabled for TTY)')
+  .option('--no-progress', 'Disable progress indicators')
   .option('--verbose', 'Print verbose output')
   .option('--debug', 'Enable debug mode with enhanced diagnostics')
   .option('--profile', 'Show detailed timing information for build operations')
@@ -50,6 +52,8 @@ program
   .option('--no-drafts', 'Do not render draft posts')
   .option('--future', 'Publish posts with a future date')
   .option('--no-future', 'Do not publish posts with a future date')
+  .option('--progress', 'Show progress indicators (default: enabled for TTY)')
+  .option('--no-progress', 'Disable progress indicators')
   .option('--verbose', 'Print verbose output')
   .option('--debug', 'Enable debug mode with enhanced diagnostics')
   .action(serveCommand);

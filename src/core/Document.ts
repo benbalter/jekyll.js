@@ -55,8 +55,11 @@ export class Document {
   /** Collection name (if this is a collection document) */
   public readonly collection?: string;
 
-  /** URL for the generated page */
-  public url?: string;
+  /** URL for the generated page (backing field) */
+  private _url?: string;
+
+  /** Cached JSON representation (invalidated when url changes) */
+  private _jsonCache: Record<string, any> | null = null;
 
   /**
    * Create a new Document (synchronous constructor for backward compatibility)
@@ -259,6 +262,19 @@ export class Document {
     Object.defineProperty(doc, 'content', { value: content, writable: false, enumerable: true });
 
     return doc;
+    }
+
+   * URL for the generated page
+   * Setting the URL invalidates the cached JSON representation
+   */
+  get url(): string | undefined {
+    return this._url;
+  }
+
+  set url(value: string | undefined) {
+    this._url = value;
+    // Invalidate JSON cache when URL changes
+    this._jsonCache = null;
   }
 
   /**
@@ -357,10 +373,18 @@ export class Document {
   }
 
   /**
-   * Convert the document to a JSON representation
+   * Convert the document to a JSON representation.
+   * The result is cached for performance - repeated calls return the same object.
+   * The cache is automatically invalidated when the URL is set.
    */
   toJSON(): Record<string, any> {
-    return {
+    // Return cached JSON if available
+    if (this._jsonCache) {
+      return this._jsonCache;
+    }
+
+    // Create and cache the JSON representation
+    this._jsonCache = {
       // In Jekyll, page.path is the relative path (e.g., "about.md")
       path: this.relativePath,
       // Keep relativePath for backward compatibility
@@ -379,7 +403,9 @@ export class Document {
       url: this.url,
       // Include content for templates that need to access page.content
       content: this.content,
-      data: this.data,
+      data: { ...this.data },
     };
+
+    return this._jsonCache;
   }
 }

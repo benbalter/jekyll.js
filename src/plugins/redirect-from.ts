@@ -40,7 +40,7 @@ export class RedirectFromPlugin implements Plugin, GeneratorPlugin {
    */
   generate(site: Site, _renderer: Renderer): GeneratorResult {
     const redirects = this.generateRedirects(site);
-    
+
     // Mark documents with redirect_to so they don't get rendered as normal pages
     // The redirect HTML from the generator will be used instead
     const allDocuments: Document[] = [
@@ -48,23 +48,23 @@ export class RedirectFromPlugin implements Plugin, GeneratorPlugin {
       ...site.posts,
       ...Array.from(site.collections.values()).flat(),
     ];
-    
+
     for (const doc of allDocuments) {
       if (doc.data.redirect_to) {
         // Mark document as having no output to prevent normal rendering
         doc.data.output = false;
       }
     }
-    
+
     return {
-      files: redirects.map(redirect => {
+      files: redirects.map((redirect) => {
         // Remove leading slash to make path relative to destination
         let path = redirect.from.replace(/^\//, '');
-        
+
         // If path is empty, use index.html
         if (path === '') {
           path = 'index.html';
-        } 
+        }
         // If path ends with /, add index.html
         else if (path.endsWith('/')) {
           path = path + 'index.html';
@@ -76,7 +76,7 @@ export class RedirectFromPlugin implements Plugin, GeneratorPlugin {
           path = path + '.html';
         }
         // Otherwise use path as-is (it already has an extension like .html from doc.url)
-        
+
         return {
           path,
           content: redirect.html,

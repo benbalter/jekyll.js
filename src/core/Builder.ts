@@ -6,6 +6,7 @@ import { SassProcessor } from './SassProcessor';
 import { logger } from '../utils/logger';
 import { BuildError, FileSystemError, JekyllError } from '../utils/errors';
 import { PerformanceTimer, BuildTimings } from '../utils/timer';
+import { createProgressIndicator } from '../utils/progress';
 import { isPathWithinBase, sanitizePermalink, shouldExcludePath } from '../utils/path-security';
 import {
   mkdirSync,
@@ -73,6 +74,9 @@ export interface BuilderOptions {
 
   /** Enable performance timing for benchmarks */
   timing?: boolean;
+
+  /** Show progress indicators during build (default: true for TTY) */
+  showProgress?: boolean;
 }
 
 /**
@@ -122,6 +126,8 @@ export class Builder {
       verbose: false,
       incremental: false,
       timing: false,
+      // Default to showing progress only on TTY terminals
+      showProgress: process.stdout.isTTY,
       ...options,
     };
 
@@ -641,7 +647,7 @@ export class Builder {
     logger.info(`Rendering ${pagesToRender.length} pages...`);
 
     // Use optimized batch rendering for better performance
-    await this.renderDocumentsBatch(pagesToRender);
+    await this.renderDocumentsBatch(pagesToRender, 'Pages');
   }
 
   /**
@@ -675,7 +681,7 @@ export class Builder {
     logger.info(`Rendering ${filteredPosts.length} posts...`);
 
     // Use optimized batch rendering for better performance
-    await this.renderDocumentsBatch(filteredPosts);
+    await this.renderDocumentsBatch(filteredPosts, 'Posts');
   }
 
   /**
@@ -711,15 +717,38 @@ export class Builder {
    * Render a batch of documents with optimized I/O
    * Pre-creates directories and uses parallel async writes
    * @param docs Documents to render
+   * @param label Optional label for progress indicator
    */
-  private async renderDocumentsBatch(docs: Document[]): Promise<void> {
+  private async renderDocumentsBatch(docs: Document[], label?: string): Promise<void> {
     if (docs.length === 0) return;
 
     // Pre-create all output directories in parallel
     await this.preCreateDirectories(docs);
 
+    // Create progress indicator if progress is enabled and we have enough documents
+    const showProgress = this.options.showProgress && docs.length >= 5;
+    const progress = showProgress
+      ? createProgressIndicator(docs.length, label || 'Rendering', true)
+      : null;
+
+    // Track completed documents for progress
+    let completed = 0;
+
     // Render all documents in parallel with async file writes
-    await Promise.all(docs.map((doc) => this.renderDocumentAsync(doc)));
+    await Promise.all(
+      docs.map(async (doc) => {
+        await this.renderDocumentAsync(doc);
+        completed++;
+        if (progress) {
+          progress.update(completed);
+        }
+      })
+    );
+
+    // Complete the progress indicator
+    if (progress) {
+      progress.complete();
+    }
   }
 
   /**
@@ -887,7 +916,7 @@ export class Builder {
       logger.info(`Rendering ${documents.length} documents from collection '${collectionName}'...`);
 
       // Use optimized batch rendering for better performance
-      collectionPromises.push(this.renderDocumentsBatch(documents));
+      collectionPromises.push(this.renderDocumentsBatch(documents, `Collection: ${collectionName}`));
     }
 
     await Promise.all(collectionPromises);

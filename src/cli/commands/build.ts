@@ -13,6 +13,7 @@ interface BuildOptions extends CommonCLIOptions {
   watch?: boolean;
   incremental?: boolean;
   profile?: boolean;
+  progress?: boolean;
 }
 
 /**
@@ -54,6 +55,7 @@ export async function buildCommand(options: BuildOptions): Promise<void> {
       incremental: options.incremental,
       verbose: isVerbose,
       timing: options.profile || isDebug,
+      showProgress: options.progress,
     });
 
     // Build the site

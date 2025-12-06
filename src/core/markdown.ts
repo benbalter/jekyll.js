@@ -620,7 +620,9 @@ function applySmartQuotes(html: string): string {
     // Check for opening tags that should not have smart quotes applied
     if (html[i] === '<') {
       // Check for code, pre, script, style, or textarea opening tags
-      const tagMatch = html.slice(i).match(/^<(code|pre|script|style|textarea|kbd|samp|var)(\s|>)/i);
+      const tagMatch = html
+        .slice(i)
+        .match(/^<(code|pre|script|style|textarea|kbd|samp|var)(\s|>)/i);
 
       if (tagMatch) {
         // Process text before this tag

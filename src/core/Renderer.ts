@@ -110,8 +110,7 @@ export class Renderer {
         // ASCII quote identifiers that indicate disabling smart quotes
         const asciiQuoteIds = ['apos', 'quot'];
         // Check if it's a "disable" array - all elements are ASCII quote identifiers
-        const isDisabled =
-          arr.length === 4 && arr.every((item) => asciiQuoteIds.includes(item));
+        const isDisabled = arr.length === 4 && arr.every((item) => asciiQuoteIds.includes(item));
         this.markdownOptions.smartQuotes = !isDisabled;
       }
       // Otherwise, treat truthy values as enabled

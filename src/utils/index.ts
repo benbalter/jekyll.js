@@ -16,7 +16,7 @@ export {
   parseErrorLocation,
 } from './errors';
 export { FileWatcher, type WatcherOptions } from './watcher';
-export { escapeHtml, unescapeHtml, escapeJs, escapeXml } from './html';
+export { escapeHtml, unescapeHtml, escapeJs, escapeXml, escapeHtmlAttribute } from './html';
 export { PerformanceTimer, type TimedOperation, type BuildTimings } from './timer';
 export {
   walkDirectoryAsync,
@@ -46,5 +46,6 @@ export {
   isPermalinkSafe,
   sanitizePermalink,
   normalizePathSeparators,
+  shouldExcludePath,
   PathTraversalError,
 } from './path-security';

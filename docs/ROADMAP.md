@@ -147,7 +147,6 @@ This roadmap outlines the development timeline for jekyll.js to achieve full com
 - [ ] **Developer Experience Improvements**
   - Better error messages with file/line references
   - Debug tools
-  - Progress indicators
 
 - [x] **Documentation Improvements**
   - Migration guides from Jekyll.rb
@@ -158,6 +157,7 @@ This roadmap outlines the development timeline for jekyll.js to achieve full com
 - [x] **Verbose logging modes** (via Winston)
 - [x] **Liquid error modes** (strict_variables, strict_filters)
 - [x] **Enhanced error messages** (implemented)
+- [x] **Progress indicators** (--progress CLI flag, visual progress bars for rendering)
 
 ### Success Criteria
 - ✅ Build time within 2x of Jekyll.rb

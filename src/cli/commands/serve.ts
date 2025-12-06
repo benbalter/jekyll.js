@@ -11,6 +11,7 @@ interface ServeOptions extends CommonCLIOptions {
   port: string;
   host: string;
   livereload: boolean;
+  progress?: boolean;
 }
 
 /**
@@ -52,6 +53,7 @@ export async function serveCommand(options: ServeOptions): Promise<void> {
       future: options.future,
       verbose: isVerbose,
       timing: isDebug,
+      showProgress: options.progress,
     });
 
     // Build the site

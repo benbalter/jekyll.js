@@ -11,6 +11,7 @@ import slugifyLib from 'slugify';
 import { format, parseISO, formatISO, formatRFC7231, isValid } from 'date-fns';
 import strftime from 'strftime';
 import striptags from 'striptags';
+import { smartypantsu } from 'smartypants';
 import { dirname, join, resolve, normalize, relative } from 'path';
 import { readFileSync, existsSync, statSync } from 'fs';
 import { PluginRegistry, Hooks } from '../plugins';
@@ -308,15 +309,13 @@ export class Renderer {
       }
     });
 
+    // String filter for converting ASCII punctuation to smart typography
+    // Uses the smartypants library (https://github.com/othree/smartypants.js)
+    // which is a port of the original SmartyPants Perl library
     this.liquid.registerFilter('smartify', (input: string) => {
       if (!input) return '';
-      return String(input)
-        .replace(/\.\.\./g, '…')
-        .replace(/--/g, '—')
-        .replace(/''/g, '"') // double single quotes first
-        .replace(/``/g, '"') // double backticks next
-        .replace(/'/g, '\u2019') // then remaining single quotes
-        .replace(/`/g, '\u2018'); // then remaining backticks
+      // Use smartypantsu for Unicode output (instead of HTML entities)
+      return smartypantsu(String(input));
     });
 
     this.liquid.registerFilter('slugify', (input: string, mode: string = 'default') => {
@@ -1022,9 +1021,9 @@ export class Renderer {
         // Search in pages
         if (site.pages) {
           for (const page of site.pages) {
-            const pagePath =
-              normalizePathSeparators(page.relativePath || '') ||
-              normalizePathSeparators(page.path || '');
+            const pagePath = normalizePathSeparators(
+              page.relativePath || page.path || ''
+            );
             if (pagePath === normalizedPath) {
               if (page.url) {
                 return page.url;
@@ -1036,9 +1035,9 @@ export class Renderer {
         // Search in posts
         if (site.posts) {
           for (const post of site.posts) {
-            const postPath =
-              normalizePathSeparators(post.relativePath || '') ||
-              normalizePathSeparators(post.path || '');
+            const postPath = normalizePathSeparators(
+              post.relativePath || post.path || ''
+            );
             // Posts are typically in _posts/ directory
             if (postPath === normalizedPath || `_posts/${postPath}` === normalizedPath) {
               if (post.url) {
@@ -1057,9 +1056,9 @@ export class Renderer {
           for (const [collectionName, docs] of Object.entries(collections)) {
             if (Array.isArray(docs)) {
               for (const doc of docs) {
-                const docPath =
-                  normalizePathSeparators(doc.relativePath || '') ||
-                  normalizePathSeparators(doc.path || '');
+                const docPath = normalizePathSeparators(
+                  doc.relativePath || doc.path || ''
+                );
                 if (
                   docPath === normalizedPath ||
                   `_${collectionName}/${docPath}` === normalizedPath
@@ -1079,7 +1078,9 @@ export class Renderer {
             // Static files may have different path structures:
             // - Original StaticFile object: has relativePath property
             // - Serialized JSON (from toJSON): has 'path' property which is the URL (e.g., "/assets/style.css")
-            let filePath = normalizePathSeparators(staticFile.relativePath || '');
+            let filePath = staticFile.relativePath
+              ? normalizePathSeparators(staticFile.relativePath)
+              : '';
 
             // If relativePath not available, reconstruct from URL
             // In serialized JSON, staticFile.path is the URL, not a file path
@@ -1140,9 +1141,9 @@ export class Renderer {
         // Search for matching post
         for (const post of site.posts) {
           // Get the basename without extension from the post's path
-          const postPath =
-            normalizePathSeparators(post.relativePath || '') ||
-            normalizePathSeparators(post.path || '');
+          const postPath = normalizePathSeparators(
+            post.relativePath || post.path || ''
+          );
 
           // Remove _posts/ prefix if present
           const normalizedPostPath = postPath.replace(/^_posts\//, '');

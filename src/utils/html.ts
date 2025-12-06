@@ -50,6 +50,10 @@ export function escapeJs(str: string): string {
  * Escapes &, <, >, ", and ' for safe XML output
  * @param str String to escape
  * @returns Escaped string safe for XML context
+ * Escape XML special characters for safe use in XML/SVG content
+ * Escapes &, <, >, ", and ' characters
+ * @param str String to escape
+ * @returns Escaped string safe for XML output
  */
 export function escapeXml(str: string): string {
   return String(str)
@@ -58,4 +62,19 @@ export function escapeXml(str: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&apos;');
+}
+
+/**
+ * Escape HTML special characters for use in HTML attribute values
+ * Similar to escapeXml but uses &#39; for single quote (more compatible with HTML)
+ * @param str String to escape
+ * @returns Escaped string safe for use in HTML attribute values
+ */
+export function escapeHtmlAttribute(str: string): string {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 }

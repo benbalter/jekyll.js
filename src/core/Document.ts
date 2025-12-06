@@ -419,7 +419,12 @@ export class Document {
     }
 
     // Create and cache the JSON representation
+    // Spread front matter data first, then override with computed properties
+    // This makes all front matter fields accessible at the top level (Jekyll compatibility)
     this._jsonCache = {
+      // Spread all front matter data first so custom fields like 'description' are accessible
+      ...this.data,
+      // Override with computed/processed properties to ensure they take precedence
       // In Jekyll, page.path is the relative path (e.g., "about.md")
       path: this.relativePath,
       // Keep relativePath for backward compatibility
@@ -438,6 +443,7 @@ export class Document {
       url: this.url,
       // Include content for templates that need to access page.content
       content: this.content,
+      // Keep data object for backward compatibility
       data: { ...this.data },
     };
 

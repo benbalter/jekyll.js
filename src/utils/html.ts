@@ -86,7 +86,7 @@ export function escapeHtmlAttribute(str: string): string {
  * a <script> tag context, creating XSS vulnerabilities. This function
  * escapes:
  * - `</` to `<\/` to prevent closing script tags (</script>)
- * - `<!--` to `<\!--` to prevent HTML comment injection
+ * - `<` to `\u003c` and `>` to `\u003e` to prevent script tag injection and HTML comment injection
  * - U+2028 (Line Separator) and U+2029 (Paragraph Separator) which are
  *   valid in JSON but invalid in JavaScript strings
  *

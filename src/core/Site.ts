@@ -400,7 +400,7 @@ export class Site {
       const batch = files.slice(i, i + BATCH_SIZE);
       const batchPromises = batch.map(async (file) => {
         try {
-          return new Document(file, this.source, type, collection, config);
+          return await Document.create(file, this.source, type, collection, config);
         } catch (error) {
           logger.warn(`Failed to create document ${file}`, {
             error: error instanceof Error ? error.message : 'Unknown error',
@@ -417,13 +417,10 @@ export class Site {
   }
 
   /**
-   * Create static files in batches for error handling and progress tracking.
+   * Create static files in batches with true parallel async I/O.
    *
-   * Note: While this method uses async/await and Promise.all, the StaticFile constructor
-   * uses synchronous I/O (statSync). This means stat calls still happen sequentially
-   * on the main thread. True parallelism would require refactoring StaticFile to use
-   * async I/O (fs/promises). The batching provides error isolation and allows for
-   * potential future async refactoring.
+   * This method uses StaticFile.create() which performs async stat operations,
+   * enabling true parallelism for file stat calls within each batch.
    *
    * @param files Array of file paths
    * @returns Array of created static files
@@ -436,7 +433,7 @@ export class Site {
       const batch = files.slice(i, i + BATCH_SIZE);
       const batchPromises = batch.map(async (file) => {
         try {
-          return new StaticFile(file, this.source);
+          return await StaticFile.create(file, this.source);
         } catch (error) {
           logger.warn(`Failed to read static file ${file}`, {
             error: error instanceof Error ? error.message : 'Unknown error',

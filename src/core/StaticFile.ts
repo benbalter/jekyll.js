@@ -1,4 +1,5 @@
 import { statSync } from 'fs';
+import { stat } from 'fs/promises';
 import { basename, extname, relative, dirname } from 'path';
 import { FileSystemError } from '../utils/errors';
 import { normalizePathSeparators } from '../utils/path-security';
@@ -37,10 +38,11 @@ export class StaticFile {
   public readonly collection?: string;
 
   /**
-   * Create a new StaticFile
+   * Create a new StaticFile (synchronous constructor for backward compatibility)
    * @param filePath Absolute path to the file
    * @param sourcePath Source directory path for calculating relative paths
    * @param collection Optional collection name
+   * @deprecated Use StaticFile.create() for async file operations
    */
   constructor(filePath: string, sourcePath: string, collection?: string) {
     this.path = filePath;
@@ -61,6 +63,87 @@ export class StaticFile {
         cause: error instanceof Error ? error : undefined,
       });
     }
+  }
+
+  /**
+   * Create a new StaticFile asynchronously
+   * This is the preferred method for creating StaticFiles as it uses async I/O
+   * @param filePath Absolute path to the file
+   * @param sourcePath Source directory path for calculating relative paths
+   * @param collection Optional collection name
+   * @returns Promise resolving to a new StaticFile instance
+   */
+  static async create(
+    filePath: string,
+    sourcePath: string,
+    collection?: string
+  ): Promise<StaticFile> {
+    const relPath = relative(sourcePath, filePath);
+
+    // Get file stats asynchronously
+    let mtime: Date;
+    let size: number;
+    try {
+      const stats = await stat(filePath);
+      mtime = stats.mtime;
+      size = stats.size;
+    } catch (error) {
+      throw new FileSystemError(`Failed to read file stats`, {
+        file: relPath,
+        cause: error instanceof Error ? error : undefined,
+      });
+    }
+
+    // Create StaticFile using internal factory
+    return StaticFile.fromData(filePath, sourcePath, collection, mtime, size);
+  }
+
+  /**
+   * Internal factory method to create a StaticFile from pre-loaded data
+   * @internal
+   */
+  private static fromData(
+    filePath: string,
+    sourcePath: string,
+    collection: string | undefined,
+    mtime: Date,
+    size: number
+  ): StaticFile {
+    // Create a plain object and set the prototype to StaticFile.prototype
+    // This avoids calling the constructor which would re-stat the file
+    const sf = Object.create(StaticFile.prototype) as StaticFile;
+
+    // Use Object.defineProperty to set readonly properties
+    Object.defineProperty(sf, 'path', { value: filePath, writable: false, enumerable: true });
+    Object.defineProperty(sf, 'relativePath', {
+      value: relative(sourcePath, filePath),
+      writable: false,
+      enumerable: true,
+    });
+    Object.defineProperty(sf, 'extname', {
+      value: extname(filePath),
+      writable: false,
+      enumerable: true,
+    });
+    Object.defineProperty(sf, 'basename', {
+      value: basename(filePath, extname(filePath)),
+      writable: false,
+      enumerable: true,
+    });
+    Object.defineProperty(sf, 'name', {
+      value: basename(filePath),
+      writable: false,
+      enumerable: true,
+    });
+    Object.defineProperty(sf, 'collection', {
+      value: collection,
+      writable: false,
+      enumerable: true,
+    });
+    Object.defineProperty(sf, 'modified_time', { value: mtime, writable: false, enumerable: true });
+    Object.defineProperty(sf, 'size', { value: size, writable: false, enumerable: true });
+
+    return sf;
   }
 
   /**

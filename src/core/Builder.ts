@@ -12,16 +12,16 @@ import {
   shouldExcludePath,
   normalizePathSeparators,
 } from '../utils/path-security';
+import { mkdirSync, existsSync, readdirSync, statSync } from 'fs';
 import {
-  mkdirSync,
-  writeFileSync,
-  existsSync,
-  readdirSync,
-  statSync,
-  copyFileSync,
-  readFileSync,
-} from 'fs';
-import { writeFile, mkdir } from 'fs/promises';
+  writeFile,
+  mkdir,
+  readFile,
+  copyFile,
+  stat,
+  rm,
+  readdir,
+} from 'fs/promises';
 import { join, dirname, extname, basename, relative, resolve, normalize } from 'path';
 import { rmSync } from 'fs';
 import { registerPlugins, PluginRegistry, Hooks } from '../plugins';
@@ -178,15 +178,15 @@ export class Builder {
       // Clean destination directory if needed (skip for incremental)
       if (this.options.clean && !this.options.incremental) {
         if (this.timer) {
-          this.timer.timeSync('Clean destination', () => this.cleanDestination());
+          await this.timer.timeAsync('Clean destination', () => this.cleanDestination());
         } else {
-          this.cleanDestination();
+          await this.cleanDestination();
         }
       }
 
       // Ensure destination exists
       try {
-        mkdirSync(this.site.destination, { recursive: true });
+        await mkdir(this.site.destination, { recursive: true });
       } catch (error) {
         throw new FileSystemError('Failed to create destination directory', {
           file: this.site.destination,
@@ -315,13 +315,13 @@ export class Builder {
 
       // Copy static files
       if (this.timer) {
-        this.timer.timeSync(
+        await this.timer.timeAsync(
           'Copy static files',
           () => this.copyStaticFiles(),
           () => `${this.site.static_files.length} files`
         );
       } else {
-        this.copyStaticFiles();
+        await this.copyStaticFiles();
       }
 
       // Generate plugin output files (sitemap, feed, etc.)
@@ -332,9 +332,9 @@ export class Builder {
         Array.from(collectionsToRender.values()).reduce((sum, docs) => sum + docs.length, 0);
       if (!this.options.incremental || totalRendered > 0) {
         if (this.timer) {
-          this.timer.timeSync('Generate plugin files', () => this.generatePluginFiles());
+          await this.timer.timeAsync('Generate plugin files', () => this.generatePluginFiles());
         } else {
-          this.generatePluginFiles();
+          await this.generatePluginFiles();
         }
       }
 
@@ -369,7 +369,7 @@ export class Builder {
    * Clean the destination directory, respecting keep_files configuration
    * Files and directories listed in keep_files will not be deleted
    */
-  private cleanDestination(): void {
+  private async cleanDestination(): Promise<void> {
     if (!existsSync(this.site.destination)) {
       return;
     }
@@ -380,7 +380,7 @@ export class Builder {
     if (keepFiles.length === 0) {
       logger.info(`Cleaning destination directory: ${this.site.destination}`);
       try {
-        rmSync(this.site.destination, { recursive: true, force: true });
+        await rm(this.site.destination, { recursive: true, force: true });
       } catch (error) {
         throw new FileSystemError('Failed to clean destination directory', {
           file: this.site.destination,
@@ -394,7 +394,7 @@ export class Builder {
     logger.info(
       `Cleaning destination directory (keeping: ${keepFiles.join(', ')}): ${this.site.destination}`
     );
-    this.cleanDirectorySelectively(this.site.destination, keepFiles);
+    await this.cleanDirectorySelectively(this.site.destination, keepFiles);
   }
 
   /**
@@ -403,11 +403,11 @@ export class Builder {
    * @param keepFiles Files/directories to keep (relative to destination)
    * @param relativePath Current relative path from destination
    */
-  private cleanDirectorySelectively(
+  private async cleanDirectorySelectively(
     dir: string,
     keepFiles: string[],
     relativePath: string = ''
-  ): void {
+  ): Promise<void> {
     if (!existsSync(dir)) {
       return;
     }
@@ -415,50 +415,59 @@ export class Builder {
     // Normalize keep patterns to use forward slashes
     const normalizedKeepFiles = keepFiles.map(normalizePathSeparators);
 
-    const entries = readdirSync(dir);
+    const entries = await readdir(dir);
 
-    for (const entry of entries) {
-      const fullPath = join(dir, entry);
-      const relPath = relativePath ? join(relativePath, entry) : entry;
-      const normalizedRelPath = normalizePathSeparators(relPath);
+    // Process entries in parallel
+    await Promise.all(
+      entries.map(async (entry) => {
+        const fullPath = join(dir, entry);
+        const relPath = relativePath ? join(relativePath, entry) : entry;
+        const normalizedRelPath = normalizePathSeparators(relPath);
 
-      // Check if this path should be kept
-      const shouldKeep = normalizedKeepFiles.some((keepPattern) => {
-        // Path matches or is inside a kept directory
-        if (pathMatchesOrInside(normalizedRelPath, keepPattern)) {
-          return true;
+        // Check if this path should be kept
+        const shouldKeep = normalizedKeepFiles.some((keepPattern) => {
+          // Path matches or is inside a kept directory
+          if (pathMatchesOrInside(normalizedRelPath, keepPattern)) {
+            return true;
+          }
+          // keepPattern is inside relPath (so relPath dir contains a keep file)
+          if (pathMatchesOrInside(keepPattern, normalizedRelPath)) {
+            return true;
+          }
+          return false;
+        });
+
+        if (shouldKeep) {
+          // Check if this is a directory that contains something to keep
+          const containsKeptFile = normalizedKeepFiles.some(
+            (keepPattern) =>
+              pathMatchesOrInside(keepPattern, normalizedRelPath) &&
+              keepPattern !== normalizedRelPath
+          );
+
+          try {
+            const stats = await stat(fullPath);
+            if (containsKeptFile && stats.isDirectory()) {
+              // Recurse into the directory
+              await this.cleanDirectorySelectively(fullPath, keepFiles, relPath);
+            }
+          } catch {
+            // If stat fails, skip this entry
+          }
+          // Otherwise, keep the entire file/directory
+          return;
         }
-        // keepPattern is inside relPath (so relPath dir contains a keep file)
-        if (pathMatchesOrInside(keepPattern, normalizedRelPath)) {
-          return true;
+
+        // Delete this entry
+        try {
+          await rm(fullPath, { recursive: true, force: true });
+        } catch (error) {
+          logger.warn(
+            `Failed to delete ${relPath}: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
         }
-        return false;
-      });
-
-      if (shouldKeep) {
-        // Check if this is a directory that contains something to keep
-        const containsKeptFile = normalizedKeepFiles.some(
-          (keepPattern) =>
-            pathMatchesOrInside(keepPattern, normalizedRelPath) && keepPattern !== normalizedRelPath
-        );
-
-        if (containsKeptFile && statSync(fullPath).isDirectory()) {
-          // Recurse into the directory
-          this.cleanDirectorySelectively(fullPath, keepFiles, relPath);
-        }
-        // Otherwise, keep the entire file/directory
-        continue;
-      }
-
-      // Delete this entry
-      try {
-        rmSync(fullPath, { recursive: true, force: true });
-      } catch (error) {
-        logger.warn(
-          `Failed to delete ${relPath}: ${error instanceof Error ? error.message : 'Unknown error'}`
-        );
-      }
-    }
+      })
+    );
   }
 
   /**

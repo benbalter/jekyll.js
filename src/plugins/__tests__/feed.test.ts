@@ -45,16 +45,16 @@ describe('FeedPlugin', () => {
     expect(plugin.name).toBe('jekyll-feed');
   });
 
-  it('should generate a valid Atom feed structure', () => {
-    const feed = plugin.generateFeed(site);
+  it('should generate a valid Atom feed structure', async () => {
+    const feed = await plugin.generateFeed(site);
 
     expect(feed).toContain('<?xml version="1.0" encoding="utf-8"?>');
     expect(feed).toContain('<feed xmlns="http://www.w3.org/2005/Atom">');
     expect(feed).toContain('</feed>');
   });
 
-  it('should include feed metadata', () => {
-    const feed = plugin.generateFeed(site);
+  it('should include feed metadata', async () => {
+    const feed = await plugin.generateFeed(site);
 
     expect(feed).toContain('<title>Test Blog</title>');
     expect(feed).toContain('<subtitle>A test blog for feed generation</subtitle>');
@@ -65,8 +65,8 @@ describe('FeedPlugin', () => {
     expect(feed).toContain('rel="alternate"');
   });
 
-  it('should include author information', () => {
-    const feed = plugin.generateFeed(site);
+  it('should include author information', async () => {
+    const feed = await plugin.generateFeed(site);
 
     expect(feed).toContain('<author>');
     expect(feed).toContain('<name>Test Author</name>');
@@ -75,14 +75,14 @@ describe('FeedPlugin', () => {
     expect(feed).toContain('</author>');
   });
 
-  it('should include generator tag', () => {
-    const feed = plugin.generateFeed(site);
+  it('should include generator tag', async () => {
+    const feed = await plugin.generateFeed(site);
 
     // The feed library includes just the generator name, without uri/version
     expect(feed).toContain('<generator>Jekyll.js</generator>');
   });
 
-  it('should include published posts in the feed', () => {
+  it('should include published posts in the feed', async () => {
     const postFile = join(testSiteDir, '2024-01-01-test-post.md');
     writeFileSync(postFile, '---\ntitle: Test Post\ndate: 2024-01-01\n---\nPost content');
 
@@ -90,7 +90,7 @@ describe('FeedPlugin', () => {
     post.url = '/2024/01/01/test-post.html';
     site.posts.push(post);
 
-    const feed = plugin.generateFeed(site);
+    const feed = await plugin.generateFeed(site);
 
     expect(feed).toContain('<entry>');
     // The feed library uses CDATA for title content
@@ -98,7 +98,7 @@ describe('FeedPlugin', () => {
     expect(feed).toContain('<link href="https://example.com/2024/01/01/test-post.html"');
   });
 
-  it('should include post published and updated dates', () => {
+  it('should include post published and updated dates', async () => {
     const postFile = join(testSiteDir, '2024-01-01-test-post.md');
     writeFileSync(
       postFile,
@@ -109,7 +109,7 @@ describe('FeedPlugin', () => {
     post.url = '/2024/01/01/test-post.html';
     site.posts.push(post);
 
-    const feed = plugin.generateFeed(site);
+    const feed = await plugin.generateFeed(site);
 
     expect(feed).toContain('<published>2024-01-01T10:00:00.000Z</published>');
     // Note: The feed library uses the post date for the updated field by default
@@ -117,7 +117,7 @@ describe('FeedPlugin', () => {
     expect(feed).toContain('<updated>');
   });
 
-  it('should include post categories', () => {
+  it('should include post categories', async () => {
     const postFile = join(testSiteDir, '2024-01-01-test-post.md');
     writeFileSync(
       postFile,
@@ -128,14 +128,14 @@ describe('FeedPlugin', () => {
     post.url = '/2024/01/01/test-post.html';
     site.posts.push(post);
 
-    const feed = plugin.generateFeed(site);
+    const feed = await plugin.generateFeed(site);
 
     // The feed library uses 'label' attribute for categories
     expect(feed).toContain('<category label="tech"/>');
     expect(feed).toContain('<category label="programming"/>');
   });
 
-  it('should include post excerpt', () => {
+  it('should include post excerpt', async () => {
     const postFile = join(testSiteDir, '2024-01-01-test-post.md');
     writeFileSync(
       postFile,
@@ -146,14 +146,49 @@ describe('FeedPlugin', () => {
     post.url = '/2024/01/01/test-post.html';
     site.posts.push(post);
 
-    const feed = plugin.generateFeed(site);
+    const feed = await plugin.generateFeed(site);
 
     // The feed library uses CDATA for summary content
     expect(feed).toContain('This is a test excerpt');
     expect(feed).toContain('<summary');
   });
 
-  it('should limit number of posts in feed', () => {
+  it('should process markdown in post excerpts as HTML', async () => {
+    const postFile = join(testSiteDir, '2024-01-01-test-post.md');
+    writeFileSync(
+      postFile,
+      '---\ntitle: Test Post\ndate: 2024-01-01\nexcerpt: This is **bold** and *italic* text\n---\nContent'
+    );
+
+    const post = new Document(postFile, testSiteDir, DocumentType.POST);
+    post.url = '/2024/01/01/test-post.html';
+    site.posts.push(post);
+
+    const feed = await plugin.generateFeed(site);
+
+    // Should preserve HTML in feed (markdown converted to HTML)
+    expect(feed).toContain('<strong>bold</strong>');
+    expect(feed).toContain('<em>italic</em>');
+  });
+
+  it('should process markdown in post description as HTML', async () => {
+    const postFile = join(testSiteDir, '2024-01-01-test-post.md');
+    writeFileSync(
+      postFile,
+      '---\ntitle: Test Post\ndate: 2024-01-01\ndescription: Check out [this link](https://example.com)\n---\nContent'
+    );
+
+    const post = new Document(postFile, testSiteDir, DocumentType.POST);
+    post.url = '/2024/01/01/test-post.html';
+    site.posts.push(post);
+
+    const feed = await plugin.generateFeed(site);
+
+    // Should preserve HTML in feed (markdown converted to HTML)
+    expect(feed).toContain('<a href="https://example.com">this link</a>');
+  });
+
+  it('should limit number of posts in feed', async () => {
     // Create 15 posts
     for (let i = 1; i <= 15; i++) {
       const postFile = join(testSiteDir, `2024-01-${i.toString().padStart(2, '0')}-post-${i}.md`);
@@ -167,23 +202,23 @@ describe('FeedPlugin', () => {
       site.posts.push(post);
     }
 
-    const feed = plugin.generateFeed(site);
+    const feed = await plugin.generateFeed(site);
 
     // Count number of <entry> tags - should be 10 (default limit)
     const entryCount = (feed.match(/<entry>/g) || []).length;
     expect(entryCount).toBe(10);
   });
 
-  it('should respect custom feed path', () => {
+  it('should respect custom feed path', async () => {
     site.config.feed = { path: '/custom-feed.xml' };
-    const feed = plugin.generateFeed(site);
+    const feed = await plugin.generateFeed(site);
 
     // The feed library uses different attribute ordering
     expect(feed).toContain('href="https://example.com/custom-feed.xml"');
     expect(feed).toContain('rel="self"');
   });
 
-  it('should respect custom posts limit', () => {
+  it('should respect custom posts limit', async () => {
     site.config.feed = { posts_limit: 3 };
 
     // Create 5 posts
@@ -196,14 +231,14 @@ describe('FeedPlugin', () => {
       site.posts.push(post);
     }
 
-    const feed = plugin.generateFeed(site);
+    const feed = await plugin.generateFeed(site);
 
     // Count number of <entry> tags - should be 3
     const entryCount = (feed.match(/<entry>/g) || []).length;
     expect(entryCount).toBe(3);
   });
 
-  it('should escape XML special characters', () => {
+  it('should escape XML special characters', async () => {
     const postFile = join(testSiteDir, '2024-01-01-test-post.md');
     writeFileSync(postFile, '---\ntitle: Test & "Quotes" <script>\ndate: 2024-01-01\n---\nContent');
 
@@ -211,7 +246,7 @@ describe('FeedPlugin', () => {
     post.url = '/2024/01/01/test-post.html';
     site.posts.push(post);
 
-    const feed = plugin.generateFeed(site);
+    const feed = await plugin.generateFeed(site);
 
     // The feed library uses CDATA sections for escaping, which is valid XML
     // Check that the content is present and not rendered as a script tag
@@ -220,7 +255,7 @@ describe('FeedPlugin', () => {
     expect(feed).toContain('<![CDATA[Test & "Quotes" <script>]]>');
   });
 
-  it('should sort posts by date (newest first)', () => {
+  it('should sort posts by date (newest first)', async () => {
     const post1File = join(testSiteDir, '2024-01-01-old-post.md');
     writeFileSync(post1File, '---\ntitle: Old Post\ndate: 2024-01-01\n---\nOld content');
     const post1 = new Document(post1File, testSiteDir, DocumentType.POST);
@@ -235,7 +270,7 @@ describe('FeedPlugin', () => {
     site.posts.push(post1);
     site.posts.push(post2);
 
-    const feed = plugin.generateFeed(site);
+    const feed = await plugin.generateFeed(site);
 
     const newPostIndex = feed.indexOf('New Post');
     const oldPostIndex = feed.indexOf('Old Post');

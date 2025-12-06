@@ -56,3 +56,4 @@ export {
   shouldExcludePath,
   PathTraversalError,
 } from './path-security';
+export { processTextWithMarkdown, processTextWithMarkdownToHtml } from './markdown';

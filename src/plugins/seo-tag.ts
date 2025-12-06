@@ -10,7 +10,7 @@
 import { Plugin } from './types';
 import { Renderer } from '../core/Renderer';
 import { Site } from '../core/Site';
-import { escapeHtml, safeJsonStringify } from '../utils/html';
+import { escapeHtml, safeJsonStringify, processTextWithMarkdown } from '../utils';
 
 /**
  * SEO Tag Plugin implementation
@@ -24,10 +24,10 @@ export class SeoTagPlugin implements Plugin {
       parse(_token: any) {
         // No arguments needed for seo tag
       },
-      render: function (ctx: any) {
+      render: async function (ctx: any) {
         // Access page from the context's environments/scopes
         const page = ctx.environments?.page || ctx.page || ctx.scopes?.[0]?.page;
-        return generateSeoTags(page, site);
+        return await generateSeoTags(page, site);
       },
     });
   }
@@ -36,14 +36,17 @@ export class SeoTagPlugin implements Plugin {
 /**
  * Generate SEO meta tags for a page
  */
-function generateSeoTags(page: any, site: Site): string {
+async function generateSeoTags(page: any, site: Site): Promise<string> {
   const tags: string[] = [];
   const config = site.config;
 
   // Extract page and site metadata
   const pageTitle = page.title || '';
   const siteTitle = config.title || '';
-  const pageDescription = page.description || config.description || '';
+  const rawPageDescription = page.description || config.description || '';
+  // Process description field with markdown rendering and HTML stripping
+  // This matches Jekyll's behavior where description can contain markdown
+  const pageDescription = await processTextWithMarkdown(rawPageDescription);
   const siteUrl = config.url || '';
   const baseurl = config.baseurl || '';
   const pageUrl = page.url ? `${siteUrl}${baseurl}${page.url}` : '';

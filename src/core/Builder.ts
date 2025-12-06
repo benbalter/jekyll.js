@@ -1356,7 +1356,7 @@ export class Builder {
         writePromises.push(
           (async () => {
             try {
-              const feedContent = feedPlugin.generateFeed(this.site);
+              const feedContent = await feedPlugin.generateFeed(this.site);
               const feedPath = this.site.config.feed?.path || '/feed.xml';
               const feedFilePath = join(this.site.destination, feedPath.replace(/^\//, ''));
 

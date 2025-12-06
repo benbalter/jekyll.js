@@ -23,6 +23,7 @@ import {
 } from 'fs';
 import { writeFile, mkdir } from 'fs/promises';
 import { join, dirname, extname, basename, relative, resolve, normalize } from 'path';
+import { createProgressIndicator } from '../utils/progress';
 import { rmSync } from 'fs';
 import { registerPlugins, PluginRegistry, Hooks } from '../plugins';
 import { CacheManager } from './CacheManager';
@@ -43,15 +44,6 @@ import {
  * Below this threshold, progress bars add visual noise without value
  */
 const PROGRESS_THRESHOLD = 5;
-
-/**
- * Normalize path separators to forward slashes for consistent comparison
- * @param path Path to normalize
- * @returns Path with forward slashes
- */
-function normalizePath(path: string): string {
-  return path.split(sep).join('/');
-}
 
 /**
  * Check if a path matches or is inside a keep pattern

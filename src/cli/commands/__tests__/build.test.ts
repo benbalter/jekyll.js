@@ -290,4 +290,87 @@ describe('buildCommand', () => {
       expect(existsSync(join(outputDir, 'index.html'))).toBe(true);
     });
   });
+
+  describe('redirect-from plugin', () => {
+    it('should generate redirect files when jekyll-redirect-from is enabled', async () => {
+      // Update config to enable redirect-from plugin
+      writeFileSync(
+        join(testSiteDir, '_config.yml'),
+        'title: Test Site\nplugins:\n  - jekyll-redirect-from\n'
+      );
+
+      // Create a page with redirect_from
+      writeFileSync(
+        join(testSiteDir, 'other-recommended-reading.md'),
+        '---\nlayout: default\ntitle: Books\nredirect_from: /books\n---\n# My Book List'
+      );
+
+      // Create another page with multiple redirects
+      writeFileSync(
+        join(testSiteDir, 'about.md'),
+        '---\nlayout: default\ntitle: About\nredirect_from:\n  - /old-about/\n  - /info\n---\n# About Page'
+      );
+
+      await buildCommand({
+        source: testSiteDir,
+        destination: outputDir,
+        config: join(testSiteDir, '_config.yml'),
+      });
+
+      // Verify redirect files were created
+      expect(existsSync(join(outputDir, 'books.html'))).toBe(true);
+      expect(existsSync(join(outputDir, 'old-about', 'index.html'))).toBe(true);
+      expect(existsSync(join(outputDir, 'info.html'))).toBe(true);
+
+      // Verify redirect content for /books -> /other-recommended-reading.html
+      const booksRedirect = readFileSync(join(outputDir, 'books.html'), 'utf-8');
+      expect(booksRedirect).toContain('<!DOCTYPE html>');
+      expect(booksRedirect).toContain('Redirecting');
+      expect(booksRedirect).toContain('/other-recommended-reading.html');
+      expect(booksRedirect).toContain('meta http-equiv="refresh"');
+      expect(booksRedirect).toContain('window.location.href');
+
+      // Verify redirect content for /old-about/ -> /about.html
+      const oldAboutRedirect = readFileSync(join(outputDir, 'old-about', 'index.html'), 'utf-8');
+      expect(oldAboutRedirect).toContain('/about.html');
+
+      // Verify the actual pages exist
+      expect(existsSync(join(outputDir, 'other-recommended-reading.html'))).toBe(true);
+      expect(existsSync(join(outputDir, 'about.html'))).toBe(true);
+    });
+
+    it('should handle redirect_to', async () => {
+      // Update config to enable redirect-from plugin
+      writeFileSync(
+        join(testSiteDir, '_config.yml'),
+        'title: Test Site\nplugins:\n  - jekyll-redirect-from\n'
+      );
+
+      // Create a page that redirects to another page
+      writeFileSync(
+        join(testSiteDir, 'old-page.md'),
+        '---\nlayout: default\ntitle: Old Page\nredirect_to: /new-page/\n---\n# Old Content'
+      );
+
+      // Create the target page
+      writeFileSync(
+        join(testSiteDir, 'new-page.md'),
+        '---\nlayout: default\ntitle: New Page\n---\n# New Content'
+      );
+
+      await buildCommand({
+        source: testSiteDir,
+        destination: outputDir,
+        config: join(testSiteDir, '_config.yml'),
+      });
+
+      // Verify redirect file was created
+      expect(existsSync(join(outputDir, 'old-page.html'))).toBe(true);
+
+      // Verify redirect points to new page
+      const redirectContent = readFileSync(join(outputDir, 'old-page.html'), 'utf-8');
+      expect(redirectContent).toContain('/new-page/');
+      expect(redirectContent).toContain('Redirecting');
+    });
+  });
 });

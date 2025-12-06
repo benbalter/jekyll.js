@@ -670,10 +670,12 @@ export class Builder {
    */
   private async renderPages(pages?: Document[]): Promise<void> {
     const pagesToRender = pages || this.site.pages;
-    logger.info(`Rendering ${pagesToRender.length} pages...`);
+    // Filter out pages with output: false (e.g., pages with redirect_to)
+    const filteredPages = pagesToRender.filter((page) => page.data.output !== false);
+    logger.info(`Rendering ${filteredPages.length} pages...`);
 
     // Use optimized batch rendering for better performance
-    await this.renderDocumentsBatch(pagesToRender, 'Pages');
+    await this.renderDocumentsBatch(filteredPages, 'Pages');
   }
 
   /**
@@ -684,6 +686,10 @@ export class Builder {
   private getFilteredPosts(posts?: Document[]): Document[] {
     const postsToFilter = posts || this.site.posts;
     return postsToFilter.filter((post) => {
+      // Filter out posts with output: false (e.g., posts with redirect_to)
+      if (post.data.output === false) {
+        return false;
+      }
       // Filter unpublished posts unless showDrafts is enabled
       if (!post.published && !this.options.showDrafts) {
         return false;
@@ -939,11 +945,16 @@ export class Builder {
         continue;
       }
 
-      logger.info(`Rendering ${documents.length} documents from collection '${collectionName}'...`);
+      // Filter out documents with output: false (e.g., documents with redirect_to)
+      const filteredDocuments = documents.filter((doc) => doc.data.output !== false);
+
+      logger.info(
+        `Rendering ${filteredDocuments.length} documents from collection '${collectionName}'...`
+      );
 
       // Use optimized batch rendering for better performance
       collectionPromises.push(
-        this.renderDocumentsBatch(documents, `Collection: ${collectionName}`)
+        this.renderDocumentsBatch(filteredDocuments, `Collection: ${collectionName}`)
       );
     }
 

@@ -10,7 +10,7 @@
 import { Plugin } from './types';
 import { Renderer } from '../core/Renderer';
 import { Site } from '../core/Site';
-import { escapeHtml } from '../utils/html';
+import { escapeHtml, safeJsonStringify } from '../utils/html';
 
 /**
  * SEO Tag Plugin implementation
@@ -219,5 +219,5 @@ function generateJsonLd(
     }
   }
 
-  return JSON.stringify(data);
+  return safeJsonStringify(data);
 }

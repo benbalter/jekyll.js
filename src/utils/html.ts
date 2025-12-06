@@ -78,3 +78,36 @@ export function escapeHtmlAttribute(str: string): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
 }
+
+/**
+ * Safely stringify an object to JSON for embedding in a <script> tag.
+ *
+ * JSON.stringify does not escape certain characters that can break out of
+ * a <script> tag context, creating XSS vulnerabilities. This function
+ * escapes:
+ * - `</` to `<\/` to prevent closing script tags (</script>)
+ * - `<!--` to `<\!--` to prevent HTML comment injection
+ * - U+2028 (Line Separator) and U+2029 (Paragraph Separator) which are
+ *   valid in JSON but invalid in JavaScript strings
+ *
+ * @param data The data to stringify
+ * @param indent Optional indentation for pretty printing (number of spaces or string)
+ * @returns JSON string safe for embedding in <script> tags
+ *
+ * @example
+ * // Safe to embed in <script type="application/ld+json">
+ * const json = safeJsonStringify({ title: '</script><script>alert(1)</script>' });
+ * // Returns: {"title":"<\/script><script>alert(1)<\/script>"}
+ */
+export function safeJsonStringify(data: unknown, indent?: number | string): string {
+  const json = JSON.stringify(data, null, indent);
+  if (json === undefined) {
+    return 'null';
+  }
+  // Escape sequences that could break out of script context
+  return json
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
+}

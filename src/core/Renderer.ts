@@ -5,7 +5,7 @@ import { Paginator } from './Paginator';
 import { logger } from '../utils/logger';
 import { TemplateError, parseErrorLocation } from '../utils/errors';
 import { processMarkdown, initMarkdownProcessor, MarkdownOptions } from './markdown';
-import { escapeHtml } from '../utils/html';
+import { escapeHtml, safeJsonStringify } from '../utils/html';
 import { normalizePathSeparators } from '../utils/path-security';
 import slugifyLib from 'slugify';
 import { format, parseISO, formatISO, formatRFC7231, isValid } from 'date-fns';
@@ -350,14 +350,15 @@ export class Renderer {
       return slugifyLib(String(input), options);
     });
 
-    // JSON filter
+    // JSON filter - uses safeJsonStringify to prevent XSS when output is embedded in HTML
+    // Note: If you need raw JSON.stringify behavior (e.g., for API responses), use a custom filter
     this.liquid.registerFilter('jsonify', (input: any) => {
-      return JSON.stringify(input);
+      return safeJsonStringify(input);
     });
 
-    // Inspect filter for debugging
+    // Inspect filter for debugging - uses safeJsonStringify to prevent XSS
     this.liquid.registerFilter('inspect', (input: any) => {
-      return JSON.stringify(input, null, 2);
+      return safeJsonStringify(input, 2);
     });
 
     // Array manipulation filters

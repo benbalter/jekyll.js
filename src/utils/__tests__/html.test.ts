@@ -1,4 +1,4 @@
-import { escapeHtml, unescapeHtml, escapeJs, escapeXml } from '../html';
+import { escapeHtml, unescapeHtml, escapeJs, escapeXml, safeJsonStringify } from '../html';
 
 describe('escapeHtml', () => {
   it('should escape HTML special characters', () => {
@@ -149,5 +149,101 @@ describe('escapeXml', () => {
 
   it('should convert non-string inputs to string', () => {
     expect(escapeXml(123 as unknown as string)).toBe('123');
+  });
+});
+
+describe('safeJsonStringify', () => {
+  it('should stringify basic objects', () => {
+    expect(safeJsonStringify({ name: 'test', value: 123 })).toBe('{"name":"test","value":123}');
+  });
+
+  it('should escape closing script tags to prevent XSS', () => {
+    const result = safeJsonStringify({ title: '</script><script>alert(1)</script>' });
+    // The < and > should be escaped as Unicode
+    expect(result).not.toContain('</script>');
+    expect(result).toContain('\\u003c/script\\u003e');
+    expect(result).toContain('\\u003cscript\\u003e');
+  });
+
+  it('should escape all angle brackets', () => {
+    const result = safeJsonStringify({ html: '<div>test</div>' });
+    expect(result).not.toContain('<');
+    expect(result).not.toContain('>');
+    expect(result).toContain('\\u003c');
+    expect(result).toContain('\\u003e');
+  });
+
+  it('should escape HTML comment sequences', () => {
+    const result = safeJsonStringify({ comment: '<!-- hidden -->' });
+    expect(result).not.toContain('<!--');
+    expect(result).toContain('\\u003c!--');
+  });
+
+  it('should escape Line Separator (U+2028)', () => {
+    const result = safeJsonStringify({ text: 'line1\u2028line2' });
+    expect(result).toContain('\\u2028');
+    expect(result).not.toContain('\u2028');
+  });
+
+  it('should escape Paragraph Separator (U+2029)', () => {
+    const result = safeJsonStringify({ text: 'para1\u2029para2' });
+    expect(result).toContain('\\u2029');
+    expect(result).not.toContain('\u2029');
+  });
+
+  it('should handle null input', () => {
+    expect(safeJsonStringify(null)).toBe('null');
+  });
+
+  it('should handle undefined input', () => {
+    expect(safeJsonStringify(undefined)).toBe('null');
+  });
+
+  it('should handle arrays', () => {
+    const result = safeJsonStringify(['<test>', '</test>']);
+    expect(result).toBe('["\\u003ctest\\u003e","\\u003c/test\\u003e"]');
+  });
+
+  it('should handle nested objects with dangerous content', () => {
+    const result = safeJsonStringify({
+      outer: {
+        inner: '</script><script>evil()</script>',
+      },
+    });
+    expect(result).not.toContain('</script>');
+  });
+
+  it('should support indentation parameter (number)', () => {
+    const result = safeJsonStringify({ a: 1 }, 2);
+    expect(result).toContain('\n');
+    expect(result).toContain('  ');
+  });
+
+  it('should support indentation parameter (string)', () => {
+    const result = safeJsonStringify({ a: 1 }, '\t');
+    expect(result).toContain('\n');
+    expect(result).toContain('\t');
+  });
+
+  it('should produce valid JSON when parsed back', () => {
+    const original = {
+      title: '</script><script>alert("XSS")</script>',
+      nested: { value: '<!-- comment -->' },
+    };
+    const json = safeJsonStringify(original);
+    const parsed = JSON.parse(json);
+    expect(parsed).toEqual(original);
+  });
+
+  it('should handle real-world XSS payload in page title', () => {
+    const payload = {
+      '@type': 'BlogPosting',
+      headline: '</script><img src=x onerror=alert(1)>',
+      description: 'A normal description',
+    };
+    const result = safeJsonStringify(payload);
+    // The output should be safe to embed in a <script> tag
+    expect(result).not.toContain('</script>');
+    expect(result).not.toContain('<img');
   });
 });

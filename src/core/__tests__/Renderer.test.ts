@@ -2,6 +2,7 @@ import { Renderer } from '../Renderer';
 import { Site } from '../Site';
 import { Document, DocumentType } from '../Document';
 import { mkdirSync, writeFileSync, rmSync } from 'fs';
+import { mkdir, writeFile, rm } from 'fs/promises';
 import { join } from 'path';
 
 // Mock the markdown module to avoid ESM import issues in Jest
@@ -2212,6 +2213,150 @@ End`;
       expect(result).toContain('Middle');
       expect(result).toContain('Content');
       expect(result).toContain('End');
+    });
+  });
+
+  describe('Related posts', () => {
+    let testPostsDir: string;
+
+    beforeEach(async () => {
+      // Create a temporary directory for test posts
+      testPostsDir = join(testDir, 'test-related-posts');
+      await mkdir(testPostsDir, { recursive: true });
+
+      const postsDir = join(testPostsDir, '_posts');
+      await mkdir(postsDir, { recursive: true });
+
+      // Create test posts with different dates
+      const posts = [
+        {
+          filename: '2024-01-01-first-post.md',
+          content: '---\ntitle: First Post\n---\nContent of first post',
+        },
+        {
+          filename: '2024-01-02-second-post.md',
+          content: '---\ntitle: Second Post\n---\nContent of second post',
+        },
+        {
+          filename: '2024-01-03-third-post.md',
+          content: '---\ntitle: Third Post\n---\nContent of third post',
+        },
+        {
+          filename: '2024-01-04-fourth-post.md',
+          content: '---\ntitle: Fourth Post\n---\nContent of fourth post',
+        },
+        {
+          filename: '2024-01-05-fifth-post.md',
+          content: '---\ntitle: Fifth Post\n---\nContent of fifth post',
+        },
+      ];
+
+      // Write test posts
+      for (const post of posts) {
+        await writeFile(join(postsDir, post.filename), post.content);
+      }
+    });
+
+    afterEach(async () => {
+      // Clean up test directory
+      try {
+        await rm(testPostsDir, { recursive: true, force: true });
+      } catch (error) {
+        // Ignore cleanup errors
+      }
+    });
+
+    it('should provide site.related_posts with up to 10 recent posts excluding current post', async () => {
+      // Create site with test posts
+      const testSite = new Site(testPostsDir);
+      await testSite.read();
+
+      const renderer = new Renderer(testSite);
+
+      // Get the third post (2024-01-03-third-post.md) as the current post
+      const currentPost = testSite.posts.find((p) => p.relativePath.includes('third-post'));
+      expect(currentPost).toBeDefined();
+
+      // Create a test template to render
+      const template = `{% for post in site.related_posts %}{{ post.title }},{% endfor %}`;
+      
+      // Get cached site data with related_posts
+      const siteData = (renderer as any).ensureSiteDataCached();
+      const relatedPosts = (renderer as any).computeRelatedPosts(currentPost!);
+      
+      // Render just the template with site context including related_posts
+      const result = await renderer.render(template, {
+        site: {
+          ...siteData,
+          related_posts: relatedPosts,
+        },
+      });
+
+      // Parse the result to find the titles
+      const titles = result.split(',').filter((t) => t.trim());
+
+      // Should have 4 related posts (all except the current one)
+      expect(titles.length).toBe(4);
+
+      // Should include all posts except the current one
+      expect(titles).toContain('Fifth Post');
+      expect(titles).toContain('Fourth Post');
+      expect(titles).toContain('Second Post');
+      expect(titles).toContain('First Post');
+
+      // Should NOT include the current post
+      expect(titles).not.toContain('Third Post');
+
+      // Posts should be in reverse chronological order (newest first)
+      expect(titles[0]).toBe('Fifth Post');
+      expect(titles[1]).toBe('Fourth Post');
+    });
+
+    it('should provide site.related_posts with maximum of 10 posts', async () => {
+      // Create more than 10 posts
+      const postsDir = join(testPostsDir, '_posts');
+
+      for (let i = 6; i <= 15; i++) {
+        const filename = `2024-01-${String(i).padStart(2, '0')}-post-${i}.md`;
+        const content = `---\ntitle: Post ${i}\n---\nContent of post ${i}`;
+        await writeFile(join(postsDir, filename), content);
+      }
+
+      // Recreate site with all posts
+      const testSite = new Site(testPostsDir);
+      await testSite.read();
+
+      const renderer = new Renderer(testSite);
+
+      // Get a post to render
+      const currentPost = testSite.posts[0];
+      expect(currentPost).toBeDefined();
+
+      // Get related posts
+      const relatedPosts = (renderer as any).computeRelatedPosts(currentPost!);
+
+      // Should have exactly 10 related posts (current post excluded from 15 total)
+      expect(relatedPosts.length).toBe(10);
+    });
+
+    it('should provide site.related_posts in templates for all document types', async () => {
+      const testSite = new Site(testPostsDir);
+      await testSite.read();
+
+      const renderer = new Renderer(testSite);
+
+      // Create a page (not a post) to test
+      const pageContent = '---\ntitle: Test Page\n---\nPage content';
+      const pagePath = join(testPostsDir, 'test-page.md');
+      await writeFile(pagePath, pageContent);
+
+      const page = new Document(pagePath, testPostsDir, DocumentType.PAGE);
+
+      // Get related posts for the page
+      const relatedPosts = (renderer as any).computeRelatedPosts(page);
+
+      // Should provide related_posts even for pages (all posts since it's not a post itself)
+      expect(relatedPosts.length).toBe(5);
     });
   });
 });

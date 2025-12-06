@@ -172,6 +172,25 @@ export class Renderer {
   }
 
   /**
+   * Compute related posts for a given document
+   * Returns up to 10 most recent posts, excluding the current document if it's a post
+   * This matches Jekyll's default related_posts behavior (without LSI)
+   * @param currentDocument The document being rendered
+   * @returns Array of related posts (up to 10)
+   */
+  private computeRelatedPosts(currentDocument: Document): any[] {
+    const allPosts = this.site.posts.map((p) => p.toJSON());
+    
+    // Filter out the current post if it's a post
+    const filteredPosts = allPosts.filter((post) => {
+      return post.path !== currentDocument.relativePath;
+    });
+    
+    // Return up to 10 most recent posts (posts are already sorted newest first)
+    return filteredPosts.slice(0, 10);
+  }
+
+  /**
    * Register Jekyll-compatible Liquid filters
    */
   private registerFilters(): void {
@@ -1377,6 +1396,9 @@ export class Renderer {
     // Get cached site data
     const siteData = this.ensureSiteDataCached();
 
+    // Compute related posts for this document (up to 10 most recent posts, excluding current)
+    const relatedPosts = this.computeRelatedPosts(document);
+
     // Create context with document data and cached site data
     const context: Record<string, unknown> = {
       page: {
@@ -1389,7 +1411,10 @@ export class Renderer {
         categories: document.categories,
         tags: document.tags,
       },
-      site: siteData,
+      site: {
+        ...siteData,
+        related_posts: relatedPosts,
+      },
       ...additionalContext,
     };
 

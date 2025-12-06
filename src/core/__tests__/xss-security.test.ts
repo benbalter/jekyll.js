@@ -139,26 +139,25 @@ plugins:
       expect(result).toContain('%3Cscript%3E');
     });
 
-    it('should produce safe JSON with jsonify filter', async () => {
+    it('should produce valid JSON with jsonify filter (Jekyll-compatible)', async () => {
       const template = '{{ data | jsonify }}';
       const result = await renderer.render(template, {
-        data: { title: '</script><script>alert(1)</script>' },
+        data: { title: 'Test Title', value: 123 },
       });
 
-      // Should not contain raw </script>
-      expect(result).not.toContain('</script>');
-      // Should be valid JSON
+      // Should be valid JSON matching Jekyll's behavior
       expect(() => JSON.parse(result)).not.toThrow();
+      expect(JSON.parse(result)).toEqual({ title: 'Test Title', value: 123 });
     });
 
-    it('should produce safe JSON with inspect filter', async () => {
+    it('should produce valid JSON with inspect filter (Jekyll-compatible)', async () => {
       const template = '{{ data | inspect }}';
       const result = await renderer.render(template, {
-        data: { content: '</script>' },
+        data: { content: 'test content' },
       });
 
-      expect(result).not.toContain('</script>');
       expect(() => JSON.parse(result)).not.toThrow();
+      expect(JSON.parse(result)).toEqual({ content: 'test content' });
     });
   });
 

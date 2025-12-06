@@ -5,7 +5,7 @@ import { Paginator } from './Paginator';
 import { logger } from '../utils/logger';
 import { TemplateError, parseErrorLocation } from '../utils/errors';
 import { processMarkdown, initMarkdownProcessor, MarkdownOptions } from './markdown';
-import { escapeHtml, safeJsonStringify } from '../utils/html';
+import { escapeHtml } from '../utils/html';
 import { normalizePathSeparators } from '../utils/path-security';
 import slugifyLib from 'slugify';
 import { format, parseISO, formatISO, formatRFC7231, isValid } from 'date-fns';
@@ -350,15 +350,14 @@ export class Renderer {
       return slugifyLib(String(input), options);
     });
 
-    // JSON filter - uses safeJsonStringify to prevent XSS when output is embedded in HTML
-    // Note: If you need raw JSON.stringify behavior (e.g., for API responses), use a custom filter
+    // JSON filter - matches Ruby Jekyll's behavior using plain JSON.stringify
     this.liquid.registerFilter('jsonify', (input: any) => {
-      return safeJsonStringify(input);
+      return JSON.stringify(input);
     });
 
-    // Inspect filter for debugging - uses safeJsonStringify to prevent XSS
+    // Inspect filter for debugging
     this.liquid.registerFilter('inspect', (input: any) => {
-      return safeJsonStringify(input, 2);
+      return JSON.stringify(input, null, 2);
     });
 
     // Array manipulation filters

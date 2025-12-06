@@ -85,7 +85,6 @@ export function escapeHtmlAttribute(str: string): string {
  * JSON.stringify does not escape certain characters that can break out of
  * a <script> tag context, creating XSS vulnerabilities. This function
  * escapes:
- * - `</` to `<\/` to prevent closing script tags (</script>)
  * - `<` to `\u003c` and `>` to `\u003e` to prevent script tag injection and HTML comment injection
  * - U+2028 (Line Separator) and U+2029 (Paragraph Separator) which are
  *   valid in JSON but invalid in JavaScript strings
@@ -97,7 +96,7 @@ export function escapeHtmlAttribute(str: string): string {
  * @example
  * // Safe to embed in <script type="application/ld+json">
  * const json = safeJsonStringify({ title: '</script><script>alert(1)</script>' });
- * // Returns: {"title":"<\/script><script>alert(1)<\/script>"}
+ * // Returns: {"title":"\u003c/script\u003e\u003cscript\u003ealert(1)\u003c/script\u003e"}
  */
 export function safeJsonStringify(data: unknown, indent?: number | string): string {
   const json = JSON.stringify(data, null, indent);

@@ -592,7 +592,7 @@ function applyAttributesToTag(
  *
  * This converts ASCII quotes, dashes, and ellipses to their Unicode equivalents:
  * - Straight quotes (", ') → Curly quotes (", ", ', ')
- * - Double dashes (--) → En dash (–)
+ * - Double dashes (--) → Em dash (—)
  * - Triple dashes (---) → Em dash (—)
  * - Three dots (...) → Ellipsis (…)
  *

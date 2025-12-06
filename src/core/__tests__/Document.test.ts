@@ -301,6 +301,27 @@ This is a test page.`;
       expect(json.layout).toBe('post');
       expect(json.data).toEqual({ title: 'Test', layout: 'post' });
     });
+
+    it('should expose front matter fields at top level for Liquid template access', () => {
+      const filePath = join(testDir, 'test.md');
+      writeFileSync(
+        filePath,
+        '---\ntitle: Test Post\ndescription: This is a test description\nauthor: John Doe\n---\nContent'
+      );
+
+      const doc = new Document(filePath, testDir, DocumentType.POST);
+      const json = doc.toJSON();
+
+      // Front matter fields should be accessible at the top level (Jekyll compatibility)
+      expect(json.title).toBe('Test Post');
+      expect(json.description).toBe('This is a test description');
+      expect(json.author).toBe('John Doe');
+
+      // Fields should also be available in the data object for backward compatibility
+      expect(json.data.title).toBe('Test Post');
+      expect(json.data.description).toBe('This is a test description');
+      expect(json.data.author).toBe('John Doe');
+    });
   });
 
   describe('encoding configuration', () => {

@@ -46,6 +46,10 @@ export function escapeJs(str: string): string {
 }
 
 /**
+ * Escape XML special characters for use in XML/SVG content
+ * Escapes &, <, >, ", and ' for safe XML output
+ * @param str String to escape
+ * @returns Escaped string safe for XML context
  * Escape XML special characters for safe use in XML/SVG content
  * Escapes &, <, >, ", and ' characters
  * @param str String to escape

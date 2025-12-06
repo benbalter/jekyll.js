@@ -261,6 +261,11 @@ export class Document {
     Object.defineProperty(doc, 'data', { value: data, writable: false, enumerable: true });
     Object.defineProperty(doc, 'content', { value: content, writable: false, enumerable: true });
 
+    // Initialize private properties to match constructor/field initializers
+    // Object.create() does not run field initializers, so we must set them explicitly
+    (doc as any)._url = undefined;
+    (doc as any)._jsonCache = null;
+
     return doc;
   }
 

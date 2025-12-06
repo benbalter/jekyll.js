@@ -147,6 +147,10 @@ export class StaticFile {
     Object.defineProperty(sf, 'modified_time', { value: mtime, writable: false, enumerable: true });
     Object.defineProperty(sf, 'size', { value: size, writable: false, enumerable: true });
 
+    // Initialize private property to match constructor/field initializers
+    // Object.create() does not run field initializers, so we must set it explicitly
+    (sf as any)._jsonCache = null;
+
     return sf;
   }
 

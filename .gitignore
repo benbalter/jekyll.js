@@ -13,6 +13,7 @@ dist/
 build/
 *.js
 *.d.ts
+!src/types/*.d.ts
 *.js.map
 !jest.config.js
 !eslint.config.js

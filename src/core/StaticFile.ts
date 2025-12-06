@@ -1,6 +1,7 @@
 import { statSync } from 'fs';
 import { basename, extname, relative, dirname } from 'path';
 import { FileSystemError } from '../utils/errors';
+import { normalizePathSeparators } from '../utils/path-security';
 
 /**
  * StaticFile class represents a static file (non-Jekyll processed) in the site
@@ -34,6 +35,10 @@ export class StaticFile {
 
   /** Collection name (if this static file is in a collection directory) */
   public readonly collection?: string;
+
+  /** Cached JSON representation for performance.
+   * Since all StaticFile properties are immutable, the cache never needs invalidation. */
+  private _jsonCache: Record<string, unknown> | null = null;
 
   /**
    * Create a new StaticFile
@@ -76,7 +81,7 @@ export class StaticFile {
    */
   get url(): string {
     // Convert backslashes to forward slashes for URL
-    const urlPath = this.relativePath.replace(/\\/g, '/');
+    const urlPath = normalizePathSeparators(this.relativePath);
     return urlPath.startsWith('/') ? urlPath : `/${urlPath}`;
   }
 
@@ -85,15 +90,20 @@ export class StaticFile {
    */
   get directory(): string {
     const dir = dirname(this.relativePath);
-    return dir === '.' ? '' : dir.replace(/\\/g, '/');
+    return dir === '.' ? '' : normalizePathSeparators(dir);
   }
 
   /**
-   * Convert the static file to a JSON representation
-   * This is used to expose static files in Liquid templates as site.static_files
+   * Convert the static file to a JSON representation.
+   * This is used to expose static files in Liquid templates as site.static_files.
+   * The result is cached for performance - repeated calls return the same object.
    */
   toJSON(): Record<string, unknown> {
-    return {
+    if (this._jsonCache) {
+      return this._jsonCache;
+    }
+
+    this._jsonCache = {
       path: this.url,
       modified_time: this.modified_time.toISOString(),
       name: this.name,
@@ -101,5 +111,7 @@ export class StaticFile {
       extname: this.extname,
       collection: this.collection,
     };
+
+    return this._jsonCache;
   }
 }

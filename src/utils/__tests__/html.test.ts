@@ -1,4 +1,4 @@
-import { escapeHtml, unescapeHtml, escapeJs } from '../html';
+import { escapeHtml, unescapeHtml, escapeJs, escapeXml } from '../html';
 
 describe('escapeHtml', () => {
   it('should escape HTML special characters', () => {
@@ -109,5 +109,45 @@ describe('escapeJs', () => {
     expect(escapeJs('<script>alert("XSS")</script>')).toBe(
       '\\x3cscript\\x3ealert(\\"XSS\\")\\x3c/script\\x3e'
     );
+  });
+});
+
+describe('escapeXml', () => {
+  it('should escape ampersand', () => {
+    expect(escapeXml('Tom & Jerry')).toBe('Tom &amp; Jerry');
+  });
+
+  it('should escape less than', () => {
+    expect(escapeXml('1 < 2')).toBe('1 &lt; 2');
+  });
+
+  it('should escape greater than', () => {
+    expect(escapeXml('2 > 1')).toBe('2 &gt; 1');
+  });
+
+  it('should escape double quotes', () => {
+    expect(escapeXml('say "hello"')).toBe('say &quot;hello&quot;');
+  });
+
+  it('should escape single quotes (apostrophe)', () => {
+    expect(escapeXml("it's")).toBe('it&apos;s');
+  });
+
+  it('should escape all XML special characters', () => {
+    expect(escapeXml('<text attr="value">Tom & Jerry\'s</text>')).toBe(
+      '&lt;text attr=&quot;value&quot;&gt;Tom &amp; Jerry&apos;s&lt;/text&gt;'
+    );
+  });
+
+  it('should handle empty string', () => {
+    expect(escapeXml('')).toBe('');
+  });
+
+  it('should handle string with no special characters', () => {
+    expect(escapeXml('Hello World')).toBe('Hello World');
+  });
+
+  it('should convert non-string inputs to string', () => {
+    expect(escapeXml(123 as unknown as string)).toBe('123');
   });
 });

@@ -1035,4 +1035,78 @@ Post ${i} content`
       }
     });
   });
+
+  describe('showProgress option', () => {
+    it('should accept showProgress option', () => {
+      const site = new Site(testSiteDir);
+      const options: BuilderOptions = {
+        showProgress: true,
+      };
+      const builder = new Builder(site, options);
+      expect(builder).toBeDefined();
+    });
+
+    it('should build successfully with showProgress enabled', async () => {
+      // Create test pages
+      writeFileSync(
+        join(testSiteDir, 'index.md'),
+        `---
+title: Home
+---
+# Welcome`
+      );
+
+      const site = new Site(testSiteDir);
+      const builder = new Builder(site, { showProgress: true });
+      await builder.build();
+
+      expect(existsSync(join(destDir, 'index.html'))).toBe(true);
+    });
+
+    it('should build successfully with showProgress disabled', async () => {
+      // Create test pages
+      writeFileSync(
+        join(testSiteDir, 'index.md'),
+        `---
+title: Home
+---
+# Welcome`
+      );
+
+      const site = new Site(testSiteDir);
+      const builder = new Builder(site, { showProgress: false });
+      await builder.build();
+
+      expect(existsSync(join(destDir, 'index.html'))).toBe(true);
+    });
+
+    it('should build successfully with showProgress and multiple posts', async () => {
+      // Create posts directory
+      const postsDir = join(testSiteDir, '_posts');
+      mkdirSync(postsDir, { recursive: true });
+
+      // Create multiple posts (>= 5 to trigger progress indicator)
+      for (let i = 0; i < 10; i++) {
+        const day = String(i + 1).padStart(2, '0');
+        writeFileSync(
+          join(postsDir, `2024-01-${day}-post-${i}.md`),
+          `---
+title: Post ${i}
+---
+Content for post ${i}.`
+        );
+      }
+
+      const site = new Site(testSiteDir);
+      const builder = new Builder(site, { showProgress: true });
+      await builder.build();
+
+      // All posts should be rendered
+      for (let i = 0; i < 10; i++) {
+        const day = String(i + 1).padStart(2, '0');
+        const postPath = join(destDir, '2024', '01', day, `post-${i}.html`);
+        expect(existsSync(postPath)).toBe(true);
+      }
+    });
+  });
 });

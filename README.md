@@ -62,6 +62,7 @@ Available options:
 - `--future` - Publish posts with a future date
 - `-w, --watch` - Watch for changes and rebuild automatically
 - `-I, --incremental` - Enable incremental build (only rebuild changed files)
+- `--progress` / `--no-progress` - Show/hide progress indicators (default: enabled for TTY)
 - `--verbose` - Print verbose output
 
 **Watch Mode:**
@@ -114,6 +115,7 @@ Available options:
 - `--no-livereload` - Disable LiveReload
 - `--drafts` - Process and render draft posts
 - `--future` - Publish posts with a future date
+- `--progress` / `--no-progress` - Show/hide progress indicators (default: enabled for TTY)
 - `--verbose` - Print verbose output
 
 ### Using Themes

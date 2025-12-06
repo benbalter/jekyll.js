@@ -16,6 +16,7 @@ import { Renderer } from '../core/Renderer';
 import { Site } from '../core/Site';
 import { Document } from '../core/Document';
 import { logger } from '../utils/logger';
+import { escapeXml } from '../utils/html';
 
 /**
  * Canvas configuration options
@@ -481,7 +482,7 @@ export class OgImagePlugin implements Plugin, GeneratorPlugin {
     const textLines = lines
       .map((line, index) => {
         const y = fontSize + index * lineHeight;
-        return `<text x="0" y="${y}" font-size="${fontSize}" font-weight="bold" fill="${color}" font-family="sans-serif">${this.escapeXml(line)}</text>`;
+        return `<text x="0" y="${y}" font-size="${fontSize}" font-weight="bold" fill="${color}" font-family="sans-serif">${escapeXml(line)}</text>`;
       })
       .join('');
 
@@ -548,7 +549,7 @@ export class OgImagePlugin implements Plugin, GeneratorPlugin {
     const textLines = displayLines
       .map((line, index) => {
         const y = fontSize + index * lineHeight;
-        return `<text x="0" y="${y}" font-size="${fontSize}" fill="${color}" font-family="sans-serif">${this.escapeXml(line)}</text>`;
+        return `<text x="0" y="${y}" font-size="${fontSize}" fill="${color}" font-family="sans-serif">${escapeXml(line)}</text>`;
       })
       .join('');
 
@@ -592,7 +593,7 @@ export class OgImagePlugin implements Plugin, GeneratorPlugin {
     // Create SVG with text anchored at the right edge
     const textSvg = Buffer.from(`
       <svg width="${svgWidth}" height="${fontSize * 2}">
-        <text x="${svgWidth}" y="${fontSize}" font-size="${fontSize}" fill="${color}" font-family="sans-serif" text-anchor="end">${this.escapeXml(config.domain)}</text>
+        <text x="${svgWidth}" y="${fontSize}" font-size="${fontSize}" fill="${color}" font-family="sans-serif" text-anchor="end">${escapeXml(config.domain)}</text>
       </svg>
     `);
 
@@ -692,17 +693,5 @@ export class OgImagePlugin implements Plugin, GeneratorPlugin {
     }
     logger.warn(`OG Image: Invalid hex color "${hex}", using white (#FFFFFF) as fallback`);
     return { r: 255, g: 255, b: 255 };
-  }
-
-  /**
-   * Escape XML special characters
-   */
-  private escapeXml(str: string): string {
-    return String(str)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&apos;');
   }
 }

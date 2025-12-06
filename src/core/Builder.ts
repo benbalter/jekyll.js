@@ -6,7 +6,12 @@ import { SassProcessor } from './SassProcessor';
 import { logger } from '../utils/logger';
 import { BuildError, FileSystemError, JekyllError } from '../utils/errors';
 import { PerformanceTimer, BuildTimings } from '../utils/timer';
-import { isPathWithinBase, sanitizePermalink, shouldExcludePath } from '../utils/path-security';
+import {
+  isPathWithinBase,
+  sanitizePermalink,
+  shouldExcludePath,
+  normalizePathSeparators,
+} from '../utils/path-security';
 import {
   mkdirSync,
   writeFileSync,
@@ -17,7 +22,8 @@ import {
   readFileSync,
 } from 'fs';
 import { writeFile, mkdir } from 'fs/promises';
-import { join, dirname, extname, basename, relative, sep, resolve, normalize } from 'path';
+import { join, dirname, extname, basename, relative, resolve, normalize } from 'path';
+import { createProgressIndicator } from '../utils/progress';
 import { rmSync } from 'fs';
 import { registerPlugins, PluginRegistry, Hooks } from '../plugins';
 import { CacheManager } from './CacheManager';
@@ -34,13 +40,10 @@ import {
 } from '../plugins/resource-hints';
 
 /**
- * Normalize path separators to forward slashes for consistent comparison
- * @param path Path to normalize
- * @returns Path with forward slashes
+ * Minimum number of documents required to show progress indicators
+ * Below this threshold, progress bars add visual noise without value
  */
-function normalizePath(path: string): string {
-  return path.split(sep).join('/');
-}
+const PROGRESS_THRESHOLD = 5;
 
 /**
  * Check if a path matches or is inside a keep pattern
@@ -73,6 +76,9 @@ export interface BuilderOptions {
 
   /** Enable performance timing for benchmarks */
   timing?: boolean;
+
+  /** Show progress indicators during build (default: true for TTY) */
+  showProgress?: boolean;
 }
 
 /**
@@ -122,6 +128,8 @@ export class Builder {
       verbose: false,
       incremental: false,
       timing: false,
+      // Default to showing progress only on TTY terminals
+      showProgress: process.stdout.isTTY,
       ...options,
     };
 
@@ -422,14 +430,14 @@ export class Builder {
     }
 
     // Normalize keep patterns to use forward slashes
-    const normalizedKeepFiles = keepFiles.map(normalizePath);
+    const normalizedKeepFiles = keepFiles.map(normalizePathSeparators);
 
     const entries = readdirSync(dir);
 
     for (const entry of entries) {
       const fullPath = join(dir, entry);
       const relPath = relativePath ? join(relativePath, entry) : entry;
-      const normalizedRelPath = normalizePath(relPath);
+      const normalizedRelPath = normalizePathSeparators(relPath);
 
       // Check if this path should be kept
       const shouldKeep = normalizedKeepFiles.some((keepPattern) => {
@@ -646,7 +654,7 @@ export class Builder {
     logger.info(`Rendering ${pagesToRender.length} pages...`);
 
     // Use optimized batch rendering for better performance
-    await this.renderDocumentsBatch(pagesToRender);
+    await this.renderDocumentsBatch(pagesToRender, 'Pages');
   }
 
   /**
@@ -680,7 +688,7 @@ export class Builder {
     logger.info(`Rendering ${filteredPosts.length} posts...`);
 
     // Use optimized batch rendering for better performance
-    await this.renderDocumentsBatch(filteredPosts);
+    await this.renderDocumentsBatch(filteredPosts, 'Posts');
   }
 
   /**
@@ -716,15 +724,38 @@ export class Builder {
    * Render a batch of documents with optimized I/O
    * Pre-creates directories and uses parallel async writes
    * @param docs Documents to render
+   * @param label Optional label for progress indicator
    */
-  private async renderDocumentsBatch(docs: Document[]): Promise<void> {
+  private async renderDocumentsBatch(docs: Document[], label?: string): Promise<void> {
     if (docs.length === 0) return;
 
     // Pre-create all output directories in parallel
     await this.preCreateDirectories(docs);
 
+    // Create progress indicator if progress is enabled and we have enough documents
+    const showProgress = this.options.showProgress && docs.length >= PROGRESS_THRESHOLD;
+    const progress = showProgress
+      ? createProgressIndicator(docs.length, label || 'Rendering', true)
+      : null;
+
+    // Track completed documents for progress
+    let completed = 0;
+
     // Render all documents in parallel with async file writes
-    await Promise.all(docs.map((doc) => this.renderDocumentAsync(doc)));
+    await Promise.all(
+      docs.map(async (doc) => {
+        await this.renderDocumentAsync(doc);
+        completed++;
+        if (progress) {
+          progress.update(completed);
+        }
+      })
+    );
+
+    // Complete the progress indicator
+    if (progress) {
+      progress.complete();
+    }
   }
 
   /**
@@ -892,7 +923,7 @@ export class Builder {
       logger.info(`Rendering ${documents.length} documents from collection '${collectionName}'...`);
 
       // Use optimized batch rendering for better performance
-      collectionPromises.push(this.renderDocumentsBatch(documents));
+      collectionPromises.push(this.renderDocumentsBatch(documents, `Collection: ${collectionName}`));
     }
 
     await Promise.all(collectionPromises);

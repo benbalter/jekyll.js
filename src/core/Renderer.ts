@@ -55,8 +55,6 @@ export class Renderer {
   private markdownOptions: MarkdownOptions = {};
   /** Cached site data to avoid repeated serialization */
   private cachedSiteData: Record<string, unknown> | null = null;
-  /** Promise for background markdown processor initialization */
-  private markdownInitPromise: Promise<void> | null = null;
 
   /**
    * Create a new Renderer instance
@@ -1629,36 +1627,12 @@ export class Renderer {
   }
 
   /**
-   * Start loading markdown modules in the background without blocking.
-   * This enables parallel initialization with other startup tasks like reading site files.
-   * Call waitForMarkdownProcessor() before rendering to ensure initialization is complete.
-   */
-  startMarkdownProcessorInit(): void {
-    if (!this.markdownInitPromise) {
-      this.markdownInitPromise = initMarkdownProcessor(this.markdownOptions);
-    }
-  }
-
-  /**
-   * Wait for the background markdown processor initialization to complete.
-   * If startMarkdownProcessorInit() was not called, this will initialize synchronously.
-   * @returns Promise that resolves when initialization is complete
-   */
-  async waitForMarkdownProcessor(): Promise<void> {
-    if (this.markdownInitPromise) {
-      await this.markdownInitPromise;
-    } else {
-      await initMarkdownProcessor(this.markdownOptions);
-    }
-  }
-
-  /**
    * Pre-initialize the markdown processor for optimal performance.
    * This loads all required remark modules and creates a cached frozen processor.
    * Call this before rendering documents to avoid cold-start latency on first markdown render.
    * @returns Promise that resolves when initialization is complete
    */
   async initializeMarkdownProcessor(): Promise<void> {
-    await this.waitForMarkdownProcessor();
+    await initMarkdownProcessor(this.markdownOptions);
   }
 }

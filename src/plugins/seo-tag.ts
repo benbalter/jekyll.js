@@ -48,7 +48,9 @@ function generateSeoTags(page: any, site: Site): string {
   const baseurl = config.baseurl || '';
   const pageUrl = page.url ? `${siteUrl}${baseurl}${page.url}` : '';
   const author = page.author || config.author || '';
-  const image = page.image || config.image || '';
+  // Get image from page or config, handling both string and object formats
+  const rawImage = page.image || config.image || '';
+  const image = typeof rawImage === 'string' ? rawImage : (rawImage?.src || rawImage?.path || '');
   const imageUrl = image ? (image.startsWith('http') ? image : `${siteUrl}${baseurl}${image}`) : '';
 
   // Page type

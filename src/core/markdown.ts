@@ -9,6 +9,8 @@
  * - Processor freezing: Processors are frozen after configuration for optimal performance
  */
 
+import { escape as escapeHtml } from 'html-escaper';
+
 /**
  * Options for markdown processing
  */
@@ -517,15 +519,15 @@ function applyAttributesToTag(
 
   // Add ID if present
   if (finalId) {
-    // Escape the ID to prevent XSS
-    const escapedId = escapeHtmlAttribute(finalId);
+    // Escape the ID to prevent XSS using html-escaper library
+    const escapedId = escapeHtml(finalId);
     newTag += ` id="${escapedId}"`;
   }
 
   // Add classes if present
   if (classes.length > 0) {
-    // Escape each class to prevent XSS
-    const escapedClasses = classes.map(escapeHtmlAttribute).join(' ');
+    // Escape each class to prevent XSS using html-escaper library
+    const escapedClasses = classes.map(escapeHtml).join(' ');
     newTag += ` class="${escapedClasses}"`;
   }
 
@@ -533,8 +535,8 @@ function applyAttributesToTag(
   for (const [key, value] of Object.entries(attributes.attrs)) {
     // Skip class and id as they're handled above
     if (key.toLowerCase() === 'class' || key.toLowerCase() === 'id') continue;
-    // Escape the value to prevent XSS
-    const escapedValue = escapeHtmlAttribute(value);
+    // Escape the value to prevent XSS using html-escaper library
+    const escapedValue = escapeHtml(value);
     newTag += ` ${key}="${escapedValue}"`;
   }
 
@@ -553,20 +555,6 @@ function applyAttributesToTag(
 
   newTag += '>';
   return newTag;
-}
-
-/**
- * Escape a string for use in an HTML attribute value.
- * @param str The string to escape
- * @returns The escaped string safe for use in attribute values
- */
-function escapeHtmlAttribute(str: string): string {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
 }
 
 /**

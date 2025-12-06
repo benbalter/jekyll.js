@@ -85,6 +85,13 @@ export class Renderer {
 
     // Register Jekyll-compatible tags
     this.registerTags();
+
+    // Auto-enable syntax highlighting based on site configuration
+    if (site.config.modern?.syntaxHighlighting?.enabled) {
+      this.enableSyntaxHighlighting({
+        theme: site.config.modern.syntaxHighlighting.theme,
+      });
+    }
   }
 
   /**
@@ -983,19 +990,70 @@ export class Renderer {
       );
     }
 
-    // The 'highlight' tag would require custom implementation with a syntax highlighter
-    // For now, we'll add a basic highlight tag that just wraps content
+    // The 'highlight' tag uses Shiki for syntax highlighting when enabled
+    // Otherwise falls back to basic HTML wrapping
+    const site = this.site; // Capture site reference for use in tag
 
     this.liquid.registerTag('highlight', {
-      parse(token: any) {
+      parse: function (tagToken: any, remainTokens: any) {
         // Sanitize language to prevent XSS
-        this.language = String(token.args.trim()).replace(/[^a-zA-Z0-9_-]/g, '');
+        this.language = String(tagToken.args.trim()).replace(/[^a-zA-Z0-9_-]/g, '');
+        this.templates = [];
+
+        // Parse until we find the endhighlight tag
+        const stream = this.liquid.parser.parseStream(remainTokens);
+        stream
+          .on('tag:endhighlight', () => stream.stop())
+          .on('template', (tpl: any) => this.templates.push(tpl))
+          .on('end', () => {
+            throw new Error('tag "highlight" not closed with endhighlight');
+          })
+          .start();
       },
-      render: async function* (_ctx: any): any {
-        const content = yield this.liquid.renderer.renderTemplates(this.templates, _ctx);
-        // Escape HTML special characters in content to prevent XSS
-        const escapedContent = escapeHtml(content);
-        return `<div class="highlight"><pre class="highlight"><code class="language-${this.language}">${escapedContent}</code></pre></div>`;
+      render: async function (ctx: any, emitter: any): Promise<void> {
+        // Render template content using a temporary emitter to collect the output
+        const { toPromise } = await import('liquidjs');
+        const r = this.liquid.renderer;
+
+        // Create a new emitter to collect the rendered content
+        const collectingEmitter = {
+          buffer: '',
+          write: function (chunk: string) {
+            this.buffer += chunk;
+          },
+          break: () => {},
+          continue: () => {},
+        };
+
+        // Render templates into the collecting emitter
+        const iterator = r.renderTemplates(this.templates, ctx, collectingEmitter);
+        await toPromise(iterator);
+        const content = collectingEmitter.buffer;
+
+        // Check if syntax highlighting is enabled in site config
+        const syntaxHighlightingConfig = site.config.modern?.syntaxHighlighting;
+        let result: string;
+
+        if (syntaxHighlightingConfig?.enabled) {
+          try {
+            const { highlightCode } = await import('../plugins/syntax-highlighting');
+            const theme = syntaxHighlightingConfig.theme || 'github-light';
+            const highlighted = await highlightCode(content, this.language, {
+              theme: theme as any,
+            });
+            result = `<div class="highlight">${highlighted}</div>`;
+          } catch (_error) {
+            // Fall back to basic highlighting on error
+            const escapedContent = escapeHtml(content);
+            result = `<div class="highlight"><pre class="highlight"><code class="language-${this.language}">${escapedContent}</code></pre></div>`;
+          }
+        } else {
+          // Fallback: escape HTML and wrap in basic code block
+          const escapedContent = escapeHtml(content);
+          result = `<div class="highlight"><pre class="highlight"><code class="language-${this.language}">${escapedContent}</code></pre></div>`;
+        }
+
+        emitter.write(result);
       },
     });
 
@@ -1601,6 +1659,15 @@ export class Renderer {
    */
   enableGitHubMentions(options?: { repository?: string; mentionStrong?: boolean }): void {
     this.markdownOptions.githubMentions = options || true;
+  }
+
+  /**
+   * Enable syntax highlighting for code blocks in markdown
+   * When enabled, code blocks are highlighted using Shiki
+   * @param options Optional settings (theme for highlighting)
+   */
+  enableSyntaxHighlighting(options?: { theme?: string }): void {
+    this.markdownOptions.syntaxHighlighting = options || true;
   }
 
   /**

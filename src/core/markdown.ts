@@ -26,6 +26,13 @@ export interface MarkdownOptions {
         /** Wrap mentions in strong tags (default: true in remark-github) */
         mentionStrong?: boolean;
       };
+  /** Enable syntax highlighting for code blocks */
+  syntaxHighlighting?:
+    | boolean
+    | {
+        /** Theme to use for highlighting (default: 'github-light') */
+        theme?: string;
+      };
 }
 
 // Cached module imports to avoid repeated dynamic imports
@@ -229,6 +236,15 @@ export async function processMarkdown(
   // Post-process to handle Kramdown-style attribute lists
   // This supports syntax like {: .class #id attr="value" }
   html = processKramdownAttributes(html);
+
+  // Apply syntax highlighting to code blocks if enabled
+  if (options.syntaxHighlighting) {
+    const theme =
+      typeof options.syntaxHighlighting === 'object'
+        ? options.syntaxHighlighting.theme || 'github-light'
+        : 'github-light';
+    html = await applySyntaxHighlighting(html, theme);
+  }
 
   return html;
 }
@@ -571,6 +587,66 @@ function applyAttributesToTag(
 
   newTag += '>';
   return newTag;
+}
+
+/**
+ * Apply syntax highlighting to code blocks in HTML.
+ * This function finds <pre><code> blocks and applies Shiki syntax highlighting.
+ *
+ * @param html The HTML content to process
+ * @param theme The theme to use for syntax highlighting
+ * @returns HTML with syntax highlighted code blocks
+ */
+async function applySyntaxHighlighting(html: string, theme: string): Promise<string> {
+  // Dynamically import the syntax highlighting module to avoid ESM issues
+  const { highlightCode } = await import('../plugins/syntax-highlighting');
+
+  // Pattern to match code blocks: <pre><code class="language-xxx">...</code></pre>
+  // Also matches without the language class: <pre><code>...</code></pre>
+  const codeBlockPattern = /<pre><code(?:\s+class="language-([^"]*)")?>([\s\S]*?)<\/code><\/pre>/gi;
+
+  // Collect all matches and their replacements
+  const matches: Array<{ match: string; index: number; replacement: Promise<string> }> = [];
+  let match: RegExpExecArray | null;
+
+  while ((match = codeBlockPattern.exec(html)) !== null) {
+    const fullMatch = match[0];
+    const language = match[1] || 'text';
+    const code = match[2] || '';
+
+    // Decode HTML entities in the code content
+    const decodedCode = code
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&amp;/g, '&')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'");
+
+    matches.push({
+      match: fullMatch,
+      index: match.index,
+      replacement: highlightCode(decodedCode, language, { theme: theme as any }),
+    });
+  }
+
+  // If no code blocks found, return original HTML
+  if (matches.length === 0) {
+    return html;
+  }
+
+  // Wait for all highlighting to complete
+  const replacements = await Promise.all(matches.map((m) => m.replacement));
+
+  // Replace code blocks from end to start to maintain correct indices
+  let result = html;
+  for (let i = matches.length - 1; i >= 0; i--) {
+    const m = matches[i];
+    if (m) {
+      result = result.slice(0, m.index) + replacements[i] + result.slice(m.index + m.match.length);
+    }
+  }
+
+  return result;
 }
 
 /**

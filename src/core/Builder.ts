@@ -35,6 +35,12 @@ import {
 } from '../plugins/resource-hints';
 
 /**
+ * Minimum number of documents required to show progress indicators
+ * Below this threshold, progress bars add visual noise without value
+ */
+const PROGRESS_THRESHOLD = 5;
+
+/**
  * Normalize path separators to forward slashes for consistent comparison
  * @param path Path to normalize
  * @returns Path with forward slashes
@@ -726,7 +732,7 @@ export class Builder {
     await this.preCreateDirectories(docs);
 
     // Create progress indicator if progress is enabled and we have enough documents
-    const showProgress = this.options.showProgress && docs.length >= 5;
+    const showProgress = this.options.showProgress && docs.length >= PROGRESS_THRESHOLD;
     const progress = showProgress
       ? createProgressIndicator(docs.length, label || 'Rendering', true)
       : null;

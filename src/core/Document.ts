@@ -300,18 +300,47 @@ export class Document {
 
   /**
    * Get the date from front matter or filename (for posts)
+   * Returns a Date object where the calendar date (year, month, day) is preserved
+   * regardless of the local timezone.
+   *
+   * For dates from front matter with a time component, the original timestamp is preserved.
+   * For date-only strings (like "2024-01-01"), the date is stored as UTC midnight to prevent
+   * timezone-related shifts when extracting date components later.
    */
   get date(): Date | undefined {
     if (this.data.date) {
-      return new Date(this.data.date);
+      const dateValue = this.data.date;
+      const parsed = new Date(dateValue);
+      if (!isNaN(parsed.getTime())) {
+        // Check if the date string includes a time component
+        // Dates like "2024-01-01T10:00:00Z" or "2024-01-01 10:00:00" have time info
+        // Dates like "2024-01-01" are date-only and need UTC normalization
+        const dateStr = String(dateValue);
+        const hasTimeComponent = /[T\s]\d{2}:/.test(dateStr);
+
+        if (hasTimeComponent) {
+          // Preserve the original timestamp for dates with explicit time
+          return parsed;
+        } else {
+          // For date-only strings, convert to UTC midnight to prevent timezone shifts
+          return new Date(
+            Date.UTC(parsed.getUTCFullYear(), parsed.getUTCMonth(), parsed.getUTCDate())
+          );
+        }
+      }
+      return undefined;
     }
 
     // For posts, try to extract date from filename (YYYY-MM-DD-title format)
     if (this.type === DocumentType.POST) {
       const match = this.basename.match(/^(\d{4})-(\d{2})-(\d{2})-/);
-      if (match) {
-        const [, year, month, day] = match;
-        return new Date(`${year}-${month}-${day}`);
+      if (match && match[1] && match[2] && match[3]) {
+        const year = match[1];
+        const month = match[2];
+        const day = match[3];
+        // Use Date.UTC to ensure the date represents midnight UTC on the specified date
+        // This prevents timezone-related date shifts when using getFullYear/Month/Date later
+        return new Date(Date.UTC(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10)));
       }
     }
 

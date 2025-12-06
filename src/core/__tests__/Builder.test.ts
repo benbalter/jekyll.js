@@ -117,6 +117,33 @@ My first post!`
       expect(postContent).toContain('My first post!');
     });
 
+    it('should preserve post date in URL regardless of timezone', async () => {
+      // This test verifies the fix for timezone issues where dates like 2021-02-01
+      // could incorrectly render as 2021/01/31 in western timezones
+      const postsDir = join(testSiteDir, '_posts');
+      mkdirSync(postsDir);
+
+      // Use a date that would shift if timezone handling is incorrect
+      // 2021-02-01 at UTC midnight would become 2021-01-31 in PST (UTC-8)
+      writeFileSync(
+        join(postsDir, '2021-02-01-timezone-test.md'),
+        `---
+title: Timezone Test
+---
+Testing timezone handling.`
+      );
+
+      const site = new Site(testSiteDir);
+      const builder = new Builder(site);
+      await builder.build();
+
+      // The URL should always use the date from the filename (2021-02-01)
+      // regardless of the local timezone
+      expect(existsSync(join(destDir, '2021/02/01/timezone-test.html'))).toBe(true);
+      // The wrong date path should NOT exist
+      expect(existsSync(join(destDir, '2021/01/31/timezone-test.html'))).toBe(false);
+    });
+
     it('should apply layouts', async () => {
       // Create layout
       const layoutsDir = join(testSiteDir, '_layouts');

@@ -118,28 +118,22 @@ jest.mock('../markdown', () => {
     processMarkdown: jest.fn(async (content: string) => {
       if (!content) return '';
 
-      // Handle markdown="1" attribute
+      // Handle markdown="1" attribute - matches both markdown="1" and markdown='1'
+      // with optional other attributes before or after
       let result = content;
-      const markdownBlockPattern = /<([a-zA-Z][a-zA-Z0-9]*)\s+markdown=["']1["']([^>]*)>([\s\S]*?)<\/\1>/g;
+      const markdownAttrPattern = /<([a-zA-Z][a-zA-Z0-9]*)([^>]*)\s+markdown=["']1["']([^>]*)>([\s\S]*?)<\/\1>|<([a-zA-Z][a-zA-Z0-9]*)\s+markdown=["']1["']([^>]*)>([\s\S]*?)<\/\5>/g;
       
-      result = result.replace(markdownBlockPattern, (_match, tagName, attrs, innerContent) => {
+      result = result.replace(markdownAttrPattern, (_match, tagName1, attrsBefore, attrsAfter, innerContent1, tagName2, attrs2, innerContent2) => {
+        // Handle both patterns (markdown attr in middle or at start)
+        const tagName = tagName1 || tagName2;
+        const innerContent = innerContent1 || innerContent2;
+        const allAttrs = attrsBefore ? (attrsBefore + ' ' + (attrsAfter || '')).trim() : (attrs2 || '').trim();
+        
         // Process the inner content as markdown
         const processedInner = processMockMarkdown(innerContent);
         // Return the tag without markdown="1" attribute but with other attributes
-        const cleanAttrs = attrs.trim();
-        if (cleanAttrs) {
-          return `<${tagName} ${cleanAttrs}>${processedInner}</${tagName}>`;
-        }
-        return `<${tagName}>${processedInner}</${tagName}>`;
-      });
-      
-      // Handle markdown="1" as the first attribute
-      const markdownFirstPattern = /<([a-zA-Z][a-zA-Z0-9]*)\s+markdown=["']1["']([^>]*)>([\s\S]*?)<\/\1>/g;
-      result = result.replace(markdownFirstPattern, (_match, tagName, attrs, innerContent) => {
-        const processedInner = processMockMarkdown(innerContent);
-        const cleanAttrs = attrs.trim();
-        if (cleanAttrs) {
-          return `<${tagName} ${cleanAttrs}>${processedInner}</${tagName}>`;
+        if (allAttrs) {
+          return `<${tagName} ${allAttrs}>${processedInner}</${tagName}>`;
         }
         return `<${tagName}>${processedInner}</${tagName}>`;
       });

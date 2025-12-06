@@ -158,5 +158,45 @@ After
       expect(html).toContain('<p>Before</p>');
       expect(html).toContain('<p>After</p>');
     });
+
+    it('should handle nested tags of the same type correctly', async () => {
+      const content = `<div markdown="1">
+# Outer heading
+
+<div>Inner non-markdown content</div>
+
+**Bold text**
+</div>`;
+      const html = await processMarkdown(content);
+
+      expect(html).toContain('<h1>Outer heading</h1>');
+      expect(html).toContain('<div>Inner non-markdown content</div>');
+      expect(html).toContain('<strong>Bold text</strong>');
+    });
+
+    it('should handle boolean attributes correctly', async () => {
+      const content = `<div markdown="1" disabled data-active>
+**Bold text**
+</div>`;
+      const html = await processMarkdown(content);
+
+      expect(html).toContain('<strong>Bold text</strong>');
+      expect(html).toContain('disabled');
+      expect(html).toContain('data-active');
+      expect(html).not.toContain('markdown="1"');
+    });
+
+    it('should handle multiple attributes with proper spacing', async () => {
+      const content = `<div class="foo" markdown="1" id="bar" data-test="value">
+**Text**
+</div>`;
+      const html = await processMarkdown(content);
+
+      expect(html).toContain('class="foo"');
+      expect(html).toContain('id="bar"');
+      expect(html).toContain('data-test="value"');
+      // Verify proper spacing between attributes
+      expect(html).toMatch(/class="foo"\s+id="bar"/);
+    });
   });
 });

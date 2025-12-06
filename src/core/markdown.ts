@@ -336,6 +336,7 @@ function extractMarkdownBlocks(content: string): ExtractResult {
       
       if (!tagName) {
         result.push(content.charAt(tagStart));
+        i = tagStart + 1; // Move past the '<' to avoid infinite loop
         continue;
       }
       
@@ -390,7 +391,7 @@ function extractMarkdownBlocks(content: string): ExtractResult {
           while (i < content.length && /\s/.test(content.charAt(i))) {
             i++;
           }
-          // Check for =
+          // Check for = (attribute with value)
           if (i < content.length && content.charAt(i) === '=') {
             i++;
             // Skip whitespace
@@ -413,13 +414,19 @@ function extractMarkdownBlocks(content: string): ExtractResult {
               }
             }
           }
+          // else: boolean attribute (no value), already captured
+          
           // Skip whitespace
           while (i < content.length && /\s/.test(content.charAt(i))) {
             i++;
           }
-          // Capture the attribute if it's not markdown
+          // Capture the attribute if it's not markdown, ensuring proper spacing
           if (i > attrStart) {
-            otherAttrs += content.slice(attrStart, i);
+            const attrContent = content.slice(attrStart, i);
+            if (otherAttrs && !otherAttrs.endsWith(' ')) {
+              otherAttrs += ' ';
+            }
+            otherAttrs += attrContent;
           }
         }
       }
@@ -435,28 +442,62 @@ function extractMarkdownBlocks(content: string): ExtractResult {
       
       // If this tag has markdown="1", extract its content
       if (hasMarkdownAttr) {
-        // Find the closing tag
+        // Find the matching closing tag, handling nested tags of the same type
         const closingTag = `</${tagName}>`;
         const contentStart = i;
-        const closingIndex = content.indexOf(closingTag, i);
+        let depth = 1; // We're inside one tag already
+        let searchPos = i;
         
-        if (closingIndex !== -1) {
-          // Extract the content between tags
-          const blockContent = content.slice(contentStart, closingIndex);
-          const placeholder = `<!--JEKYLL_MARKDOWN_BLOCK_${blockIndex}-->`;
+        while (searchPos < content.length && depth > 0) {
+          // Look for opening or closing tags of the same type
+          const nextOpen = content.indexOf(`<${tagName}`, searchPos);
+          const nextClose = content.indexOf(closingTag, searchPos);
           
-          blocks.push({
-            tag: tagName,
-            content: blockContent,
-            placeholder,
-            attributes: otherAttrs.trim(),
-          });
+          if (nextClose === -1) {
+            // No closing tag found
+            depth = -1;
+            break;
+          }
           
-          result.push(placeholder);
-          i = closingIndex + closingTag.length;
-          blockIndex++;
-          continue;
+          // Check if there's an opening tag before the next closing tag
+          if (nextOpen !== -1 && nextOpen < nextClose) {
+            // Verify it's actually an opening tag (could be a self-closing or have attributes)
+            const charAfterTag = content.charAt(nextOpen + tagName.length + 1);
+            if (charAfterTag === '>' || charAfterTag === ' ' || charAfterTag === '\t' || charAfterTag === '\n') {
+              depth++;
+              searchPos = nextOpen + tagName.length + 1;
+            } else {
+              searchPos = nextOpen + 1;
+            }
+          } else {
+            // Next closing tag is the one we want (or no more opening tags)
+            depth--;
+            if (depth === 0) {
+              // Found the matching closing tag
+              const blockContent = content.slice(contentStart, nextClose);
+              const placeholder = `<!--JEKYLL_MARKDOWN_BLOCK_${blockIndex}-->`;
+              
+              blocks.push({
+                tag: tagName,
+                content: blockContent,
+                placeholder,
+                attributes: otherAttrs.trim(),
+              });
+              
+              result.push(placeholder);
+              i = nextClose + closingTag.length;
+              blockIndex++;
+              break;
+            } else {
+              searchPos = nextClose + closingTag.length;
+            }
+          }
         }
+        
+        if (depth === 0) {
+          continue; // Successfully processed the block
+        }
+        // else: No proper closing tag found, fall through to output tag as-is
       }
       
       // Not a markdown block, output the tag as-is

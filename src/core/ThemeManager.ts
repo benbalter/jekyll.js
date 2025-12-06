@@ -250,7 +250,9 @@ export class ThemeManager {
       // Check each part for path traversal
       for (const part of parts) {
         if (part.includes('..') || part.includes('\\')) {
-          logger.warn(`Security warning: Scoped theme name contains unsafe characters: ${themeName}`);
+          logger.warn(
+            `Security warning: Scoped theme name contains unsafe characters: ${themeName}`
+          );
           return false;
         }
       }
@@ -417,17 +419,25 @@ export class ThemeManager {
    * @returns Full path to layout file or null if not found
    */
   public resolveLayout(layoutName: string): string | null {
+    // Security: Validate layout name to prevent path traversal
+    if (!this.isRelativePathSafe(layoutName)) {
+      logger.warn(`Security warning: Layout name contains path traversal: ${layoutName}`);
+      return null;
+    }
+
     // Check site layouts first
     const siteLayoutsDir = join(this.sourceDir, this.config.layouts_dir || '_layouts');
     const siteLayoutPath = this.findFileWithExtensions(siteLayoutsDir, layoutName);
-    if (siteLayoutPath) {
+    // Security: Verify resolved path is within the layouts directory
+    if (siteLayoutPath && isPathWithinBase(siteLayoutsDir, siteLayoutPath)) {
       return siteLayoutPath;
     }
 
     // Check theme layouts
     if (this.theme) {
       const themeLayoutPath = this.findFileWithExtensions(this.theme.layoutsDir, layoutName);
-      if (themeLayoutPath) {
+      // Security: Verify resolved path is within the theme layouts directory
+      if (themeLayoutPath && isPathWithinBase(this.theme.layoutsDir, themeLayoutPath)) {
         return themeLayoutPath;
       }
     }
@@ -732,18 +742,30 @@ export class ThemeManager {
    * @returns Full path to data file or null if not found
    */
   public resolveDataFile(dataPath: string): string | null {
+    // Security: Validate data path to prevent path traversal
+    if (!this.isRelativePathSafe(dataPath)) {
+      logger.warn(`Security warning: Data path contains path traversal: ${dataPath}`);
+      return null;
+    }
+
     // Check site data first
     const siteDataDir = join(this.sourceDir, this.config.data_dir || '_data');
     const siteDataPath = join(siteDataDir, dataPath);
-    if (existsSync(siteDataPath) && statSync(siteDataPath).isFile()) {
-      return siteDataPath;
+    // Security: Verify resolved path is within the data directory
+    if (isPathWithinBase(siteDataDir, siteDataPath)) {
+      if (existsSync(siteDataPath) && statSync(siteDataPath).isFile()) {
+        return siteDataPath;
+      }
     }
 
     // Check theme data
     if (this.theme) {
       const themeDataPath = join(this.theme.dataDir, dataPath);
-      if (existsSync(themeDataPath) && statSync(themeDataPath).isFile()) {
-        return themeDataPath;
+      // Security: Verify resolved path is within the theme data directory
+      if (isPathWithinBase(this.theme.dataDir, themeDataPath)) {
+        if (existsSync(themeDataPath) && statSync(themeDataPath).isFile()) {
+          return themeDataPath;
+        }
       }
     }
 

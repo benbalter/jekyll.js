@@ -2153,4 +2153,82 @@ Second`
       });
     });
   });
+
+  describe('Liquid whitespace handling', () => {
+    it('should preserve newlines in list items with {%- tag -%} (greedy: false)', async () => {
+      site = new Site(testDir);
+      const renderer = new Renderer(site);
+
+      // This tests the fix for the issue where list items were being merged into a single line
+      // when using {%- assign -%} with a blank line after it
+      const template = `{% for item in items %}
+{%- assign value = item -%}
+
+* Item {{ value }}
+{% endfor %}`;
+
+      const result = await renderer.render(template, { items: ['one', 'two', 'three'] });
+
+      // Each list item should be on its own line
+      expect(result).toMatch(/\* Item one/);
+      expect(result).toMatch(/\* Item two/);
+      expect(result).toMatch(/\* Item three/);
+
+      // They should NOT all be on the same line
+      expect(result).not.toMatch(/\* Item one.*\* Item two.*\* Item three/);
+    });
+
+    it('should handle Jekyll-style post list with filters (benbalter.github.com pattern)', async () => {
+      // Create mock site with posts
+      site = new Site(testDir);
+      // Create mock posts for the test
+      const mockPosts = [
+        { url: '/post1', title: 'Post 1', description: 'Description 1' },
+        { url: '/post2', title: 'Post 2', description: 'Description 2' },
+        { url: '/post3', title: 'Post 3', description: 'Description 3' },
+      ];
+
+      const renderer = new Renderer(site);
+
+      // This is the exact pattern from benbalter.github.com that was failing
+      const template = `{% for url in urls %}
+{%- assign post=posts | where:"url",url | first -%}
+
+* **[{{ post.title }}]({{ post.url }})** — {{ post.description }}{% endfor %}`;
+
+      const result = await renderer.render(template, {
+        urls: ['/post1', '/post2', '/post3'],
+        posts: mockPosts,
+      });
+
+      // Each list item should be separate
+      expect(result).toMatch(/\* \*\*\[Post 1\]/);
+      expect(result).toMatch(/\* \*\*\[Post 2\]/);
+      expect(result).toMatch(/\* \*\*\[Post 3\]/);
+
+      // They should NOT all be on the same line
+      expect(result).not.toMatch(/\* \*\*\[Post 1\].*\* \*\*\[Post 2\].*\* \*\*\[Post 3\]/);
+    });
+
+    it('should trim whitespace correctly without being too greedy', async () => {
+      site = new Site(testDir);
+      const renderer = new Renderer(site);
+
+      const template = `Start
+{%- assign test = "value" -%}
+Middle
+{%- if true -%}
+Content
+{%- endif -%}
+End`;
+
+      const result = await renderer.render(template, {});
+
+      // Should trim immediate whitespace but preserve structure
+      expect(result).toContain('Start');
+      expect(result).toContain('Middle');
+      expect(result).toContain('Content');
+      expect(result).toContain('End');
+    });
+  });
 });

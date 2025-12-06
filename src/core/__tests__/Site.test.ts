@@ -395,6 +395,107 @@ collections:
       expect(site.data.headers_only).toEqual([]);
     });
 
+    it('should handle CSV files with newlines in quoted fields', async () => {
+      const dataDir = join(testSiteDir, '_data');
+      mkdirSync(dataDir);
+
+      // CSV with newlines inside quoted fields
+      writeFileSync(
+        join(dataDir, 'multiline.csv'),
+        'name,description\nProduct,"A long\ndescription\nwith newlines"'
+      );
+
+      const site = new Site(testSiteDir);
+      await site.read();
+
+      expect(site.data.multiline).toBeDefined();
+      expect(site.data.multiline).toHaveLength(1);
+      expect(site.data.multiline[0].name).toBe('Product');
+      expect(site.data.multiline[0].description).toBe('A long\ndescription\nwith newlines');
+    });
+
+    it('should handle CSV rows with extra columns', async () => {
+      const dataDir = join(testSiteDir, '_data');
+      mkdirSync(dataDir);
+
+      // CSV with more columns than headers
+      writeFileSync(
+        join(dataDir, 'extra_columns.csv'),
+        'name,email\nAlice,alice@example.com,extra1,extra2'
+      );
+
+      const site = new Site(testSiteDir);
+      await site.read();
+
+      expect(site.data.extra_columns).toBeDefined();
+      expect(site.data.extra_columns).toHaveLength(1);
+      // Extra columns should be ignored (only header columns are used)
+      expect(site.data.extra_columns[0]).toEqual({
+        name: 'Alice',
+        email: 'alice@example.com',
+      });
+    });
+
+    it('should handle CSV files with empty column headers', async () => {
+      const dataDir = join(testSiteDir, '_data');
+      mkdirSync(dataDir);
+
+      // CSV with empty column header
+      writeFileSync(
+        join(dataDir, 'empty_headers.csv'),
+        'name,,email\nAlice,value,alice@example.com'
+      );
+
+      const site = new Site(testSiteDir);
+      await site.read();
+
+      expect(site.data.empty_headers).toBeDefined();
+      expect(site.data.empty_headers).toHaveLength(1);
+      // Empty headers should get placeholder names
+      expect(site.data.empty_headers[0]).toEqual({
+        name: 'Alice',
+        column_2: 'value',
+        email: 'alice@example.com',
+      });
+    });
+
+    it('should handle CSV fields with quotes in middle of unquoted field', async () => {
+      const dataDir = join(testSiteDir, '_data');
+      mkdirSync(dataDir);
+
+      // CSV with quote in middle of unquoted field (should be treated as literal)
+      writeFileSync(join(dataDir, 'mid_quotes.csv'), 'name,description\nAlice,abc"def');
+
+      const site = new Site(testSiteDir);
+      await site.read();
+
+      expect(site.data.mid_quotes).toBeDefined();
+      expect(site.data.mid_quotes).toHaveLength(1);
+      expect(site.data.mid_quotes[0]).toEqual({
+        name: 'Alice',
+        description: 'abc"def',
+      });
+    });
+
+    it('should preserve whitespace in CSV fields (Jekyll.rb compatibility)', async () => {
+      const dataDir = join(testSiteDir, '_data');
+      mkdirSync(dataDir);
+
+      // CSV with whitespace - Jekyll.rb preserves it
+      writeFileSync(join(dataDir, 'whitespace.csv'), 'name, value\nAlice, Bob ');
+
+      const site = new Site(testSiteDir);
+      await site.read();
+
+      expect(site.data.whitespace).toBeDefined();
+      expect(site.data.whitespace).toHaveLength(1);
+      // Whitespace should be preserved per Jekyll.rb behavior
+      expect(site.data.whitespace[0]).toEqual({
+        name: 'Alice',
+        ' value': ' Bob ',
+      });
+    });
+
     it('should handle invalid data files gracefully', async () => {
       const dataDir = join(testSiteDir, '_data');
       mkdirSync(dataDir);

@@ -662,6 +662,11 @@ export class Site {
       return [];
     }
 
+    // Generate placeholder names for empty headers to avoid key collisions
+    const normalizedHeaders = headers.map((header, index) =>
+      header === '' ? `column_${index + 1}` : header
+    );
+
     const data: Record<string, string>[] = [];
 
     // Process each data row
@@ -669,8 +674,8 @@ export class Site {
       const row = rows[i] as string[];
       const record: Record<string, string> = {};
 
-      for (let j = 0; j < headers.length; j++) {
-        const key = headers[j] as string;
+      for (let j = 0; j < normalizedHeaders.length; j++) {
+        const key = normalizedHeaders[j] as string;
         // Use empty string if value is missing
         const value = j < row.length ? (row[j] as string) : '';
         record[key] = value;
@@ -719,18 +724,22 @@ export class Site {
         currentField += char;
         i++;
       } else {
-        if (char === '"') {
-          // Start of quoted field
+        if (char === '"' && currentField === '') {
+          // Start of quoted field (only if at field start per RFC 4180)
           inQuotes = true;
           i++;
+        } else if (char === '"') {
+          // Quote in middle of unquoted field: treat as literal
+          currentField += '"';
+          i++;
         } else if (char === delimiter) {
-          // End of field
-          currentRow.push(currentField.trim());
+          // End of field - preserve whitespace per Jekyll.rb behavior
+          currentRow.push(currentField);
           currentField = '';
           i++;
         } else if (char === '\r') {
           // Handle CRLF or CR line endings
-          currentRow.push(currentField.trim());
+          currentRow.push(currentField);
           currentField = '';
           if (currentRow.length > 0 && currentRow.some((f) => f !== '')) {
             rows.push(currentRow);
@@ -743,7 +752,7 @@ export class Site {
           }
         } else if (char === '\n') {
           // End of row (LF line ending)
-          currentRow.push(currentField.trim());
+          currentRow.push(currentField);
           currentField = '';
           if (currentRow.length > 0 && currentRow.some((f) => f !== '')) {
             rows.push(currentRow);
@@ -759,7 +768,7 @@ export class Site {
 
     // Handle last field and row
     if (currentField !== '' || currentRow.length > 0) {
-      currentRow.push(currentField.trim());
+      currentRow.push(currentField);
       if (currentRow.some((f) => f !== '')) {
         rows.push(currentRow);
       }

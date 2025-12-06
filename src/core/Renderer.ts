@@ -80,11 +80,50 @@ export class Renderer {
       jekyllInclude: true, // Use Jekyll-style includes
     });
 
+    // Configure smart quotes based on kramdown settings
+    // Default to true (enabled) to match Jekyll/Kramdown behavior
+    this.configureSmartQuotes();
+
     // Register Jekyll-compatible filters
     this.registerFilters();
 
     // Register Jekyll-compatible tags
     this.registerTags();
+  }
+
+  /**
+   * Configure smart quotes based on site config.
+   * Reads kramdown.smart_quotes from _config.yml
+   */
+  private configureSmartQuotes(): void {
+    const kramdownConfig = this.site.config.kramdown;
+
+    if (kramdownConfig?.smart_quotes !== undefined) {
+      // If smart_quotes is explicitly set to false, disable it
+      if (kramdownConfig.smart_quotes === false) {
+        this.markdownOptions.smartQuotes = false;
+      }
+      // If it's an array like ["apos", "apos", "quot", "quot"], disable smart quotes
+      // (This is the Jekyll way to disable smart quotes)
+      else if (Array.isArray(kramdownConfig.smart_quotes)) {
+        const arr = kramdownConfig.smart_quotes;
+        // Only the exact sequence ['apos', 'apos', 'quot', 'quot'] disables smart quotes in Jekyll/Kramdown
+        // This represents: left single quote, right single quote, left double quote, right double quote
+        const isDisabled =
+          arr.length === 4 &&
+          arr[0] === 'apos' &&
+          arr[1] === 'apos' &&
+          arr[2] === 'quot' &&
+          arr[3] === 'quot';
+        this.markdownOptions.smartQuotes = !isDisabled;
+      }
+      // Otherwise, treat truthy values as enabled
+      else {
+        this.markdownOptions.smartQuotes = Boolean(kramdownConfig.smart_quotes);
+      }
+    }
+    // Default: smart quotes are enabled (smartQuotes = true or undefined means enabled)
+    // No need to set explicitly as the default in processMarkdown is true
   }
 
   /**

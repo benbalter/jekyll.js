@@ -91,7 +91,8 @@ This is a test page.`;
       writeFileSync(filePath, '---\ndate: 2023-01-15\n---\nContent');
 
       const doc = new Document(filePath, testDir, DocumentType.PAGE);
-      expect(doc.date).toEqual(new Date('2023-01-15'));
+      // Date should be stored as UTC midnight for consistent handling across timezones
+      expect(doc.date).toEqual(new Date(Date.UTC(2023, 0, 15)));
     });
 
     it('should extract date from post filename', () => {
@@ -99,7 +100,8 @@ This is a test page.`;
       writeFileSync(filePath, 'Content');
 
       const doc = new Document(filePath, testDir, DocumentType.POST);
-      expect(doc.date).toEqual(new Date('2023-01-15'));
+      // Date should be stored as UTC midnight for consistent handling across timezones
+      expect(doc.date).toEqual(new Date(Date.UTC(2023, 0, 15)));
     });
 
     it('should return undefined if no date found', () => {
@@ -108,6 +110,34 @@ This is a test page.`;
 
       const doc = new Document(filePath, testDir, DocumentType.PAGE);
       expect(doc.date).toBeUndefined();
+    });
+
+    it('should preserve calendar date regardless of timezone for filename dates', () => {
+      // Test with a date that would shift when converted from UTC to a western timezone
+      // 2021-02-01 UTC midnight would be 2021-01-31 in PST (UTC-8)
+      const filePath = join(testDir, '2021-02-01-timezone-test.md');
+      writeFileSync(filePath, 'Content');
+
+      const doc = new Document(filePath, testDir, DocumentType.POST);
+      const date = doc.date!;
+
+      // Using UTC methods should always give us the correct date components
+      expect(date.getUTCFullYear()).toBe(2021);
+      expect(date.getUTCMonth()).toBe(1); // February (0-indexed)
+      expect(date.getUTCDate()).toBe(1);
+    });
+
+    it('should preserve calendar date regardless of timezone for front matter dates', () => {
+      const filePath = join(testDir, 'test.md');
+      writeFileSync(filePath, '---\ndate: 2021-02-01\n---\nContent');
+
+      const doc = new Document(filePath, testDir, DocumentType.PAGE);
+      const date = doc.date!;
+
+      // Using UTC methods should always give us the correct date components
+      expect(date.getUTCFullYear()).toBe(2021);
+      expect(date.getUTCMonth()).toBe(1); // February (0-indexed)
+      expect(date.getUTCDate()).toBe(1);
     });
   });
 

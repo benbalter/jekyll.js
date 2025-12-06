@@ -1,4 +1,5 @@
-import { existsSync, readdirSync, statSync, readFileSync, openSync, readSync, closeSync } from 'fs';
+import { existsSync, openSync, readSync, closeSync } from 'fs';
+import { readdir, stat, readFile } from 'fs/promises';
 import { join, resolve, extname, dirname, basename, relative } from 'path';
 import { Document, DocumentType } from './Document';
 import { StaticFile } from './StaticFile';
@@ -137,8 +138,8 @@ export class Site {
     // These must complete before processing documents that depend on them
     await Promise.all([this.readLayoutsAsync(), this.readIncludesAsync()]);
 
-    // Phase 2: Read data files (synchronous since they're typically small)
-    this.readData();
+    // Phase 2: Read data files asynchronously
+    await this.readDataAsync();
 
     // Phase 3: Read posts, collections, pages, and static files in parallel
     // These are independent of each other
@@ -400,7 +401,7 @@ export class Site {
       const batch = files.slice(i, i + BATCH_SIZE);
       const batchPromises = batch.map(async (file) => {
         try {
-          return new Document(file, this.source, type, collection, config);
+          return await Document.create(file, this.source, type, collection, config);
         } catch (error) {
           logger.warn(`Failed to create document ${file}`, {
             error: error instanceof Error ? error.message : 'Unknown error',
@@ -417,13 +418,10 @@ export class Site {
   }
 
   /**
-   * Create static files in batches for error handling and progress tracking.
+   * Create static files in batches with true parallel async I/O.
    *
-   * Note: While this method uses async/await and Promise.all, the StaticFile constructor
-   * uses synchronous I/O (statSync). This means stat calls still happen sequentially
-   * on the main thread. True parallelism would require refactoring StaticFile to use
-   * async I/O (fs/promises). The batching provides error isolation and allows for
-   * potential future async refactoring.
+   * This method uses StaticFile.create() which performs async stat operations,
+   * enabling true parallelism for file stat calls within each batch.
    *
    * @param files Array of file paths
    * @returns Array of created static files
@@ -436,7 +434,7 @@ export class Site {
       const batch = files.slice(i, i + BATCH_SIZE);
       const batchPromises = batch.map(async (file) => {
         try {
-          return new StaticFile(file, this.source);
+          return await StaticFile.create(file, this.source);
         } catch (error) {
           logger.warn(`Failed to read static file ${file}`, {
             error: error instanceof Error ? error.message : 'Unknown error',
@@ -465,39 +463,6 @@ export class Site {
       shallow,
       rootDir,
     });
-  }
-
-  /**
-   * Read all data files from _data directory (site and theme)
-   * Site data takes precedence over theme data
-   * Plugin-added data is preserved and not overwritten by file data
-   */
-  private readData(): void {
-    // Preserve any existing data added by plugins (e.g., github metadata)
-    const existingData = { ...this.data };
-
-    // First read theme data if available
-    // Note: skipExclude=true for theme data since exclude patterns only apply to site files
-    const themeDataDir = this.themeManager.getThemeDataDirectory();
-    let themeData: Record<string, any> = {};
-
-    if (themeDataDir && existsSync(themeDataDir)) {
-      themeData = this.readDataDirectory(themeDataDir, themeDataDir, true);
-    }
-
-    // Then read site data (apply exclude patterns)
-    const siteDataDir = join(this.source, this.config.data_dir || '_data');
-    let siteData: Record<string, any> = {};
-
-    if (existsSync(siteDataDir)) {
-      siteData = this.readDataDirectory(siteDataDir, siteDataDir, false);
-    }
-
-    // Merge in order: theme data → site data → existing plugin data
-    // This ensures plugin-added data (like github metadata) is preserved
-    // and file data can be overridden by plugins if needed
-    const fileData = this.mergeData(themeData, siteData);
-    this.data = this.mergeData(fileData, existingData);
   }
 
   /**
@@ -533,69 +498,119 @@ export class Site {
   }
 
   /**
-   * Recursively read data files from a directory
+   * Read data files from _data directory and theme data directory - async version
+   * Uses parallel async I/O for better performance
+   * Site data takes precedence over theme data
+   * Plugin-added data is preserved and not overwritten by file data
+   */
+  private async readDataAsync(): Promise<void> {
+    // Preserve any existing data added by plugins (e.g., github metadata)
+    const existingData = { ...this.data };
+
+    // First read theme data if available
+    // Note: skipExclude=true for theme data since exclude patterns only apply to site files
+    const themeDataDir = this.themeManager.getThemeDataDirectory();
+    let themeData: Record<string, any> = {};
+
+    if (themeDataDir && existsSync(themeDataDir)) {
+      themeData = await this.readDataDirectoryAsync(themeDataDir, themeDataDir, true);
+    }
+
+    // Then read site data (apply exclude patterns)
+    const siteDataDir = join(this.source, this.config.data_dir || '_data');
+    let siteData: Record<string, any> = {};
+
+    if (existsSync(siteDataDir)) {
+      siteData = await this.readDataDirectoryAsync(siteDataDir, siteDataDir, false);
+    }
+
+    // Merge in order: theme data → site data → existing plugin data
+    // This ensures plugin-added data (like github metadata) is preserved
+    // and file data can be overridden by plugins if needed
+    const fileData = this.mergeData(themeData, siteData);
+    this.data = this.mergeData(fileData, existingData);
+  }
+
+  /**
+   * Recursively read data files from a directory - async version
+   * Uses parallel async I/O for better performance
    * @param dir Directory to read
    * @param baseDir Base data directory for computing relative paths
    * @param skipExclude Whether to skip exclusion checks (true for theme data)
    * @returns Object containing parsed data files
    */
-  private readDataDirectory(
+  private async readDataDirectoryAsync(
     dir: string,
     baseDir: string,
     skipExclude: boolean = false
-  ): Record<string, any> {
+  ): Promise<Record<string, any>> {
     const data: Record<string, any> = {};
 
-    if (!existsSync(dir)) {
-      return data;
-    }
+    try {
+      const entries = await readdir(dir);
 
-    const entries = readdirSync(dir);
+      // Process entries in parallel
+      const results = await Promise.all(
+        entries.map(async (entry) => {
+          const fullPath = join(dir, entry);
+          try {
+            const stats = await stat(fullPath);
 
-    for (const entry of entries) {
-      const fullPath = join(dir, entry);
-      const stats = statSync(fullPath);
+            if (stats.isDirectory()) {
+              // Skip excluded directories (only for site data, not theme data)
+              if (!skipExclude && this.shouldExclude(fullPath)) {
+                return null;
+              }
 
-      if (stats.isDirectory()) {
-        // Skip excluded directories (only for site data, not theme data)
-        if (!skipExclude && this.shouldExclude(fullPath)) {
-          continue;
-        }
+              // Recursively read subdirectory
+              const subData = await this.readDataDirectoryAsync(fullPath, baseDir, skipExclude);
+              if (Object.keys(subData).length > 0) {
+                return { type: 'dir', key: entry, value: subData };
+              }
+            } else if (stats.isFile()) {
+              // Skip excluded files (only for site data, not theme data)
+              if (!skipExclude && this.shouldExclude(fullPath)) {
+                return null;
+              }
 
-        // Recursively read subdirectory
-        const subData = this.readDataDirectory(fullPath, baseDir, skipExclude);
-        if (Object.keys(subData).length > 0) {
-          data[entry] = subData;
-        }
-      } else if (stats.isFile()) {
-        // Skip excluded files (only for site data, not theme data)
-        if (!skipExclude && this.shouldExclude(fullPath)) {
-          continue;
-        }
+              // Parse data file
+              const parsedData = await this.parseDataFileAsync(fullPath);
+              if (parsedData !== null) {
+                // Use filename without extension as key
+                const key = basename(entry, extname(entry));
+                return { type: 'file', key, value: parsedData };
+              }
+            }
+          } catch {
+            // Skip files that can't be accessed
+          }
+          return null;
+        })
+      );
 
-        // Parse data file
-        const parsedData = this.parseDataFile(fullPath);
-        if (parsedData !== null) {
-          // Use filename without extension as key
-          const key = basename(entry, extname(entry));
-          data[key] = parsedData;
+      // Collect results
+      for (const result of results) {
+        if (result) {
+          data[result.key] = result.value;
         }
       }
+    } catch {
+      // Directory doesn't exist or can't be read
     }
 
     return data;
   }
 
   /**
-   * Parse a data file (YAML, JSON, etc.)
+   * Parse a data file (YAML, JSON, etc.) - async version
    * @param filePath Path to the data file
    * @returns Parsed data or null if file cannot be parsed
    */
-  private parseDataFile(filePath: string): any {
+  private async parseDataFileAsync(filePath: string): Promise<any> {
     const ext = extname(filePath).toLowerCase();
 
     try {
-      const content = readFileSync(filePath, 'utf-8');
+      const content = await readFile(filePath, 'utf-8');
 
       switch (ext) {
         case '.yml':

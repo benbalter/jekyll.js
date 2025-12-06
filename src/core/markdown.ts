@@ -181,10 +181,27 @@ async function loadSyntaxHighlightingModules(): Promise<void> {
         cachedModules!.rehypeStringify = rehypeStringify;
       })
       .catch((error) => {
-        // Failed to load syntax highlighting modules (e.g., in Jest tests)
-        // This is expected in test environments - we'll fall back to non-highlighted output
-        // eslint-disable-next-line no-console
-        console.warn('Failed to load syntax highlighting modules:', error.message);
+        // Reset the loading promise to allow retry on next call
+        loadingSyntaxHighlighting = null;
+
+        // Check if this is a module loading error (expected in Jest tests)
+        // Jest throws SyntaxError when it can't parse ESM modules
+        const isModuleError =
+          error.code === 'MODULE_NOT_FOUND' ||
+          error.code === 'ERR_MODULE_NOT_FOUND' ||
+          (error instanceof SyntaxError && error.message.includes('Cannot use import statement'));
+
+        if (isModuleError) {
+          // Expected in test environments - we'll fall back to non-highlighted output
+          // Suppress the warning in test environments to avoid noise
+          if (process.env.NODE_ENV !== 'test') {
+            // eslint-disable-next-line no-console
+            console.warn('Syntax highlighting modules not available, falling back to plain code blocks');
+          }
+        } else {
+          // Unexpected error - re-throw to surface the problem
+          throw error;
+        }
       });
   }
 

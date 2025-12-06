@@ -301,18 +301,32 @@ export class Document {
   /**
    * Get the date from front matter or filename (for posts)
    * Returns a Date object where the calendar date (year, month, day) is preserved
-   * regardless of the local timezone by storing the date as UTC midnight.
+   * regardless of the local timezone.
+   * 
+   * For dates from front matter with a time component, the original timestamp is preserved.
+   * For date-only strings (like "2024-01-01"), the date is stored as UTC midnight to prevent
+   * timezone-related shifts when extracting date components later.
    */
   get date(): Date | undefined {
     if (this.data.date) {
-      // Front matter dates: Parse and convert to UTC midnight to ensure
-      // consistent calendar date regardless of timezone
-      const parsed = new Date(this.data.date);
+      const dateValue = this.data.date;
+      const parsed = new Date(dateValue);
       if (!isNaN(parsed.getTime())) {
-        // Use the parsed date's UTC components to create a new date at UTC midnight
-        return new Date(
-          Date.UTC(parsed.getUTCFullYear(), parsed.getUTCMonth(), parsed.getUTCDate())
-        );
+        // Check if the date string includes a time component
+        // Dates like "2024-01-01T10:00:00Z" or "2024-01-01 10:00:00" have time info
+        // Dates like "2024-01-01" are date-only and need UTC normalization
+        const dateStr = String(dateValue);
+        const hasTimeComponent = /[T\s]\d{2}:/.test(dateStr);
+        
+        if (hasTimeComponent) {
+          // Preserve the original timestamp for dates with explicit time
+          return parsed;
+        } else {
+          // For date-only strings, convert to UTC midnight to prevent timezone shifts
+          return new Date(
+            Date.UTC(parsed.getUTCFullYear(), parsed.getUTCMonth(), parsed.getUTCDate())
+          );
+        }
       }
       return undefined;
     }

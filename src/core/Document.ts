@@ -1,4 +1,5 @@
 import { readFileSync, statSync } from 'fs';
+import { readFile, stat } from 'fs/promises';
 import { basename, extname, relative } from 'path';
 import matter from 'gray-matter';
 import { FrontMatterError, FileSystemError } from '../utils/errors';
@@ -61,12 +62,13 @@ export class Document {
   private _jsonCache: Record<string, any> | null = null;
 
   /**
-   * Create a new Document
+   * Create a new Document (synchronous constructor for backward compatibility)
    * @param path Absolute path to the file
    * @param sourcePath Source directory path for calculating relative paths
    * @param type Type of document
    * @param collection Optional collection name
    * @param config Optional site configuration for applying front matter defaults
+   * @deprecated Use Document.create() for async file operations
    */
   constructor(
     path: string,
@@ -134,6 +136,137 @@ export class Document {
       }
       throw error;
     }
+  }
+
+  /**
+   * Create a new Document asynchronously
+   * This is the preferred method for creating Documents as it uses async I/O
+   * @param path Absolute path to the file
+   * @param sourcePath Source directory path for calculating relative paths
+   * @param type Type of document
+   * @param collection Optional collection name
+   * @param config Optional site configuration for applying front matter defaults
+   * @returns Promise resolving to a new Document instance
+   */
+  static async create(
+    filePath: string,
+    sourcePath: string,
+    type: DocumentType,
+    collection?: string,
+    config?: JekyllConfig
+  ): Promise<Document> {
+    const relPath = relative(sourcePath, filePath);
+
+    // Get file stats asynchronously
+    let mtime: Date;
+    try {
+      const stats = await stat(filePath);
+      mtime = stats.mtime;
+    } catch (error) {
+      throw new FileSystemError(`Failed to read file stats`, {
+        file: relPath,
+        cause: error instanceof Error ? error : undefined,
+      });
+    }
+
+    // Read and parse the file asynchronously
+    let data: FrontMatter;
+    let content: string;
+    try {
+      // Use encoding from config, defaulting to 'utf-8' (Jekyll default)
+      const encoding = config?.encoding || 'utf-8';
+      const fileContent = await readFile(filePath, encoding);
+      const parsed = matter(fileContent);
+
+      // Apply front matter defaults if config is provided
+      if (config) {
+        // Determine the document type string for matching
+        let docTypeStr: string = type;
+        if (type === DocumentType.COLLECTION && collection) {
+          docTypeStr = collection; // Use collection name for collection documents
+        }
+
+        data = applyFrontMatterDefaults(relPath, docTypeStr, parsed.data, config);
+      } else {
+        data = parsed.data;
+      }
+
+      // Trim leading whitespace from content to match Jekyll's behavior
+      // Jekyll strips leading newlines/whitespace between front matter and content
+      content = parsed.content.trimStart();
+    } catch (error) {
+      if (error instanceof Error) {
+        // Check if it's a YAML parsing error (from js-yaml via gray-matter)
+        if ((error as any).name === 'YAMLException') {
+          throw new FrontMatterError(`Failed to parse front matter: ${error.message}`, {
+            file: relPath,
+            cause: error,
+          });
+        }
+
+        // Generic file read error
+        throw new FileSystemError(`Failed to read file: ${error.message}`, {
+          file: relPath,
+          cause: error,
+        });
+      }
+      throw error;
+    }
+
+    // Create Document using internal factory
+    return Document.fromData(filePath, sourcePath, type, collection, mtime, data, content);
+  }
+
+  /**
+   * Internal factory method to create a Document from pre-loaded data
+   * @internal
+   */
+  private static fromData(
+    filePath: string,
+    sourcePath: string,
+    type: DocumentType,
+    collection: string | undefined,
+    mtime: Date,
+    data: FrontMatter,
+    content: string
+  ): Document {
+    // Create a plain object and set the prototype to Document.prototype
+    // This avoids calling the constructor which would re-read the file
+    const doc = Object.create(Document.prototype) as Document;
+
+    // Use Object.defineProperty to set readonly properties
+    Object.defineProperty(doc, 'path', { value: filePath, writable: false, enumerable: true });
+    Object.defineProperty(doc, 'relativePath', {
+      value: relative(sourcePath, filePath),
+      writable: false,
+      enumerable: true,
+    });
+    Object.defineProperty(doc, 'type', { value: type, writable: false, enumerable: true });
+    Object.defineProperty(doc, 'collection', {
+      value: collection,
+      writable: false,
+      enumerable: true,
+    });
+    Object.defineProperty(doc, 'extname', {
+      value: extname(filePath),
+      writable: false,
+      enumerable: true,
+    });
+    Object.defineProperty(doc, 'basename', {
+      value: basename(filePath, extname(filePath)),
+      writable: false,
+      enumerable: true,
+    });
+    Object.defineProperty(doc, 'mtime', { value: mtime, writable: false, enumerable: true });
+    Object.defineProperty(doc, 'data', { value: data, writable: false, enumerable: true });
+    Object.defineProperty(doc, 'content', { value: content, writable: false, enumerable: true });
+
+    // Initialize private properties to match constructor/field initializers
+    // Object.create() does not run field initializers, so we must set them explicitly
+    (doc as any)._url = undefined;
+    (doc as any)._jsonCache = null;
+
+    return doc;
   }
 
   /**

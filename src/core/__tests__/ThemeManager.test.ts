@@ -567,6 +567,25 @@ defaults:
         expect(manager.resolveLayout('subdir/../../../etc/passwd')).toBeNull();
         expect(manager.resolveLayout('valid/../../../etc/passwd')).toBeNull();
       });
+
+      it('should reject layout names with any backslashes', () => {
+        const config: JekyllConfig = {};
+        const manager = new ThemeManager(testDir, config);
+
+        expect(manager.resolveLayout('foo\\bar')).toBeNull();
+        expect(manager.resolveLayout('foo/bar\\baz')).toBeNull();
+        expect(manager.resolveLayout('layout\\name')).toBeNull();
+      });
+
+      it('should reject layout names with null bytes and control characters', () => {
+        const config: JekyllConfig = {};
+        const manager = new ThemeManager(testDir, config);
+
+        expect(manager.resolveLayout('layout\x00.html')).toBeNull();
+        expect(manager.resolveLayout('../\x00/etc/passwd')).toBeNull();
+        expect(manager.resolveLayout('layout\t.html')).toBeNull();
+        expect(manager.resolveLayout('layout\n.html')).toBeNull();
+      });
     });
 
     describe('resolveInclude', () => {
@@ -586,6 +605,25 @@ defaults:
         expect(manager.resolveInclude('subdir/../../../etc/passwd')).toBeNull();
         expect(manager.resolveInclude('valid/../../../etc/passwd')).toBeNull();
       });
+
+      it('should reject include paths with any backslashes', () => {
+        const config: JekyllConfig = {};
+        const manager = new ThemeManager(testDir, config);
+
+        expect(manager.resolveInclude('foo\\bar')).toBeNull();
+        expect(manager.resolveInclude('foo/bar\\baz')).toBeNull();
+        expect(manager.resolveInclude('include\\name.html')).toBeNull();
+      });
+
+      it('should reject include paths with null bytes and control characters', () => {
+        const config: JekyllConfig = {};
+        const manager = new ThemeManager(testDir, config);
+
+        expect(manager.resolveInclude('include\x00.html')).toBeNull();
+        expect(manager.resolveInclude('../\x00/etc/passwd')).toBeNull();
+        expect(manager.resolveInclude('include\t.html')).toBeNull();
+        expect(manager.resolveInclude('include\n.html')).toBeNull();
+      });
     });
 
     describe('resolveDataFile', () => {
@@ -604,6 +642,25 @@ defaults:
 
         expect(manager.resolveDataFile('subdir/../../../etc/passwd')).toBeNull();
         expect(manager.resolveDataFile('valid/../../../etc/passwd')).toBeNull();
+      });
+
+      it('should reject data paths with any backslashes', () => {
+        const config: JekyllConfig = {};
+        const manager = new ThemeManager(testDir, config);
+
+        expect(manager.resolveDataFile('foo\\bar.yml')).toBeNull();
+        expect(manager.resolveDataFile('foo/bar\\baz.yml')).toBeNull();
+        expect(manager.resolveDataFile('data\\file.yml')).toBeNull();
+      });
+
+      it('should reject data paths with null bytes and control characters', () => {
+        const config: JekyllConfig = {};
+        const manager = new ThemeManager(testDir, config);
+
+        expect(manager.resolveDataFile('data\x00.yml')).toBeNull();
+        expect(manager.resolveDataFile('../\x00/etc/passwd')).toBeNull();
+        expect(manager.resolveDataFile('data\t.yml')).toBeNull();
+        expect(manager.resolveDataFile('data\n.yml')).toBeNull();
       });
     });
 
@@ -626,6 +683,38 @@ defaults:
 
         expect(manager.hasTheme()).toBe(false);
         expect(manager.getTheme()).toBeNull();
+      });
+
+      it('should reject theme names with any backslashes', () => {
+        const config1: JekyllConfig = { theme: 'foo\\bar' };
+        const manager1 = new ThemeManager(testDir, config1);
+        expect(manager1.hasTheme()).toBe(false);
+
+        const config2: JekyllConfig = { theme: 'theme\\name' };
+        const manager2 = new ThemeManager(testDir, config2);
+        expect(manager2.hasTheme()).toBe(false);
+
+        const config3: JekyllConfig = { theme: 'foo/bar\\baz' };
+        const manager3 = new ThemeManager(testDir, config3);
+        expect(manager3.hasTheme()).toBe(false);
+      });
+
+      it('should reject theme names with null bytes and control characters', () => {
+        const config1: JekyllConfig = { theme: 'theme\x00name' };
+        const manager1 = new ThemeManager(testDir, config1);
+        expect(manager1.hasTheme()).toBe(false);
+
+        const config2: JekyllConfig = { theme: '../\x00/etc/passwd' };
+        const manager2 = new ThemeManager(testDir, config2);
+        expect(manager2.hasTheme()).toBe(false);
+
+        const config3: JekyllConfig = { theme: 'theme\tname' };
+        const manager3 = new ThemeManager(testDir, config3);
+        expect(manager3.hasTheme()).toBe(false);
+
+        const config4: JekyllConfig = { theme: 'theme\nname' };
+        const manager4 = new ThemeManager(testDir, config4);
+        expect(manager4.hasTheme()).toBe(false);
       });
 
       it('should reject absolute paths as theme names', () => {

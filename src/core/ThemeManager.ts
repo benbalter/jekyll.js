@@ -211,6 +211,43 @@ export class ThemeManager {
   }
 
   /**
+   * Check if a path contains path traversal sequences
+   * @param path Path to check
+   * @returns Whether the path contains traversal sequences
+   */
+  private hasPathTraversalSequences(path: string): boolean {
+    return path.includes('..');
+  }
+
+  /**
+   * Check if a path is an absolute path (Unix or Windows style)
+   * @param path Path to check
+   * @returns Whether the path is absolute
+   */
+  private isAbsolutePath(path: string): boolean {
+    return path.startsWith('/') || /^[a-zA-Z]:/.test(path);
+  }
+
+  /**
+   * Check if a path contains backslashes (Windows path separator)
+   * @param path Path to check
+   * @returns Whether the path contains backslashes
+   */
+  private hasBackslashes(path: string): boolean {
+    return path.includes('\\');
+  }
+
+  /**
+   * Check if a string contains null bytes or control characters
+   * Null bytes can truncate paths on some systems, bypassing security checks
+   * @param str String to check
+   * @returns Whether the string contains control characters
+   */
+  private hasControlCharacters(str: string): boolean {
+    return /[\x00-\x1f]/.test(str);
+  }
+
+  /**
    * Validate theme name for security
    * Prevents path traversal attacks via malicious theme names
    * @param themeName Theme name to validate
@@ -221,20 +258,26 @@ export class ThemeManager {
       return false;
     }
 
+    // Check for null bytes and control characters
+    if (this.hasControlCharacters(themeName)) {
+      logger.warn(`Security warning: Theme name contains control characters: ${themeName}`);
+      return false;
+    }
+
     // Check for path traversal sequences
-    if (themeName.includes('..')) {
+    if (this.hasPathTraversalSequences(themeName)) {
       logger.warn(`Security warning: Theme name contains path traversal sequence: ${themeName}`);
       return false;
     }
 
     // Check for absolute paths (Unix or Windows style)
-    if (themeName.startsWith('/') || /^[a-zA-Z]:/.test(themeName)) {
+    if (this.isAbsolutePath(themeName)) {
       logger.warn(`Security warning: Theme name appears to be an absolute path: ${themeName}`);
       return false;
     }
 
     // Check for backslash (Windows path separator, potential traversal)
-    if (themeName.includes('\\')) {
+    if (this.hasBackslashes(themeName)) {
       logger.warn(`Security warning: Theme name contains backslash: ${themeName}`);
       return false;
     }
@@ -249,7 +292,7 @@ export class ThemeManager {
       }
       // Check each part for path traversal
       for (const part of parts) {
-        if (part.includes('..') || part.includes('\\')) {
+        if (this.hasPathTraversalSequences(part) || this.hasBackslashes(part)) {
           logger.warn(
             `Security warning: Scoped theme name contains unsafe characters: ${themeName}`
           );
@@ -272,19 +315,23 @@ export class ThemeManager {
       return false;
     }
 
+    // Check for null bytes and control characters
+    if (this.hasControlCharacters(relativePath)) {
+      return false;
+    }
+
     // Check for path traversal sequences
-    if (relativePath.includes('..')) {
+    if (this.hasPathTraversalSequences(relativePath)) {
       return false;
     }
 
     // Check for absolute paths (Unix or Windows style)
-    if (relativePath.startsWith('/') || /^[a-zA-Z]:/.test(relativePath)) {
+    if (this.isAbsolutePath(relativePath)) {
       return false;
     }
 
     // Check for backslash (Windows path separator, potential traversal)
-    // Note: We normalize to forward slashes, but input might have backslashes
-    if (relativePath.includes('\\..\\') || relativePath.startsWith('..\\')) {
+    if (this.hasBackslashes(relativePath)) {
       return false;
     }
 

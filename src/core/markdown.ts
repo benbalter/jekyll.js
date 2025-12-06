@@ -10,6 +10,7 @@
  */
 
 import { escape as escapeHtml } from 'html-escaper';
+import { smartypantsu } from 'smartypants';
 
 /**
  * Options for markdown processing
@@ -26,6 +27,12 @@ export interface MarkdownOptions {
         /** Wrap mentions in strong tags (default: true in remark-github) */
         mentionStrong?: boolean;
       };
+  /**
+   * Enable smart typography (converts ASCII quotes, dashes, and ellipses to Unicode characters).
+   * This matches Kramdown's default behavior for smart quotes.
+   * Default: true (enabled by default to match Jekyll/Kramdown behavior)
+   */
+  smartQuotes?: boolean;
 }
 
 // Cached module imports to avoid repeated dynamic imports

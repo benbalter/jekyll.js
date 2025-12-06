@@ -51,7 +51,11 @@ function generateSeoTags(page: any, site: Site): string {
   // Get image from page or config, handling both string and object formats
   const rawImage = page.image || config.image || '';
   const image = typeof rawImage === 'string' ? rawImage : rawImage?.src || rawImage?.path || '';
-  const imageUrl = image ? (image.startsWith('http') ? image : `${siteUrl}${baseurl}${image}`) : '';
+  const imageUrl = image
+    ? image.startsWith('http')
+      ? image
+      : `${siteUrl}${baseurl}${image.startsWith('/') ? '' : '/'}${image}`
+    : '';
 
   // Page type
   const pageType = page.layout === 'post' || page.date ? 'article' : 'website';
@@ -201,7 +205,7 @@ function generateJsonLd(
       if (config.logo) {
         const logoUrl = config.logo.startsWith('http')
           ? config.logo
-          : `${config.url || ''}${config.baseurl || ''}${config.logo}`;
+          : `${config.url || ''}${config.baseurl || ''}${config.logo.startsWith('/') ? '' : '/'}${config.logo}`;
         data.publisher.logo = {
           '@type': 'ImageObject',
           url: logoUrl,

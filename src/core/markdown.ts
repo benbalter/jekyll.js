@@ -185,11 +185,11 @@ async function loadSyntaxHighlightingModules(): Promise<void> {
         loadingSyntaxHighlighting = null;
 
         // Check if this is a module loading error (expected in Jest tests)
-        // Jest throws SyntaxError when it can't parse ESM modules
+        // Use error.name and code for more robust detection
         const isModuleError =
           error.code === 'MODULE_NOT_FOUND' ||
           error.code === 'ERR_MODULE_NOT_FOUND' ||
-          (error instanceof SyntaxError && error.message.includes('Cannot use import statement'));
+          error.name === 'SyntaxError';
 
         if (isModuleError) {
           // Expected in test environments - we'll fall back to non-highlighted output
@@ -264,8 +264,8 @@ async function getProcessor(options: MarkdownOptions): Promise<any> {
   }
 
   // Choose output pipeline based on syntax highlighting option
-  // When syntax highlighting is enabled (default), use rehype pipeline for proper code highlighting
-  // When disabled, use direct HTML conversion for faster processing
+  // Syntax highlighting is enabled by default (undefined or true)
+  // Explicitly disable with syntaxHighlighting: false
   const enableSyntaxHighlighting = options.syntaxHighlighting !== false;
 
   if (enableSyntaxHighlighting) {

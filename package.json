@@ -56,7 +56,7 @@
     "chokidar": "^5.0.0",
     "commander": "^14.0.2",
     "date-fns": "^4.1.0",
-    "feed": "^5.1.0",
+    "feed": "^5.2.0",
     "gray-matter": "^4.0.3",
     "html-escaper": "^3.0.3",
     "html-minifier-terser": "^7.2.0",
